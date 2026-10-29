@@ -1,0 +1,67 @@
+{
+  "source": "xm",
+  "cell_size_m": 1000,
+  "split": {
+    "n_train_buckets": 16,
+    "n_test_buckets": 4,
+    "train_start": "2020-12-21 06:00:00",
+    "train_end": "2020-12-24 09:00:00",
+    "test_start": "2020-12-25 06:00:00",
+    "test_end": "2020-12-25 09:00:00"
+  },
+  "seed": 42,
+  "train_fraction": 0.8,
+  "params": {
+    "n_estimators": 300,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "min_child_samples": 20,
+    "feature_fraction": 0.9,
+    "l2_regularization": 1.0,
+    "objective": "poisson",
+    "n_jobs": 1
+  },
+  "features": [
+    "cell_id",
+    "hour",
+    "dow",
+    "is_weekend",
+    "gap_hours",
+    "lag1_out_count",
+    "lag1_in_count",
+    "roll3_out_count",
+    "roll3_in_count",
+    "cell_mean_out_count",
+    "cell_mean_in_count",
+    "cell_hour_mean_out_count",
+    "cell_hour_mean_in_count"
+  ],
+  "metrics": {
+    "baseline": {
+      "out_count": {
+        "mae": 7.075443786982248,
+        "rmse": 15.319875804801951,
+        "wape": 0.11427274464831805
+      },
+      "in_count": {
+        "mae": 6.971153846153846,
+        "rmse": 13.793556616841496,
+        "wape": 0.1125883983180428
+      }
+    },
+    "model": {
+      "out_count": {
+        "mae": 7.375493945726536,
+        "rmse": 18.034383555697794,
+        "wape": 0.11911873822895495
+      },
+      "in_count": {
+        "mae": 6.732218897922043,
+        "rmse": 16.931091303791046,
+        "wape": 0.10872945276651617
+      }
+    }
+  },
+  "n_train_rows": 2704,
+  "n_test_rows": 676
+}

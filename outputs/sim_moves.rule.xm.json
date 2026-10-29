@@ -1,0 +1,138 @@
+[
+  {
+    "time_bucket": "2020-12-25T06:00:00",
+    "from_cell": "C0008_0010",
+    "to_cell": "C0007_0010",
+    "bikes": 84,
+    "distance_m": 998.567305274537,
+    "distance_bike_km": 83.87965364306112
+  },
+  {
+    "time_bucket": "2020-12-25T06:00:00",
+    "from_cell": "C0006_0007",
+    "to_cell": "C0006_0006",
+    "bikes": 65,
+    "distance_m": 1005.9247932382976,
+    "distance_bike_km": 65.38511156048935
+  },
+  {
+    "time_bucket": "2020-12-25T06:00:00",
+    "from_cell": "C0003_0011",
+    "to_cell": "C0003_0010",
+    "bikes": 51,
+    "distance_m": 1005.9247932382976,
+    "distance_bike_km": 51.30216445515318
+  },
+  {
+    "time_bucket": "2020-12-25T07:00:00",
+    "from_cell": "C0008_0010",
+    "to_cell": "C0007_0010",
+    "bikes": 160,
+    "distance_m": 998.567305274537,
+    "distance_bike_km": 159.77076884392594
+  },
+  {
+    "time_bucket": "2020-12-25T07:00:00",
+    "from_cell": "C0007_0011",
+    "to_cell": "C0007_0010",
+    "bikes": 17,
+    "distance_m": 1005.9247932382976,
+    "distance_bike_km": 17.10072148505106
+  },
+  {
+    "time_bucket": "2020-12-25T07:00:00",
+    "from_cell": "C0003_0011",
+    "to_cell": "C0003_0010",
+    "bikes": 11,
+    "distance_m": 1005.9247932382976,
+    "distance_bike_km": 11.065172725621274
+  },
+  {
+    "time_bucket": "2020-12-25T07:00:00",
+    "from_cell": "C0002_0011",
+    "to_cell": "C0003_0010",
+    "bikes": 12,
+    "distance_m": 1417.374154091024,
+    "distance_bike_km": 17.008489849092285
+  },
+  {
+    "time_bucket": "2020-12-25T08:00:00",
+    "from_cell": "C0008_0010",
+    "to_cell": "C0007_0010",
+    "bikes": 64,
+    "distance_m": 998.567305274537,
+    "distance_bike_km": 63.90830753757037
+  },
+  {
+    "time_bucket": "2020-12-25T08:00:00",
+    "from_cell": "C0007_0011",
+    "to_cell": "C0007_0010",
+    "bikes": 40,
+    "distance_m": 1005.9247932382976,
+    "distance_bike_km": 40.2369917295319
+  },
+  {
+    "time_bucket": "2020-12-25T08:00:00",
+    "from_cell": "C0008_0011",
+    "to_cell": "C0007_0010",
+    "bikes": 96,
+    "distance_m": 1417.374154092837,
+    "distance_bike_km": 136.06791879291237
+  },
+  {
+    "time_bucket": "2020-12-25T09:00:00",
+    "from_cell": "C0005_0006",
+    "to_cell": "C0006_0006",
+    "bikes": 54,
+    "distance_m": 998.8549258124947,
+    "distance_bike_km": 53.93816599387471
+  },
+  {
+    "time_bucket": "2020-12-25T09:00:00",
+    "from_cell": "C0011_0004",
+    "to_cell": "C0010_0004",
+    "bikes": 51,
+    "distance_m": 998.9985866834334,
+    "distance_bike_km": 50.9489279208551
+  },
+  {
+    "time_bucket": "2020-12-25T09:00:00",
+    "from_cell": "C0003_0008",
+    "to_cell": "C0004_0008",
+    "bikes": 39,
+    "distance_m": 998.7111653372262,
+    "distance_bike_km": 38.94973544815183
+  },
+  {
+    "time_bucket": "2020-12-25T09:00:00",
+    "from_cell": "C0007_0007",
+    "to_cell": "C0007_0006",
+    "bikes": 25,
+    "distance_m": 1005.9247932382976,
+    "distance_bike_km": 25.14811983095744
+  },
+  {
+    "time_bucket": "2020-12-25T09:00:00",
+    "from_cell": "C0011_0006",
+    "to_cell": "C0010_0005",
+    "bikes": 18,
+    "distance_m": 1417.6274606675033,
+    "distance_bike_km": 25.51729429201506
+  },
+  {
+    "time_bucket": "2020-12-25T09:00:00",
+    "from_cell": "C0007_0011",
+    "to_cell": "C0007_0010",
+    "bikes": 7,
+    "distance_m": 1005.9247932382976,
+    "distance_bike_km": 7.041473552668084
+  },
+  {
+    "time_bucket": "2020-12-25T09:00:00",
+    "from_cell": "C0008_0011",
+    "to_cell": "C0007_0010",
+    "bikes": 6,
+    "distance_m": 1417.374154092837,
+    "distance_bike_km": 8.504244924557023
+  }
+]

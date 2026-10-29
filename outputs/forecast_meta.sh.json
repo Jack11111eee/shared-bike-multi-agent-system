@@ -1,0 +1,67 @@
+{
+  "source": "sh",
+  "cell_size_m": 2000,
+  "split": {
+    "n_train_buckets": 614,
+    "n_test_buckets": 154,
+    "train_start": "2016-08-01 00:00:00",
+    "train_end": "2016-08-26 13:00:00",
+    "test_start": "2016-08-26 14:00:00",
+    "test_end": "2016-09-01 23:00:00"
+  },
+  "seed": 42,
+  "train_fraction": 0.8,
+  "params": {
+    "n_estimators": 300,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "min_child_samples": 20,
+    "feature_fraction": 0.9,
+    "l2_regularization": 1.0,
+    "objective": "poisson",
+    "n_jobs": 1
+  },
+  "features": [
+    "cell_id",
+    "hour",
+    "dow",
+    "is_weekend",
+    "gap_hours",
+    "lag1_out_count",
+    "lag1_in_count",
+    "roll3_out_count",
+    "roll3_in_count",
+    "cell_mean_out_count",
+    "cell_mean_in_count",
+    "cell_hour_mean_out_count",
+    "cell_hour_mean_in_count"
+  ],
+  "metrics": {
+    "baseline": {
+      "out_count": {
+        "mae": 0.5443862803862805,
+        "rmse": 1.1583915421794027,
+        "wape": 0.8055940472083971
+      },
+      "in_count": {
+        "mae": 0.5490958453311395,
+        "rmse": 1.173719036697904,
+        "wape": 0.8113098745636935
+      }
+    },
+    "model": {
+      "out_count": {
+        "mae": 0.49838348085234274,
+        "rmse": 1.051264987139993,
+        "wape": 0.737518155521404
+      },
+      "in_count": {
+        "mae": 0.4970658120384404,
+        "rmse": 1.0547513020660175,
+        "wape": 0.7344335329501677
+      }
+    }
+  },
+  "n_train_rows": 156570,
+  "n_test_rows": 39270
+}

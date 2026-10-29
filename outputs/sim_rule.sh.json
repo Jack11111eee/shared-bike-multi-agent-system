@@ -1,0 +1,37 @@
+{
+  "strategy": "rule",
+  "n_buckets": 154,
+  "first_bucket": "2016-08-26 14:00:00",
+  "last_bucket": "2016-09-01 23:00:00",
+  "borrow_requests": 26537,
+  "borrow_met": 26395,
+  "unmet_requests": 142,
+  "service_rate": 0.9946489806685006,
+  "bikes_moved": 1746,
+  "distance_bike_km": 3634.655265788627,
+  "composite_cost": 868.9310531577254,
+  "returns": 26578,
+  "returns_overflow": 426,
+  "initial_inventory": 5100,
+  "final_inventory": 4857,
+  "capacity_total": 10200,
+  "budget_per_bucket": 200,
+  "assumptions": {
+    "initial_fill_ratio": 0.5,
+    "safety_stock_ratio": 0.2,
+    "max_moves_per_bucket": 200,
+    "unmet_penalty": 1.0,
+    "distance_cost_per_bike_km": 0.2,
+    "max_candidate_surplus_per_deficit": 20
+  },
+  "violations": {
+    "conservation": 0,
+    "capacity": 0,
+    "budget": 0,
+    "negative_inventory": 0,
+    "clamped_moves": 0
+  },
+  "simulated": true,
+  "source": "sh",
+  "capacity_mode": "fixed"
+}

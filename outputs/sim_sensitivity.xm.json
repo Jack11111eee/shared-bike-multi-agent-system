@@ -1,0 +1,107 @@
+[
+  {
+    "scenario": "baseline",
+    "rule": {
+      "unmet_requests": 3617,
+      "distance_bike_km": 855.773262585488,
+      "composite_cost": 3788.1546525170975,
+      "service_rate": 0.9135846712538226
+    },
+    "optimized": {
+      "unmet_requests": 3669,
+      "distance_bike_km": 804.379945681073,
+      "composite_cost": 3829.8759891362147,
+      "service_rate": 0.9123423165137615
+    }
+  },
+  {
+    "scenario": "initial_fill=0.3",
+    "rule": {
+      "unmet_requests": 4804,
+      "distance_bike_km": 1036.0332476887456,
+      "composite_cost": 5011.206649537749,
+      "service_rate": 0.8852255351681957
+    },
+    "optimized": {
+      "unmet_requests": 4846,
+      "distance_bike_km": 1017.8299820207651,
+      "composite_cost": 5049.565996404153,
+      "service_rate": 0.8842220948012233
+    }
+  },
+  {
+    "scenario": "initial_fill=0.7",
+    "rule": {
+      "unmet_requests": 3035,
+      "distance_bike_km": 825.0900003022541,
+      "composite_cost": 3200.018000060451,
+      "service_rate": 0.9274894877675841
+    },
+    "optimized": {
+      "unmet_requests": 3137,
+      "distance_bike_km": 805.6525218177175,
+      "composite_cost": 3298.1305043635434,
+      "service_rate": 0.9250525611620795
+    }
+  },
+  {
+    "scenario": "budget=100",
+    "rule": {
+      "unmet_requests": 3853,
+      "distance_bike_km": 399.5800123710939,
+      "composite_cost": 3932.9160024742187,
+      "service_rate": 0.9079462920489296
+    },
+    "optimized": {
+      "unmet_requests": 3853,
+      "distance_bike_km": 415.9508368798736,
+      "composite_cost": 3936.190167375975,
+      "service_rate": 0.9079462920489296
+    }
+  },
+  {
+    "scenario": "budget=400",
+    "rule": {
+      "unmet_requests": 3306,
+      "distance_bike_km": 1784.5682631661805,
+      "composite_cost": 3662.913652633236,
+      "service_rate": 0.9210149082568807
+    },
+    "optimized": {
+      "unmet_requests": 3471,
+      "distance_bike_km": 1566.0614425210072,
+      "composite_cost": 3784.2122885042013,
+      "service_rate": 0.9170728211009175
+    }
+  },
+  {
+    "scenario": "capacity=0.5x",
+    "rule": {
+      "unmet_requests": 7431,
+      "distance_bike_km": 1012.8171669086666,
+      "composite_cost": 7633.563433381733,
+      "service_rate": 0.8224627293577982
+    },
+    "optimized": {
+      "unmet_requests": 7351,
+      "distance_bike_km": 817.3461953875137,
+      "composite_cost": 7514.469239077503,
+      "service_rate": 0.8243740443425076
+    }
+  },
+  {
+    "scenario": "capacity=2x",
+    "rule": {
+      "unmet_requests": 1315,
+      "distance_bike_km": 807.4774702229415,
+      "composite_cost": 1476.4954940445882,
+      "service_rate": 0.9685827599388379
+    },
+    "optimized": {
+      "unmet_requests": 1311,
+      "distance_bike_km": 799.9384141133996,
+      "composite_cost": 1470.98768282268,
+      "service_rate": 0.9686783256880734
+    }
+  }
+]

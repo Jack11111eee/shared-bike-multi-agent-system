@@ -1,0 +1,192 @@
+[
+  {
+    "metric": "XM · trip rows",
+    "value": 220675,
+    "source_file": "outputs/summary.xm.json"
+  },
+  {
+    "metric": "XM · duplicate rate",
+    "value": 0.0,
+    "source_file": "outputs/summary.xm.json"
+  },
+  {
+    "metric": "XM · abnormal duration share",
+    "value": 0.028594086326045088,
+    "source_file": "outputs/summary.xm.json"
+  },
+  {
+    "metric": "XM · grid cells",
+    "value": 169,
+    "source_file": "outputs/summary.xm.json"
+  },
+  {
+    "metric": "XM · time buckets",
+    "value": 20,
+    "source_file": "outputs/summary.xm.json"
+  },
+  {
+    "metric": "XM · zero-departure share",
+    "value": 0.29763313609467457,
+    "source_file": "outputs/summary.xm.json"
+  },
+  {
+    "metric": "XM · total departures",
+    "value": 195682,
+    "source_file": "outputs/summary.xm.json"
+  },
+  {
+    "metric": "XM · out_count baseline MAE",
+    "value": 7.075443786982248,
+    "source_file": "outputs/forecast_metrics.xm.json"
+  },
+  {
+    "metric": "XM · out_count model MAE",
+    "value": 7.375493945726536,
+    "source_file": "outputs/forecast_metrics.xm.json"
+  },
+  {
+    "metric": "XM · in_count baseline MAE",
+    "value": 6.971153846153846,
+    "source_file": "outputs/forecast_metrics.xm.json"
+  },
+  {
+    "metric": "XM · in_count model MAE",
+    "value": 6.732218897922043,
+    "source_file": "outputs/forecast_metrics.xm.json"
+  },
+  {
+    "metric": "XM · replenish candidates",
+    "value": 35,
+    "source_file": "outputs/risk_summary.xm.json"
+  },
+  {
+    "metric": "XM · clear candidates",
+    "value": 134,
+    "source_file": "outputs/risk_summary.xm.json"
+  },
+  {
+    "metric": "XM · rule unmet requests",
+    "value": 3617,
+    "source_file": "outputs/strategy_comparison.xm.json"
+  },
+  {
+    "metric": "XM · optimized unmet requests",
+    "value": 3669,
+    "source_file": "outputs/strategy_comparison.xm.json"
+  },
+  {
+    "metric": "XM · rule distance bike-km",
+    "value": 855.773262585488,
+    "source_file": "outputs/strategy_comparison.xm.json"
+  },
+  {
+    "metric": "XM · optimized distance bike-km",
+    "value": 804.379945681073,
+    "source_file": "outputs/strategy_comparison.xm.json"
+  },
+  {
+    "metric": "XM · rule composite cost",
+    "value": 3788.1546525170975,
+    "source_file": "outputs/strategy_comparison.xm.json"
+  },
+  {
+    "metric": "XM · optimized composite cost",
+    "value": 3829.8759891362147,
+    "source_file": "outputs/strategy_comparison.xm.json"
+  },
+  {
+    "metric": "SH · trip rows",
+    "value": 102361,
+    "source_file": "outputs/summary.sh.json"
+  },
+  {
+    "metric": "SH · duplicate rate",
+    "value": 0.0,
+    "source_file": "outputs/summary.sh.json"
+  },
+  {
+    "metric": "SH · abnormal duration share",
+    "value": 0.0005275446703334278,
+    "source_file": "outputs/summary.sh.json"
+  },
+  {
+    "metric": "SH · grid cells",
+    "value": 255,
+    "source_file": "outputs/summary.sh.json"
+  },
+  {
+    "metric": "SH · time buckets",
+    "value": 768,
+    "source_file": "outputs/summary.sh.json"
+  },
+  {
+    "metric": "SH · zero-departure share",
+    "value": 0.7715379901960784,
+    "source_file": "outputs/summary.sh.json"
+  },
+  {
+    "metric": "SH · total departures",
+    "value": 99920,
+    "source_file": "outputs/summary.sh.json"
+  },
+  {
+    "metric": "SH · out_count baseline MAE",
+    "value": 0.5443862803862805,
+    "source_file": "outputs/forecast_metrics.sh.json"
+  },
+  {
+    "metric": "SH · out_count model MAE",
+    "value": 0.49838348085234274,
+    "source_file": "outputs/forecast_metrics.sh.json"
+  },
+  {
+    "metric": "SH · in_count baseline MAE",
+    "value": 0.5490958453311395,
+    "source_file": "outputs/forecast_metrics.sh.json"
+  },
+  {
+    "metric": "SH · in_count model MAE",
+    "value": 0.4970658120384404,
+    "source_file": "outputs/forecast_metrics.sh.json"
+  },
+  {
+    "metric": "SH · replenish candidates",
+    "value": 134,
+    "source_file": "outputs/risk_summary.sh.json"
+  },
+  {
+    "metric": "SH · clear candidates",
+    "value": 121,
+    "source_file": "outputs/risk_summary.sh.json"
+  },
+  {
+    "metric": "SH · rule unmet requests",
+    "value": 142,
+    "source_file": "outputs/strategy_comparison.sh.json"
+  },
+  {
+    "metric": "SH · optimized unmet requests",
+    "value": 140,
+    "source_file": "outputs/strategy_comparison.sh.json"
+  },
+  {
+    "metric": "SH · rule distance bike-km",
+    "value": 3634.655265788627,
+    "source_file": "outputs/strategy_comparison.sh.json"
+  },
+  {
+    "metric": "SH · optimized distance bike-km",
+    "value": 3606.247132558059,
+    "source_file": "outputs/strategy_comparison.sh.json"
+  },
+  {
+    "metric": "SH · rule composite cost",
+    "value": 868.9310531577254,
+    "source_file": "outputs/strategy_comparison.sh.json"
+  },
+  {
+    "metric": "SH · optimized composite cost",
+    "value": 861.2494265116119,
+    "source_file": "outputs/strategy_comparison.sh.json"
+  }
+]

@@ -1,0 +1,573 @@
+{
+  "source": "sh",
+  "cell_size_m": 2000,
+  "quality": {
+    "source": "sh",
+    "rows": 102361,
+    "columns": [
+      "trip_id",
+      "bike_id",
+      "start_time",
+      "end_time",
+      "start_lat",
+      "start_lon",
+      "end_lat",
+      "end_lon",
+      "duration_s"
+    ],
+    "time_min": "2016-08-01 00:23:00",
+    "time_max": "2016-09-01 08:25:00",
+    "bbox": {
+      "lat_min": 30.841,
+      "lat_max": 31.477,
+      "lon_min": 120.486,
+      "lon_max": 121.971
+    },
+    "duplicate_trip_ids": 0,
+    "duplicate_rate": 0.0,
+    "missing_rate": {
+      "trip_id": 0.0,
+      "bike_id": 0.0,
+      "start_time": 0.0,
+      "end_time": 0.0,
+      "start_lat": 0.0,
+      "start_lon": 0.0,
+      "end_lat": 0.0,
+      "end_lon": 0.0,
+      "duration_s": 0.0
+    },
+    "abnormal_duration_rows": 54,
+    "abnormal_duration_rate": 0.0005275446703334278,
+    "start_before_end_ok": true,
+    "start_before_end_violations": 0,
+    "lat_range_ok": true,
+    "lon_range_ok": true,
+    "unique_bikes": 79062,
+    "extras": {},
+    "adapter_stats": {
+      "raw_rows": 102361,
+      "dropped_unparseable_rows": 0,
+      "dropped_nonpositive_duration": 0,
+      "paired_trips": 102361
+    },
+    "notes": [
+      "空间稀疏：约 68 km × 68 km 内日均约 3,302 条订单；本流水线使用稳健包围盒内的规则网格。",
+      "数据源没有电子围栏、天气与停放容量，仿真中的容量退化为配置的固定假设（FR-DATA-6）。",
+      "原始 userid 在适配器边界被丢弃，未写入任何产物（NF-6）。",
+      "适配器解析统计：原始记录 102,361 行，配对成功 102,361 条行程，丢弃无法解析时间/坐标 0 行，丢弃非正时长 0 条。"
+    ],
+    "hard_checks_ok": true
+  },
+  "prep": {
+    "source": "sh",
+    "cell_size_m": 2000,
+    "clean": {
+      "rows_in": 102361,
+      "rows_out": 99920,
+      "rows_removed": 2441,
+      "bbox": {
+        "lat_min": 31.09800000000001,
+        "lat_max": 31.389,
+        "lon_min": 121.297,
+        "lon_max": 121.603
+      },
+      "rules": [
+        {
+          "rule": "duplicate_trip_id",
+          "rows_removed": 0,
+          "rows_remaining": 102361,
+          "reason": "same trip_id appears more than once; first occurrence kept"
+        },
+        {
+          "rule": "missing_coordinates",
+          "rows_removed": 0,
+          "rows_remaining": 102361,
+          "reason": "at least one of start/end latitude or longitude is missing"
+        },
+        {
+          "rule": "abnormal_duration",
+          "rows_removed": 54,
+          "rows_remaining": 102307,
+          "reason": "duration outside [60s, 21600s]"
+        },
+        {
+          "rule": "out_of_bounds_coordinates",
+          "rows_removed": 2387,
+          "rows_remaining": 99920,
+          "reason": "start or end outside the 0.5%-99.5% coordinate envelope"
+        },
+        {
+          "rule": "pseudo_trip_same_origin_destination",
+          "rows_removed": 0,
+          "rows_remaining": 99920,
+          "reason": "start and end within 50 m (or identical coordinates)"
+        }
+      ]
+    },
+    "panel": {
+      "n_cells": 255,
+      "n_buckets": 768,
+      "n_dates": 32,
+      "hours": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "first_bucket": "2016-08-01 00:00:00",
+      "last_bucket": "2016-09-01 23:00:00",
+      "total_out": 99920,
+      "total_in": 99920,
+      "total_trips": 99920,
+      "out_conserved": true,
+      "in_conserved": true,
+      "zero_out_share": 0.7715379901960784,
+      "zero_in_share": 0.7684129901960784,
+      "zero_any_share": 0.7045547385620915,
+      "mean_out_per_cell_bucket": 0.5102124183006536,
+      "grid": {
+        "cell_size_m": 2000,
+        "lat_min": 31.09800000000001,
+        "lat_max": 31.389,
+        "lon_min": 121.297,
+        "lon_max": 121.603,
+        "lat_step": 0.01809299800977022,
+        "lon_step": 0.021013846578396986,
+        "nx": 15,
+        "ny": 17,
+        "n_cells": 255
+      }
+    }
+  },
+  "forecast_metrics": {
+    "baseline": {
+      "out_count": {
+        "mae": 0.5443862803862805,
+        "rmse": 1.1583915421794027,
+        "wape": 0.8055940472083971
+      },
+      "in_count": {
+        "mae": 0.5490958453311395,
+        "rmse": 1.173719036697904,
+        "wape": 0.8113098745636935
+      }
+    },
+    "model": {
+      "out_count": {
+        "mae": 0.49838348085234274,
+        "rmse": 1.051264987139993,
+        "wape": 0.737518155521404
+      },
+      "in_count": {
+        "mae": 0.4970658120384404,
+        "rmse": 1.0547513020660175,
+        "wape": 0.7344335329501677
+      }
+    }
+  },
+  "forecast_meta": {
+    "source": "sh",
+    "cell_size_m": 2000,
+    "split": {
+      "n_train_buckets": 614,
+      "n_test_buckets": 154,
+      "train_start": "2016-08-01 00:00:00",
+      "train_end": "2016-08-26 13:00:00",
+      "test_start": "2016-08-26 14:00:00",
+      "test_end": "2016-09-01 23:00:00"
+    },
+    "seed": 42,
+    "train_fraction": 0.8,
+    "params": {
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 20,
+      "feature_fraction": 0.9,
+      "l2_regularization": 1.0,
+      "objective": "poisson",
+      "n_jobs": 1
+    },
+    "features": [
+      "cell_id",
+      "hour",
+      "dow",
+      "is_weekend",
+      "gap_hours",
+      "lag1_out_count",
+      "lag1_in_count",
+      "roll3_out_count",
+      "roll3_in_count",
+      "cell_mean_out_count",
+      "cell_mean_in_count",
+      "cell_hour_mean_out_count",
+      "cell_hour_mean_in_count"
+    ],
+    "metrics": {
+      "baseline": {
+        "out_count": {
+          "mae": 0.5443862803862805,
+          "rmse": 1.1583915421794027,
+          "wape": 0.8055940472083971
+        },
+        "in_count": {
+          "mae": 0.5490958453311395,
+          "rmse": 1.173719036697904,
+          "wape": 0.8113098745636935
+        }
+      },
+      "model": {
+        "out_count": {
+          "mae": 0.49838348085234274,
+          "rmse": 1.051264987139993,
+          "wape": 0.737518155521404
+        },
+        "in_count": {
+          "mae": 0.4970658120384404,
+          "rmse": 1.0547513020660175,
+          "wape": 0.7344335329501677
+        }
+      }
+    },
+    "n_train_rows": 156570,
+    "n_test_rows": 39270
+  },
+  "sensitivity": [
+    {
+      "cell_size_m": 2000,
+      "n_cells": 255,
+      "n_buckets": 768,
+      "zero_out_share": 0.7715379901960784,
+      "metrics": {
+        "out_count": {
+          "mae": 0.5443862803862805,
+          "rmse": 1.1583915421794027,
+          "wape": 0.8055940472083971
+        },
+        "in_count": {
+          "mae": 0.5490958453311395,
+          "rmse": 1.173719036697904,
+          "wape": 0.8113098745636935
+        }
+      }
+    },
+    {
+      "cell_size_m": 4000,
+      "n_cells": 72,
+      "n_buckets": 768,
+      "zero_out_share": 0.6284903067129629,
+      "metrics": {
+        "out_count": {
+          "mae": 1.5348362748362747,
+          "rmse": 3.184949101833499,
+          "wape": 0.6413032601795461
+        },
+        "in_count": {
+          "mae": 1.5378873903873904,
+          "rmse": 3.1783020301606055,
+          "wape": 0.6415868532100002
+        }
+      }
+    }
+  ],
+  "risk": {
+    "source": "sh",
+    "time_bucket": "2016-09-01 23:00:00",
+    "weights": {
+      "magnitude": 0.6,
+      "demand": 0.25,
+      "volatility": 0.15
+    },
+    "n_cells": 255,
+    "n_replenish": 134,
+    "n_clear": 121,
+    "top_replenish": [
+      {
+        "rank": 1,
+        "cell_id": "C0010_0011",
+        "score": 0.5165591472516604,
+        "pred_net_flow": 0.12501609280603065,
+        "pred_out": 0.759027167565353,
+        "pred_in": 0.6340110747593224
+      },
+      {
+        "rank": 2,
+        "cell_id": "C0009_0010",
+        "score": 0.48199708306301414,
+        "pred_net_flow": 0.1383201338563086,
+        "pred_out": 0.6197391314206527,
+        "pred_in": 0.48141899756434414
+      },
+      {
+        "rank": 3,
+        "cell_id": "C0008_0006",
+        "score": 0.46638912580548253,
+        "pred_net_flow": 0.16621137737036795,
+        "pred_out": 0.5603734468005215,
+        "pred_in": 0.3941620694301535
+      },
+      {
+        "rank": 4,
+        "cell_id": "C0007_0006",
+        "score": 0.44791736272296084,
+        "pred_net_flow": 0.1531125651296295,
+        "pred_out": 0.5568950788103606,
+        "pred_in": 0.4037825136807311
+      },
+      {
+        "rank": 5,
+        "cell_id": "C0006_0004",
+        "score": 0.4258857113895197,
+        "pred_net_flow": 0.15614809810827324,
+        "pred_out": 0.49764887903667876,
+        "pred_in": 0.3415007809284055
+      }
+    ],
+    "top_clear": [
+      {
+        "rank": 1,
+        "cell_id": "C0011_0010",
+        "score": 0.9357727489258225,
+        "pred_net_flow": -0.4338622285746949,
+        "pred_out": 0.6177911458799805,
+        "pred_in": 1.0516533744546754
+      },
+      {
+        "rank": 2,
+        "cell_id": "C0011_0012",
+        "score": 0.8307276136066883,
+        "pred_net_flow": -0.3498320917399792,
+        "pred_out": 0.7241851065873749,
+        "pred_in": 1.074017198327354
+      },
+      {
+        "rank": 3,
+        "cell_id": "C0008_0005",
+        "score": 0.6877156500110027,
+        "pred_net_flow": -0.31972529622395607,
+        "pred_out": 0.37622025313366503,
+        "pred_in": 0.6959455493576211
+      },
+      {
+        "rank": 4,
+        "cell_id": "C0006_0007",
+        "score": 0.6397271952796645,
+        "pred_net_flow": -0.27790415603000174,
+        "pred_out": 0.45394079662459375,
+        "pred_in": 0.7318449526545955
+      },
+      {
+        "rank": 5,
+        "cell_id": "C0008_0008",
+        "score": 0.637887029345601,
+        "pred_net_flow": -0.2995135557751861,
+        "pred_out": 0.3296783326591992,
+        "pred_in": 0.6291918884343853
+      }
+    ]
+  },
+  "comparison": {
+    "source": "sh",
+    "rule": {
+      "strategy": "rule",
+      "n_buckets": 154,
+      "first_bucket": "2016-08-26 14:00:00",
+      "last_bucket": "2016-09-01 23:00:00",
+      "borrow_requests": 26537,
+      "borrow_met": 26395,
+      "unmet_requests": 142,
+      "service_rate": 0.9946489806685006,
+      "bikes_moved": 1746,
+      "distance_bike_km": 3634.655265788627,
+      "composite_cost": 868.9310531577254,
+      "returns": 26578,
+      "returns_overflow": 426,
+      "initial_inventory": 5100,
+      "final_inventory": 4857,
+      "capacity_total": 10200,
+      "budget_per_bucket": 200,
+      "assumptions": {
+        "initial_fill_ratio": 0.5,
+        "safety_stock_ratio": 0.2,
+        "max_moves_per_bucket": 200,
+        "unmet_penalty": 1.0,
+        "distance_cost_per_bike_km": 0.2,
+        "max_candidate_surplus_per_deficit": 20
+      },
+      "violations": {
+        "conservation": 0,
+        "capacity": 0,
+        "budget": 0,
+        "negative_inventory": 0,
+        "clamped_moves": 0
+      },
+      "simulated": true,
+      "source": "sh",
+      "capacity_mode": "fixed"
+    },
+    "optimized": {
+      "strategy": "optimized",
+      "n_buckets": 154,
+      "first_bucket": "2016-08-26 14:00:00",
+      "last_bucket": "2016-09-01 23:00:00",
+      "borrow_requests": 26537,
+      "borrow_met": 26397,
+      "unmet_requests": 140,
+      "service_rate": 0.9947243471379583,
+      "bikes_moved": 1746,
+      "distance_bike_km": 3606.247132558059,
+      "composite_cost": 861.2494265116119,
+      "returns": 26578,
+      "returns_overflow": 398,
+      "initial_inventory": 5100,
+      "final_inventory": 4883,
+      "capacity_total": 10200,
+      "budget_per_bucket": 200,
+      "assumptions": {
+        "initial_fill_ratio": 0.5,
+        "safety_stock_ratio": 0.2,
+        "max_moves_per_bucket": 200,
+        "unmet_penalty": 1.0,
+        "distance_cost_per_bike_km": 0.2,
+        "max_candidate_surplus_per_deficit": 20
+      },
+      "violations": {
+        "conservation": 0,
+        "capacity": 0,
+        "budget": 0,
+        "negative_inventory": 0,
+        "clamped_moves": 0
+      },
+      "simulated": true,
+      "source": "sh",
+      "capacity_mode": "fixed"
+    }
+  },
+  "sim_sensitivity": [
+    {
+      "scenario": "baseline",
+      "rule": {
+        "unmet_requests": 142,
+        "distance_bike_km": 3634.655265788627,
+        "composite_cost": 868.9310531577254,
+        "service_rate": 0.9946489806685006
+      },
+      "optimized": {
+        "unmet_requests": 140,
+        "distance_bike_km": 3606.247132558059,
+        "composite_cost": 861.2494265116119,
+        "service_rate": 0.9947243471379583
+      }
+    },
+    {
+      "scenario": "initial_fill=0.3",
+      "rule": {
+        "unmet_requests": 350,
+        "distance_bike_km": 3800.5315773691427,
+        "composite_cost": 1110.1063154738285,
+        "service_rate": 0.9868108678448958
+      },
+      "optimized": {
+        "unmet_requests": 348,
+        "distance_bike_km": 3746.5815858274627,
+        "composite_cost": 1097.3163171654926,
+        "service_rate": 0.9868862343143535
+      }
+    },
+    {
+      "scenario": "initial_fill=0.7",
+      "rule": {
+        "unmet_requests": 91,
+        "distance_bike_km": 3564.622049773207,
+        "composite_cost": 803.9244099546414,
+        "service_rate": 0.9965708256396729
+      },
+      "optimized": {
+        "unmet_requests": 98,
+        "distance_bike_km": 3559.3020324463723,
+        "composite_cost": 809.8604064892745,
+        "service_rate": 0.9963070429965708
+      }
+    },
+    {
+      "scenario": "budget=100",
+      "rule": {
+        "unmet_requests": 142,
+        "distance_bike_km": 3634.655265788627,
+        "composite_cost": 868.9310531577254,
+        "service_rate": 0.9946489806685006
+      },
+      "optimized": {
+        "unmet_requests": 140,
+        "distance_bike_km": 3606.247132558059,
+        "composite_cost": 861.2494265116119,
+        "service_rate": 0.9947243471379583
+      }
+    },
+    {
+      "scenario": "budget=400",
+      "rule": {
+        "unmet_requests": 142,
+        "distance_bike_km": 3634.655265788627,
+        "composite_cost": 868.9310531577254,
+        "service_rate": 0.9946489806685006
+      },
+      "optimized": {
+        "unmet_requests": 140,
+        "distance_bike_km": 3606.247132558059,
+        "composite_cost": 861.2494265116119,
+        "service_rate": 0.9947243471379583
+      }
+    },
+    {
+      "scenario": "capacity=0.5x",
+      "rule": {
+        "unmet_requests": 716,
+        "distance_bike_km": 3741.9248644834433,
+        "composite_cost": 1464.3849728966889,
+        "service_rate": 0.9730188039341297
+      },
+      "optimized": {
+        "unmet_requests": 699,
+        "distance_bike_km": 3710.963583697221,
+        "composite_cost": 1441.1927167394442,
+        "service_rate": 0.9736594189245205
+      }
+    },
+    {
+      "scenario": "capacity=2x",
+      "rule": {
+        "unmet_requests": 12,
+        "distance_bike_km": 3563.7989014396603,
+        "composite_cost": 724.7597802879321,
+        "service_rate": 0.9995478011832536
+      },
+      "optimized": {
+        "unmet_requests": 12,
+        "distance_bike_km": 3560.930417890684,
+        "composite_cost": 724.1860835781368,
+        "service_rate": 0.9995478011832536
+      }
+    }
+  ]
+}

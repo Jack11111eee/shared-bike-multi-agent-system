@@ -1,0 +1,558 @@
+{
+  "source": "xm",
+  "cell_size_m": 1000,
+  "quality": {
+    "source": "xm",
+    "rows": 220675,
+    "columns": [
+      "trip_id",
+      "bike_id",
+      "start_time",
+      "end_time",
+      "start_lat",
+      "start_lon",
+      "end_lat",
+      "end_lon",
+      "duration_s"
+    ],
+    "time_min": "2020-12-21 06:00:01",
+    "time_max": "2020-12-25 09:59:59",
+    "bbox": {
+      "lat_min": 24.426163,
+      "lat_max": 24.559082,
+      "lon_min": 118.058908,
+      "lon_max": 118.195884
+    },
+    "duplicate_trip_ids": 0,
+    "duplicate_rate": 0.0,
+    "missing_rate": {
+      "trip_id": 0.0,
+      "bike_id": 0.0,
+      "start_time": 0.0,
+      "end_time": 0.0,
+      "start_lat": 0.0,
+      "start_lon": 0.0,
+      "end_lat": 0.0,
+      "end_lon": 0.0,
+      "duration_s": 0.0
+    },
+    "abnormal_duration_rows": 6310,
+    "abnormal_duration_rate": 0.028594086326045088,
+    "start_before_end_ok": true,
+    "start_before_end_violations": 0,
+    "lat_range_ok": true,
+    "lon_range_ok": true,
+    "unique_bikes": 52933,
+    "extras": {
+      "fences": 10522,
+      "weather": 144
+    },
+    "adapter_stats": {
+      "raw_rows": 441350,
+      "dropped_unparseable_rows": 0,
+      "unpaired_lock_events": 0,
+      "dropped_nonpositive_duration": 0,
+      "paired_trips": 220675
+    },
+    "notes": [
+      "时间覆盖仅 2020-12-21～12-25 五个工作日、每天 06:00–10:00，因此可用于训练/测试的时间片非常少；这是 REQUIREMENTS.md 2.2 已披露的缺陷。",
+      "原始订单表 UPDATE_TIME1 只含日期、UPDATE_TIME2 只含时刻，适配器已显式拼接；否则全部时间会落到 00:00（2.2 记录的已知坑）。",
+      "电子围栏文件实际包含 10,522 个围栏，与 REQUIREMENTS.md 2.1 中记载的 2,492 个不一致；本报告以实际文件为准。",
+      "轨迹数据（2,849,243 个 GPS 点）未参与本流水线，仅使用订单、围栏与天气。",
+      "适配器解析统计：原始记录 441,350 行，配对成功 220,675 条行程，丢弃无法解析时间/坐标 0 行，丢弃非正时长 0 条。"
+    ],
+    "hard_checks_ok": true
+  },
+  "prep": {
+    "source": "xm",
+    "cell_size_m": 1000,
+    "clean": {
+      "rows_in": 220675,
+      "rows_out": 195682,
+      "rows_removed": 24993,
+      "bbox": {
+        "lat_min": 24.435947965,
+        "lat_max": 24.548162195,
+        "lon_min": 118.068263,
+        "lon_max": 118.189247
+      },
+      "rules": [
+        {
+          "rule": "duplicate_trip_id",
+          "rows_removed": 0,
+          "rows_remaining": 220675,
+          "reason": "same trip_id appears more than once; first occurrence kept"
+        },
+        {
+          "rule": "missing_coordinates",
+          "rows_removed": 0,
+          "rows_remaining": 220675,
+          "reason": "at least one of start/end latitude or longitude is missing"
+        },
+        {
+          "rule": "abnormal_duration",
+          "rows_removed": 6310,
+          "rows_remaining": 214365,
+          "reason": "duration outside [60s, 21600s]"
+        },
+        {
+          "rule": "out_of_bounds_coordinates",
+          "rows_removed": 6765,
+          "rows_remaining": 207600,
+          "reason": "start or end outside the 0.5%-99.5% coordinate envelope"
+        },
+        {
+          "rule": "pseudo_trip_same_origin_destination",
+          "rows_removed": 11918,
+          "rows_remaining": 195682,
+          "reason": "start and end within 50 m (or identical coordinates)"
+        }
+      ]
+    },
+    "panel": {
+      "n_cells": 169,
+      "n_buckets": 20,
+      "n_dates": 5,
+      "hours": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "first_bucket": "2020-12-21 06:00:00",
+      "last_bucket": "2020-12-25 09:00:00",
+      "total_out": 195682,
+      "total_in": 195682,
+      "total_trips": 195682,
+      "out_conserved": true,
+      "in_conserved": true,
+      "zero_out_share": 0.29763313609467457,
+      "zero_in_share": 0.27130177514792897,
+      "zero_any_share": 0.2517751479289941,
+      "mean_out_per_cell_bucket": 57.894082840236685,
+      "grid": {
+        "cell_size_m": 1000,
+        "lat_min": 24.435954,
+        "lat_max": 24.548138,
+        "lon_min": 118.068263,
+        "lon_max": 118.189247,
+        "lat_step": 0.00904649900488511,
+        "lon_step": 0.009871347098792317,
+        "nx": 13,
+        "ny": 13,
+        "n_cells": 169
+      }
+    }
+  },
+  "forecast_metrics": {
+    "baseline": {
+      "out_count": {
+        "mae": 7.075443786982248,
+        "rmse": 15.319875804801951,
+        "wape": 0.11427274464831805
+      },
+      "in_count": {
+        "mae": 6.971153846153846,
+        "rmse": 13.793556616841496,
+        "wape": 0.1125883983180428
+      }
+    },
+    "model": {
+      "out_count": {
+        "mae": 7.375493945726536,
+        "rmse": 18.034383555697794,
+        "wape": 0.11911873822895495
+      },
+      "in_count": {
+        "mae": 6.732218897922043,
+        "rmse": 16.931091303791046,
+        "wape": 0.10872945276651617
+      }
+    }
+  },
+  "forecast_meta": {
+    "source": "xm",
+    "cell_size_m": 1000,
+    "split": {
+      "n_train_buckets": 16,
+      "n_test_buckets": 4,
+      "train_start": "2020-12-21 06:00:00",
+      "train_end": "2020-12-24 09:00:00",
+      "test_start": "2020-12-25 06:00:00",
+      "test_end": "2020-12-25 09:00:00"
+    },
+    "seed": 42,
+    "train_fraction": 0.8,
+    "params": {
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 20,
+      "feature_fraction": 0.9,
+      "l2_regularization": 1.0,
+      "objective": "poisson",
+      "n_jobs": 1
+    },
+    "features": [
+      "cell_id",
+      "hour",
+      "dow",
+      "is_weekend",
+      "gap_hours",
+      "lag1_out_count",
+      "lag1_in_count",
+      "roll3_out_count",
+      "roll3_in_count",
+      "cell_mean_out_count",
+      "cell_mean_in_count",
+      "cell_hour_mean_out_count",
+      "cell_hour_mean_in_count"
+    ],
+    "metrics": {
+      "baseline": {
+        "out_count": {
+          "mae": 7.075443786982248,
+          "rmse": 15.319875804801951,
+          "wape": 0.11427274464831805
+        },
+        "in_count": {
+          "mae": 6.971153846153846,
+          "rmse": 13.793556616841496,
+          "wape": 0.1125883983180428
+        }
+      },
+      "model": {
+        "out_count": {
+          "mae": 7.375493945726536,
+          "rmse": 18.034383555697794,
+          "wape": 0.11911873822895495
+        },
+        "in_count": {
+          "mae": 6.732218897922043,
+          "rmse": 16.931091303791046,
+          "wape": 0.10872945276651617
+        }
+      }
+    },
+    "n_train_rows": 2704,
+    "n_test_rows": 676
+  },
+  "sensitivity": [
+    {
+      "cell_size_m": 500,
+      "n_cells": 625,
+      "n_buckets": 20,
+      "zero_out_share": 0.424,
+      "metrics": {
+        "out_count": {
+          "mae": 2.6804,
+          "rmse": 6.21122773692931,
+          "wape": 0.16009652140672784
+        },
+        "in_count": {
+          "mae": 2.5422,
+          "rmse": 5.391256810800242,
+          "wape": 0.15184202981651376
+        }
+      }
+    },
+    {
+      "cell_size_m": 1000,
+      "n_cells": 169,
+      "n_buckets": 20,
+      "zero_out_share": 0.29763313609467457,
+      "metrics": {
+        "out_count": {
+          "mae": 7.075443786982248,
+          "rmse": 15.319875804801951,
+          "wape": 0.11427274464831805
+        },
+        "in_count": {
+          "mae": 6.971153846153846,
+          "rmse": 13.793556616841496,
+          "wape": 0.1125883983180428
+        }
+      }
+    }
+  ],
+  "risk": {
+    "source": "xm",
+    "time_bucket": "2020-12-25 09:00:00",
+    "weights": {
+      "magnitude": 0.6,
+      "demand": 0.25,
+      "volatility": 0.15
+    },
+    "n_cells": 169,
+    "n_replenish": 35,
+    "n_clear": 134,
+    "top_replenish": [
+      {
+        "rank": 1,
+        "cell_id": "C0006_0006",
+        "score": 0.31528352969306855,
+        "pred_net_flow": 54.14009401531054,
+        "pred_out": 171.306886040482,
+        "pred_in": 117.16679202517146
+      },
+      {
+        "rank": 2,
+        "cell_id": "C0010_0004",
+        "score": 0.2692796058383732,
+        "pred_net_flow": 51.05142133792981,
+        "pred_out": 110.72713876004757,
+        "pred_in": 59.675717422117756
+      },
+      {
+        "rank": 3,
+        "cell_id": "C0010_0005",
+        "score": 0.24741835796201053,
+        "pred_net_flow": 17.880470385470204,
+        "pred_out": 219.9248922721001,
+        "pred_in": 202.0444218866299
+      },
+      {
+        "rank": 4,
+        "cell_id": "C0007_0010",
+        "score": 0.23770910274589657,
+        "pred_net_flow": 16.616930524987872,
+        "pred_out": 63.646972705855,
+        "pred_in": 47.03004218086713
+      },
+      {
+        "rank": 5,
+        "cell_id": "C0004_0008",
+        "score": 0.21906122990937535,
+        "pred_net_flow": 39.45775303150529,
+        "pred_out": 81.66752865122496,
+        "pred_in": 42.209775619719665
+      }
+    ],
+    "top_clear": [
+      {
+        "rank": 1,
+        "cell_id": "C0011_0004",
+        "score": 0.8098228984940551,
+        "pred_net_flow": -188.3275745808483,
+        "pred_out": 44.597840819788956,
+        "pred_in": 232.92541540063726
+      },
+      {
+        "rank": 2,
+        "cell_id": "C0011_0005",
+        "score": 0.8080009005113343,
+        "pred_net_flow": -182.52074712087713,
+        "pred_out": 119.25249700912875,
+        "pred_in": 301.7732441300059
+      },
+      {
+        "rank": 3,
+        "cell_id": "C0001_0003",
+        "score": 0.6517254156432518,
+        "pred_net_flow": -129.88601121179317,
+        "pred_out": 209.74045932559847,
+        "pred_in": 339.62647053739164
+      },
+      {
+        "rank": 4,
+        "cell_id": "C0008_0010",
+        "score": 0.6286789660022177,
+        "pred_net_flow": -106.92539395871285,
+        "pred_out": 344.4431933792262,
+        "pred_in": 451.36858733793906
+      },
+      {
+        "rank": 5,
+        "cell_id": "C0005_0006",
+        "score": 0.6029972382221289,
+        "pred_net_flow": -112.70803811147692,
+        "pred_out": 261.3906973081851,
+        "pred_in": 374.09873541966203
+      }
+    ]
+  },
+  "comparison": {
+    "source": "xm",
+    "rule": {
+      "strategy": "rule",
+      "n_buckets": 4,
+      "first_bucket": "2020-12-25 06:00:00",
+      "last_bucket": "2020-12-25 09:00:00",
+      "borrow_requests": 41856,
+      "borrow_met": 38239,
+      "unmet_requests": 3617,
+      "service_rate": 0.9135846712538226,
+      "bikes_moved": 800,
+      "distance_bike_km": 855.773262585488,
+      "composite_cost": 3788.1546525170975,
+      "returns": 41856,
+      "returns_overflow": 6160,
+      "initial_inventory": 26410,
+      "final_inventory": 23867,
+      "capacity_total": 52825,
+      "budget_per_bucket": 200,
+      "assumptions": {
+        "initial_fill_ratio": 0.5,
+        "safety_stock_ratio": 0.2,
+        "max_moves_per_bucket": 200,
+        "unmet_penalty": 1.0,
+        "distance_cost_per_bike_km": 0.2,
+        "max_candidate_surplus_per_deficit": 20
+      },
+      "violations": {
+        "conservation": 0,
+        "capacity": 0,
+        "budget": 0,
+        "negative_inventory": 0,
+        "clamped_moves": 0
+      },
+      "simulated": true,
+      "source": "xm",
+      "capacity_mode": "fences"
+    },
+    "optimized": {
+      "strategy": "optimized",
+      "n_buckets": 4,
+      "first_bucket": "2020-12-25 06:00:00",
+      "last_bucket": "2020-12-25 09:00:00",
+      "borrow_requests": 41856,
+      "borrow_met": 38187,
+      "unmet_requests": 3669,
+      "service_rate": 0.9123423165137615,
+      "bikes_moved": 800,
+      "distance_bike_km": 804.379945681073,
+      "composite_cost": 3829.8759891362147,
+      "returns": 41856,
+      "returns_overflow": 6255,
+      "initial_inventory": 26410,
+      "final_inventory": 23824,
+      "capacity_total": 52825,
+      "budget_per_bucket": 200,
+      "assumptions": {
+        "initial_fill_ratio": 0.5,
+        "safety_stock_ratio": 0.2,
+        "max_moves_per_bucket": 200,
+        "unmet_penalty": 1.0,
+        "distance_cost_per_bike_km": 0.2,
+        "max_candidate_surplus_per_deficit": 20
+      },
+      "violations": {
+        "conservation": 0,
+        "capacity": 0,
+        "budget": 0,
+        "negative_inventory": 0,
+        "clamped_moves": 0
+      },
+      "simulated": true,
+      "source": "xm",
+      "capacity_mode": "fences"
+    }
+  },
+  "sim_sensitivity": [
+    {
+      "scenario": "baseline",
+      "rule": {
+        "unmet_requests": 3617,
+        "distance_bike_km": 855.773262585488,
+        "composite_cost": 3788.1546525170975,
+        "service_rate": 0.9135846712538226
+      },
+      "optimized": {
+        "unmet_requests": 3669,
+        "distance_bike_km": 804.379945681073,
+        "composite_cost": 3829.8759891362147,
+        "service_rate": 0.9123423165137615
+      }
+    },
+    {
+      "scenario": "initial_fill=0.3",
+      "rule": {
+        "unmet_requests": 4804,
+        "distance_bike_km": 1036.0332476887456,
+        "composite_cost": 5011.206649537749,
+        "service_rate": 0.8852255351681957
+      },
+      "optimized": {
+        "unmet_requests": 4846,
+        "distance_bike_km": 1017.8299820207651,
+        "composite_cost": 5049.565996404153,
+        "service_rate": 0.8842220948012233
+      }
+    },
+    {
+      "scenario": "initial_fill=0.7",
+      "rule": {
+        "unmet_requests": 3035,
+        "distance_bike_km": 825.0900003022541,
+        "composite_cost": 3200.018000060451,
+        "service_rate": 0.9274894877675841
+      },
+      "optimized": {
+        "unmet_requests": 3137,
+        "distance_bike_km": 805.6525218177175,
+        "composite_cost": 3298.1305043635434,
+        "service_rate": 0.9250525611620795
+      }
+    },
+    {
+      "scenario": "budget=100",
+      "rule": {
+        "unmet_requests": 3853,
+        "distance_bike_km": 399.5800123710939,
+        "composite_cost": 3932.9160024742187,
+        "service_rate": 0.9079462920489296
+      },
+      "optimized": {
+        "unmet_requests": 3853,
+        "distance_bike_km": 415.9508368798736,
+        "composite_cost": 3936.190167375975,
+        "service_rate": 0.9079462920489296
+      }
+    },
+    {
+      "scenario": "budget=400",
+      "rule": {
+        "unmet_requests": 3306,
+        "distance_bike_km": 1784.5682631661805,
+        "composite_cost": 3662.913652633236,
+        "service_rate": 0.9210149082568807
+      },
+      "optimized": {
+        "unmet_requests": 3471,
+        "distance_bike_km": 1566.0614425210072,
+        "composite_cost": 3784.2122885042013,
+        "service_rate": 0.9170728211009175
+      }
+    },
+    {
+      "scenario": "capacity=0.5x",
+      "rule": {
+        "unmet_requests": 7431,
+        "distance_bike_km": 1012.8171669086666,
+        "composite_cost": 7633.563433381733,
+        "service_rate": 0.8224627293577982
+      },
+      "optimized": {
+        "unmet_requests": 7351,
+        "distance_bike_km": 817.3461953875137,
+        "composite_cost": 7514.469239077503,
+        "service_rate": 0.8243740443425076
+      }
+    },
+    {
+      "scenario": "capacity=2x",
+      "rule": {
+        "unmet_requests": 1315,
+        "distance_bike_km": 807.4774702229415,
+        "composite_cost": 1476.4954940445882,
+        "service_rate": 0.9685827599388379
+      },
+      "optimized": {
+        "unmet_requests": 1311,
+        "distance_bike_km": 799.9384141133996,
+        "composite_cost": 1470.98768282268,
+        "service_rate": 0.9686783256880734
+      }
+    }
+  ]
+}
