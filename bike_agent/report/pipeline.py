@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 
 from bike_agent.config import Layout, source_config
-from bike_agent.report.figures import generate_figures
+from bike_agent.report.figures import generate_figures, significance_forest
 from bike_agent.report.metrics import build_key_numbers, collect_source, risk_rank_stability
 from bike_agent.report.text import render_cross_source, render_decisions, render_forecast_report, render_report
 from bike_agent.utils import write_json
@@ -58,6 +58,8 @@ def run_reports(
                 )
 
     layout.report_path("cross_source.md").write_text(render_cross_source(data), encoding="utf-8")
+    if with_figures:
+        significance_forest(data, layout.figures / "significance.png")
     # DECISIONS.md and REPORT.md live at the project root (F6-2).
     (layout.root / "DECISIONS.md").write_text(render_decisions(data, config, stability), encoding="utf-8")
     (layout.root / "REPORT.md").write_text(

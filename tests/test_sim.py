@@ -126,9 +126,31 @@ def test_significance_matches_the_headline_composite_cost(tiny_config):
     # Per-bucket costs must sum to the headline totals the report quotes.
     total_difference = optimized.summary["composite_cost"] - rule.summary["composite_cost"]
     assert stats["mean_diff"] * stats["n"] == pytest.approx(total_difference)
+    assert stats["total_diff"] == pytest.approx(total_difference)
     assert stats["n"] == len(rule.steps)
     assert stats["buckets_optimized_better"] + stats["buckets_rule_better"] + stats["buckets_tied"] == stats["n"]
     assert comparison_verdict(rebuilt)
+
+
+def test_verdict_interval_shares_units_with_the_quoted_total():
+    """A total-sized point estimate must not sit outside a mean-sized interval."""
+    comparison = {
+        "rule": {"composite_cost": 1000.0},
+        "optimized": {"composite_cost": 950.0},
+        "significance": {
+            "n": 10,
+            "mean_diff": -5.0,
+            "total_diff": -50.0,
+            "ci_low": -7.0,
+            "ci_high": -3.0,
+            "ci_low_total": -70.0,
+            "ci_high_total": -30.0,
+            "significant": True,
+        },
+    }
+    verdict = comparison_verdict(comparison)
+    assert "总差异 -50.00" in verdict
+    assert "-70.00" in verdict and "-30.00" in verdict
 
 
 def test_verdict_never_calls_an_insignificant_gap_a_win():

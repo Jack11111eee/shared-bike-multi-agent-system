@@ -496,7 +496,10 @@
       "metric": "composite_cost",
       "buckets_optimized_better": 23,
       "buckets_rule_better": 60,
-      "buckets_tied": 66
+      "buckets_tied": 66,
+      "total_diff": -13.465633952943175,
+      "ci_low_total": -25.306539312358602,
+      "ci_high_total": -1.0789465342721811
     }
   },
   "sim_sensitivity": [

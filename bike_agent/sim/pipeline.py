@@ -35,22 +35,21 @@ def comparison_verdict(comparison: dict[str, Any]) -> str:
     )
     stats = comparison.get("significance") or {}
     significant = is_significant(stats)
+    total = stats.get("total_diff")
+    if total is not None and stats.get("ci_low_total") is not None:
+        interval = (
+            f"总差异 {total:+.2f}，95% CI "
+            f"[{stats['ci_low_total']:+.2f}, {stats['ci_high_total']:+.2f}]，n={stats['n']}"
+        )
+    else:
+        interval = describe(stats)
     if significant is None:
         return f"{detail}；显著性检验尚未生成。"
     if significant:
-        return (
-            f"S-OPT 的综合代价**显著{'更低' if lower else '更高'}**：{detail}；"
-            f"S-OPT − S-RULE 的 {describe(stats)}。"
-        )
+        return f"S-OPT 的综合代价**显著{'更低' if lower else '更高'}**：{detail}；{interval}。"
     if lower:
-        return (
-            f"S-OPT 的综合代价点估计更低，但**差异不显著**：{detail}；"
-            f"S-OPT − S-RULE 的 {describe(stats)}。"
-        )
-    return (
-        f"S-OPT 的综合代价点估计更高，但**差异不显著**：{detail}；"
-        f"S-OPT − S-RULE 的 {describe(stats)}。"
-    )
+        return f"S-OPT 的综合代价点估计更低，但**差异不显著**：{detail}；{interval}。"
+    return f"S-OPT 的综合代价点估计更高，但**差异不显著**：{detail}；{interval}。"
 
 
 def _load_inputs(config: dict[str, Any], layout: Layout, source: str) -> dict[str, Any]:
@@ -150,6 +149,13 @@ def _paired_significance(
     stats["buckets_optimized_better"] = int((diff < 0).sum())
     stats["buckets_rule_better"] = int((diff > 0).sum())
     stats["buckets_tied"] = int((diff == 0).sum())
+    # The bootstrap describes the *mean per-bucket* difference, but every report
+    # quotes the *total*. Percentile intervals are equivariant under scaling, so
+    # multiplying the endpoints by n gives the interval of the total exactly.
+    # Without this, a total-sized point estimate sits outside a mean-sized CI.
+    stats["total_diff"] = float(diff.sum())
+    stats["ci_low_total"] = float(stats["ci_low"]) * stats["n"] if stats["ci_low"] is not None else None
+    stats["ci_high_total"] = float(stats["ci_high"]) * stats["n"] if stats["ci_high"] is not None else None
     return stats
 
 

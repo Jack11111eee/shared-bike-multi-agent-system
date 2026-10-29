@@ -92,6 +92,88 @@ def strategy_comparison(rule: dict[str, Any], optimized: dict[str, Any], source:
     _save(fig, path)
 
 
+def significance_forest(data: dict[str, Any], path: Path) -> None:
+    """Percent change with its 95% interval, one row per tested claim.
+
+    Raw units are not comparable across sources (XM MAE moves by 0.3, SH by
+    0.02), so every row is expressed as a percentage change against its own
+    reference.  Rows whose interval crosses zero are drawn hollow: the point
+    estimate exists, but the data cannot separate it from no change.
+    """
+    rows: list[tuple[str, float, float, float, bool]] = []
+    for source, entry in data.items():
+        label = source.upper()
+        metrics = entry.get("forecast_metrics") or {}
+        significance = (entry.get("forecast_meta") or {}).get("significance") or {}
+        for target, name in (("out_count", "departures"), ("in_count", "returns")):
+            stats = significance.get(target)
+            try:
+                reference = float(metrics["baseline"][target]["mae"])
+                candidate = float(metrics["model"][target]["mae"])
+            except (KeyError, TypeError):
+                continue
+            if not stats or stats.get("ci_low") is None or reference == 0:
+                continue
+            scale = 100.0 / reference
+            rows.append(
+                (
+                    f"{label} · forecast {name}",
+                    (candidate - reference) * scale,
+                    stats["ci_low"] * scale,
+                    stats["ci_high"] * scale,
+                    bool(stats["significant"]),
+                )
+            )
+
+        comparison = entry.get("comparison") or {}
+        stats = comparison.get("significance") or {}
+        try:
+            reference = float(comparison["rule"]["composite_cost"])
+            candidate = float(comparison["optimized"]["composite_cost"])
+        except (KeyError, TypeError):
+            continue
+        # Prefer the total-scaled interval: it shares units with the total cost
+        # the reports quote.  The raw interval is per-bucket and would draw a
+        # needle-thin bar that sits nowhere near the point estimate.
+        if stats.get("ci_low_total") is not None and reference != 0:
+            scale = 100.0 / reference
+            rows.append(
+                (
+                    f"{label} · dispatch cost",
+                    (candidate - reference) * scale,
+                    stats["ci_low_total"] * scale,
+                    stats["ci_high_total"] * scale,
+                    bool(stats["significant"]),
+                )
+            )
+
+    fig, ax = plt.subplots(figsize=(9.0, 0.55 * len(rows) + 1.8))
+    positions = list(range(len(rows)))[::-1]
+    for y, (name, mean, low, high, significant) in zip(positions, rows):
+        color = "#c53030" if significant else "#718096"
+        ax.plot([low, high], [y, y], color=color, linewidth=2, solid_capstyle="butt")
+        ax.plot([low, low], [y - 0.12, y + 0.12], color=color, linewidth=1.5)
+        ax.plot([high, high], [y - 0.12, y + 0.12], color=color, linewidth=1.5)
+        ax.plot(
+            [mean],
+            [y],
+            marker="o",
+            markersize=7,
+            color=color if significant else "white",
+            markeredgecolor=color,
+            markeredgewidth=1.6,
+            zorder=3,
+        )
+    ax.axvline(0, color="black", linewidth=1, linestyle="--")
+    ax.set_yticks(positions)
+    ax.set_yticklabels([row[0] for row in rows])
+    ax.set_xlabel("change vs reference (%), 95% bootstrap interval")
+    ax.set_title("Is the difference real?  filled = interval excludes zero")
+    ax.grid(axis="x", alpha=0.25)
+    ax.set_axisbelow(True)
+    _save(fig, path)
+
+
 def generate_figures(
     layout: Layout,
     source: str,

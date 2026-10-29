@@ -45,7 +45,8 @@ bike-agent report --sources xm,sh        # 汇总报告与图表
 
 - `reports/`：`data_quality.<source>.md`、`prep.<source>.md`、`forecast_eval.<source>.md`、
   `risk.<source>.md`、`strategy_comparison.<source>.md`、`cross_source.md`
-- `figures/`：需求热力图、高峰时段分布、预测 vs 实际、优先级清单、策略对比
+- `figures/`：需求热力图、高峰时段分布、预测 vs 实际、优先级清单、策略对比、
+  显著性森林图（`significance.png`，六条结论的变化幅度与 95% 置信区间）
 - `outputs/`：`forecast.parquet`、`priority_replenish.csv`、`priority_clear.csv`、
   `sim_rule.*`、`sim_optimized.*`、`key_numbers.json`、`summary.<source>.json`
 - 根目录：`REPORT.md`、`DECISIONS.md`
