@@ -102,6 +102,31 @@ def run_comparison(
     return {"report": report, "rule": rule, "optimized": optimized}
 
 
+def write_comparison_from_disk(layout: Layout, source: str) -> bool:
+    """Render the comparison report from the two persisted summaries.
+
+    ``bike-agent simulate --strategy <x>`` runs one strategy at a time (F5-1),
+    so the comparison table is refreshed once both summaries exist on disk.
+    Returns True when a report was written.
+    """
+    from bike_agent.utils import read_json
+
+    paths = {strategy: layout.sim_path(source, strategy, "json") for strategy in ("rule", "optimized")}
+    if not all(path.exists() for path in paths.values()):
+        return False
+    report = {
+        "source": source,
+        "rule": read_json(paths["rule"]),
+        "optimized": read_json(paths["optimized"]),
+    }
+    layout.ensure()
+    layout.report_path(f"strategy_comparison.{source}.md").write_text(
+        render_comparison(report), encoding="utf-8"
+    )
+    write_json(layout.outputs / f"strategy_comparison.{source}.json", report)
+    return True
+
+
 def run_sim_sensitivity(
     config: dict[str, Any],
     layout: Layout,
@@ -243,7 +268,8 @@ def render_comparison(report: dict[str, Any]) -> str:
         "`returns_overflow` 是回放中**超过该格子停放容量**的归还数量。这些车辆被计为溢出并"
         "从被跟踪的库存中剔除，而不是凭空消失后又被当成可用供给；两策略使用相同的溢出规则，"
         "因此不影响对比的公平性。守恒计数器（`violations`）覆盖调度搬运与借还，不含溢出，"
-        "溢出单独统计，见上表与 `outputs/sim_<strategy>.<source>.json`。",
+        "溢出单独统计，见上表与 "
+        f"`outputs/sim_rule.{report['source']}.json`、`outputs/sim_optimized.{report['source']}.json`。",
         "",
         "## 局限",
         "",

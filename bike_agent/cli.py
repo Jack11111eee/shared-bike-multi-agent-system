@@ -18,7 +18,12 @@ from bike_agent.forecast.pipeline import run_baseline_sensitivity, run_forecast
 from bike_agent.prep.pipeline import render_prep_report, run_prep
 from bike_agent.report.pipeline import run_reports
 from bike_agent.risk.pipeline import render_risk_report, run_risk
-from bike_agent.sim.pipeline import run_comparison, run_sim_sensitivity, run_simulation
+from bike_agent.sim.pipeline import (
+    run_comparison,
+    run_sim_sensitivity,
+    run_simulation,
+    write_comparison_from_disk,
+)
 from bike_agent.tools.handlers import ToolError, call_tool
 from bike_agent.tools.schemas import TOOL_SCHEMA
 from bike_agent.utils import write_json
@@ -111,6 +116,7 @@ def cmd_simulate(args: argparse.Namespace) -> int:
     source = args.source or config.get("primary_source", "xm")
     result = run_simulation(config, layout, source, args.strategy, budget=args.budget)
     summary = result["summary"]
+    write_comparison_from_disk(layout, source)
     print(
         f"[simulate:{args.strategy}] {source}: unmet={summary['unmet_requests']}, "
         f"distance={summary['distance_bike_km']:.2f} bike-km, cost={summary['composite_cost']:.2f}"

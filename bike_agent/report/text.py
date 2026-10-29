@@ -467,8 +467,9 @@ def render_decisions(
             ],
         ),
         "",
-        "**敏感性分析**：`outputs/sim_sensitivity.<source>.json` 给出初始库存、预算、容量变化下的结果；"
-        "汇总见 `REPORT.md` 的仿真假设表。",
+        "**敏感性分析**："
+        + "、".join(f"`outputs/sim_sensitivity.{source}.json`" for source in data)
+        + " 给出初始库存、预算、容量变化下的结果；汇总见 `REPORT.md` 的仿真假设表。",
         "",
         "**可逆性**：高，全部在 `bike_agent/config/default.yaml` 中可覆盖。",
         "",
