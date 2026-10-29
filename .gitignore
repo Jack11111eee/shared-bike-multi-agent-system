@@ -1,3 +1,16 @@
 node_modules/
 .omc/
 .claude/skills/ralph/
+
+# downloaded and derived data (reproducible via `bike-agent repro`)
+data/raw/
+data/processed/
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# macOS
+.DS_Store

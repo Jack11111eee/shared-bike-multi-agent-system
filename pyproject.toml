@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bike-agent"
+version = "0.1.0"
+description = "Shared-bicycle demand forecasting, imbalance risk ranking and dispatch simulation"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "pyarrow>=12",
+    "openpyxl>=3.1",
+    "lightgbm>=4.0",
+    "networkx>=3.0",
+    "matplotlib>=3.7",
+    "jsonschema>=4.0",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+bike-agent = "bike_agent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["bike_agent*"]
+
+[tool.setuptools.package-data]
+bike_agent = ["config/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,61 @@
+# Default configuration for the bike-agent pipeline.
+#
+# Every value here is an assumption or a tunable parameter.  Decisions that
+# change the meaning of results (grid size, forecast split, simulation
+# assumptions) are recorded in DECISIONS.md with the evidence that motivated
+# them; this file is the single place to override them without editing code.
+
+seed: 42
+primary_source: xm
+
+sources:
+  xm:
+    kind: xm
+    url: "https://zenodo.org/api/records/17415891/files/Shared%20bicycle%20data.zip/content"
+    archive_name: "shared_bicycle_data.zip"
+    license: "CC BY-NC 4.0 - academic/teaching use only, attribution required"
+    cell_size_m: 1000
+    sensitivity_cell_sizes_m: [500, 1000]
+    bbox_quantiles: [0.005, 0.995]   # cleaning envelope; the grid covers exactly this extent
+    capacity:
+      mode: fences          # capacity derived from electronic-fence density
+      slots_per_fence: 5    # 10,522 fences x 5 ~= the documented 53,630-bike fleet
+      min_capacity: 10
+      max_capacity: 2000    # safety bound only; modelled total is ~52.8k bikes
+  sh:
+    kind: sh
+    url: "https://raw.githubusercontent.com/ArtemisLiu/Mobike-visualization-in-Shanghai/master/mobike_shanghai_sample_clean.csv"
+    archive_name: "mobike_shanghai_sample_clean.csv"
+    license: "Public GitHub repository (sample data)"
+    cell_size_m: 2000
+    sensitivity_cell_sizes_m: [2000, 4000]
+    bbox_quantiles: [0.005, 0.995]   # cleaning envelope; the grid covers exactly this extent
+    capacity:
+      mode: fixed
+      fixed_capacity: 40
+
+clean:
+  min_duration_s: 60
+  max_duration_s: 21600
+  pseudo_trip_max_distance_m: 50
+
+forecast:
+  train_fraction: 0.8
+  model:
+    n_estimators: 300
+    learning_rate: 0.05
+    num_leaves: 31
+    min_child_samples: 20
+    feature_fraction: 0.9
+    l2_regularization: 1.0
+    objective: poisson
+    n_jobs: 1
+
+simulation:
+  initial_fill_ratio: 0.5
+  safety_stock_ratio: 0.2
+  max_moves_per_bucket: 200
+  unmet_penalty: 1.0
+  distance_cost_per_bike_km: 0.2
+  max_candidate_surplus_per_deficit: 20
+  strategies: [rule, optimized]
