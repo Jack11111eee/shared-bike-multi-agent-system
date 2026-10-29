@@ -82,12 +82,14 @@ def render_forecast_report(d: dict[str, Any]) -> str:
             "提升幅度见上表；未调整测试集、未隐藏基线结果、未改用随机切分。"
         )
     else:
+        n_train = split.get("n_train_buckets")
+        n_test = split.get("n_test_buckets")
         lines += [
             "在本数据源与本次时间切分上，LightGBM **未能在两个目标上同时优于基线**（见上表）。"
             "按 F3-3，这不视为失败，但必须说明原因：",
             "",
-            "- 数据时间覆盖极薄：XM 只有 5 个工作日、每天 06:00–10:00，训练仅 16 个小时片，"
-            "测试仅 4 个小时片（最后一天）。树模型没有足够样本来稳定估计格子×小时的非线性关系。",
+            f"- 数据时间覆盖极薄：训练仅 {n_train} 个时间片，测试仅 {n_test} 个时间片。"
+            "树模型没有足够样本来稳定估计格子×小时的非线性关系。",
             "- 基线非常强：按格子×小时取训练集均值，直接捕捉了早晚高峰的空间格局；"
             "在样本极少时，简单均值往往难以被超越。",
             "- 预测目标包含大量零值，Poisson 目标虽适合计数，但在小样本下容易过拟合训练日的异常。",
@@ -126,7 +128,7 @@ def render_cross_source(data: dict[str, Any]) -> str:
         "## 一致的结论",
         "",
         "- 两个源都出现了明显的空间不均衡：净流出与净流入格子同时存在，风险清单的符号约定在两个源上都成立。",
-        "- 两个源的仿真都满足守恒、容量与预算约束（violations 全为 0）。",
+        f"- {_violation_verdict(data)}",
         "- 两个源的预测都采用同一条时间切分规则与同一套特征，方法可迁移。",
         "",
         "## 不一致的结论",
@@ -144,6 +146,48 @@ def render_cross_source(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _hours_text(panel: dict[str, Any]) -> str:
+    hours = [int(h) for h in (panel.get("hours") or [])]
+    if not hours:
+        return "未知时段"
+    return f"{min(hours):02d}:00–{max(hours) + 1:02d}:00"
+
+
+def _train_buckets(entry: dict[str, Any]) -> str:
+    split = (entry.get("forecast_meta") or {}).get("split") or {}
+    value = split.get("n_train_buckets")
+    return str(value) if value is not None else "n/a"
+
+
+def _model_verdict_short(data: dict[str, Any]) -> str:
+    wins = [source.upper() for source, entry in data.items() if _model_wins(entry)]
+    losses = [source.upper() for source, entry in data.items() if _model_wins(entry) is False]
+    if wins and losses:
+        return f"{'、'.join(wins)} 上模型优于基线；{'、'.join(losses)} 上未优于基线。"
+    if wins:
+        return f"{'、'.join(wins)} 上模型优于基线。"
+    if losses:
+        return f"{'、'.join(losses)} 上模型未优于基线。"
+    return "模型与基线的对比尚未生成。"
+
+
+def _capacity_note(config: dict[str, Any], xm_entry: dict[str, Any]) -> str:
+    capacity_cfg = config.get("sources", {}).get("xm", {}).get("capacity", {})
+    slots = capacity_cfg.get("slots_per_fence", 5)
+    fences = (xm_entry.get("quality") or {}).get("extras", {}).get("fences")
+    bikes = (xm_entry.get("quality") or {}).get("unique_bikes")
+    parts = []
+    if fences:
+        parts.append(f"{int(fences):,} 围栏 × {slots} = {int(fences) * int(slots):,} 个车位")
+    if bikes:
+        parts.append(f"订单契约中出现的唯一车辆数为 {int(bikes):,}")
+    note = "；".join(parts)
+    return (
+        (note + "。" if note else "")
+        + "围栏数来自原始围栏文件；车位密度与单格上限属于估计，可在配置中覆盖。"
+    )
+
+
 def _model_wins(entry: dict[str, Any]) -> bool | None:
     metrics = entry.get("forecast_metrics") or {}
     try:
@@ -153,6 +197,22 @@ def _model_wins(entry: dict[str, Any]) -> bool | None:
         )
     except (KeyError, TypeError):
         return None
+
+
+def _violation_verdict(data: dict[str, Any]) -> str:
+    totals = {}
+    for entry in data.values():
+        comparison = entry.get("comparison") or {}
+        for strategy in ("rule", "optimized"):
+            summary = comparison.get(strategy) or {}
+            for name, count in (summary.get("violations") or {}).items():
+                totals[name] = totals.get(name, 0) + int(count)
+    if not totals:
+        return "仿真约束检查结果尚未生成。"
+    if all(count == 0 for count in totals.values()):
+        return "两个源的仿真都满足守恒、容量与预算约束（violations 全为 0）。"
+    detail = "、".join(f"{name}={count}" for name, count in sorted(totals.items()))
+    return f"两个源的仿真出现了约束违反，需逐项排查：{detail}。"
 
 
 def _model_verdict(data: dict[str, Any]) -> str:
@@ -268,10 +328,9 @@ def render_decisions(
         "",
         "REQUIREMENTS.md 4.1 的初始倾向是：DS-XM 作主实验场景、DS-SH 作补充验证；从粗粒度起步；基线先行；不引入深度学习。",
         "",
-        "**检验结果（M3）**：XM 上 LightGBM 未能稳定优于基线（训练仅 16 个时间片），"
-        "SH 上模型在两个目标上均优于基线。因此 4.1 的\"XM 作为预测主场景\"倾向被部分推翻："
-        "预测方法的证据以 SH 为主；XM 保留为主**运营场景**（唯一有真实围栏、需求密集），"
-        "用于风险排序与围栏约束下的仿真。详见 D1。",
+        "**检验结果（M3）**：" + _model_verdict(data) + " 因此 4.1 的\"XM 作为预测主场景\""
+        "倾向被部分推翻：预测方法的证据以表现更好的那个源为主；XM 保留为主**运营场景**"
+        "（唯一有真实围栏、需求密集），用于风险排序与围栏约束下的仿真。详见 D1。",
         "",
         "## D1 · 主实验数据源与数据分工",
         "",
@@ -304,9 +363,12 @@ def render_decisions(
             ],
         ),
         "",
-        f"- XM 时间覆盖仅 5 天 × 4 小时（{xm_prep.get('n_buckets', 'n/a')} 个时间桶），模型无法稳定学习；",
-        f"- SH 覆盖 31 天订单（{sh_prep.get('n_buckets', 'n/a')} 个时间桶，含跨夜归还落入 2016-09-01 凌晨的部分），模型在两个目标上均优于基线；",
-        "- XM 有 10,522 个真实电子围栏，是停放容量唯一有数据支撑的来源；SH 无围栏。",
+        f"- XM 时间覆盖：{xm_prep.get('n_buckets', 'n/a')} 个时间桶（"
+        f"{xm_prep.get('n_dates', 'n/a')} 个日期，小时 {', '.join(str(h) for h in (xm_prep.get('hours') or []))}）；",
+        f"- SH 时间覆盖：{sh_prep.get('n_buckets', 'n/a')} 个时间桶（"
+        f"{sh_prep.get('n_dates', 'n/a')} 个日期，含跨夜归还落入次日凌晨的部分）；",
+        f"- XM 有 {(xm.get('quality') or {}).get('extras', {}).get('fences', 'n/a')} 个真实电子围栏，"
+        "是停放容量唯一有数据支撑的来源；SH 无围栏。",
         "",
         "**可逆性**：高。数据分工写在配置与报告角色中；若获得更长 XM 数据，可重新评估。",
         "",
@@ -346,7 +408,8 @@ def render_decisions(
         "**选择**：1 小时。",
         "",
         "**依据与证据**：",
-        f"- XM 每天仅 06:00–10:00，1 小时给出 {xm_prep.get('n_buckets', 'n/a')} 个时间桶；更细粒度会让每个桶的样本进一步变少、零值更多；",
+        f"- XM 每天只覆盖 {_hours_text(xm_prep)}，1 小时给出 {xm_prep.get('n_buckets', 'n/a')} 个时间桶；"
+        "更细粒度会让每个桶的样本进一步变少、零值更多；",
         f"- SH 为 {sh_prep.get('n_buckets', 'n/a')} 个时间桶，1 小时兼顾\"未来一个时间单元\"的目标与可学习性；",
         "- 2 小时会削弱\"短期\"含义，且与调度班次不匹配。",
         "",
@@ -373,7 +436,8 @@ def render_decisions(
         "**选择**：季节均值基线 + LightGBM（Poisson）。",
         "",
         "**依据与证据**：见 `reports/forecast_eval.xm.md` 与 `reports/forecast_eval.sh.md` 的对比表。"
-        "SH 上模型优于基线；XM 上未优于基线，原因与后续方向已在预测报告中说明。",
+        + _model_verdict_short(data)
+        + " 原因与后续方向已在各源的预测报告中说明。",
         "",
         "**可逆性**：高，`forecast.model` 可配置。",
         "",
@@ -391,7 +455,7 @@ def render_decisions(
                 ("每时间单元搬运预算", sim_cfg.get("max_moves_per_bucket"), "约定", "约 1.8% 的小时订单量，对应小型调度车队"),
                 ("未满足请求惩罚", sim_cfg.get("unmet_penalty"), "约定", "综合代价中的权重"),
                 ("距离成本", sim_cfg.get("distance_cost_per_bike_km"), "约定", "每 bike-km 的模拟成本"),
-                ("XM 停放容量", "围栏数 × 5 车位", "数据 + 估计", "10,522 围栏 × 5 = 52,610 个车位；Zenodo 记录描述记载车队规模 53,630 辆，订单契约中出现的唯一车辆数为 52,933（见 outputs/summary.xm.json），差额来自 5 天窗口内未出现的车辆；单格上限 2000 仅作安全界"),
+                ("XM 停放容量", "围栏数 × 5 车位", "数据 + 估计", _capacity_note(config, xm)),
                 ("SH 停放容量", config["sources"]["sh"]["capacity"].get("fixed_capacity"), "约定", "无围栏数据，只能假设"),
             ],
         ),
@@ -408,7 +472,7 @@ def render_decisions(
         "**选择**：score = 0.60 × norm(|net|) + 0.25 × norm(demand) + 0.15 × norm(volatility)。",
         "",
         "**依据**：可解释性优先。净流出幅度直接决定调度动作，权重最高；需求规模次之；"
-        "历史波动受样本长度限制（XM 仅 16 个训练时间片），权重最低。",
+        f"历史波动受样本长度限制（XM 仅 {_train_buckets(xm)} 个训练时间片），权重最低。",
         "",
     ]
     for source, entry in stability.items():
