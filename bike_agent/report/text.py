@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
+from bike_agent.risk.score import WEIGHTS
 from bike_agent.utils import markdown_table, pct
 
 
@@ -156,6 +157,12 @@ def _hours_text(panel: dict[str, Any]) -> str:
 def _train_buckets(entry: dict[str, Any]) -> str:
     split = (entry.get("forecast_meta") or {}).get("split") or {}
     value = split.get("n_train_buckets")
+    return str(value) if value is not None else "n/a"
+
+
+def _test_buckets(entry: dict[str, Any]) -> str:
+    split = (entry.get("forecast_meta") or {}).get("split") or {}
+    value = split.get("n_test_buckets")
     return str(value) if value is not None else "n/a"
 
 
@@ -469,7 +476,8 @@ def render_decisions(
         "",
         "## D7 · 风险评分因子与权重",
         "",
-        "**选择**：score = 0.60 × norm(|net|) + 0.25 × norm(demand) + 0.15 × norm(volatility)。",
+        f"**选择**：score = {WEIGHTS['magnitude']:.2f} × norm(|net|) + "
+        f"{WEIGHTS['demand']:.2f} × norm(demand) + {WEIGHTS['volatility']:.2f} × norm(volatility)。",
         "",
         "**依据**：可解释性优先。净流出幅度直接决定调度动作，权重最高；需求规模次之；"
         f"历史波动受样本长度限制（XM 仅 {_train_buckets(xm)} 个训练时间片），权重最低。",
@@ -628,8 +636,10 @@ def render_report(
         "",
         "## 7. 局限与边界（F6-3）",
         "",
-        "1. **数据时间覆盖**：XM 仅 5 个工作日、每天 06:00–10:00，共 20 个小时片；"
-        "训练 16 个、测试 4 个。无法做全天/晚高峰分析，也无法可信地估计周内周期。",
+        f"1. **数据时间覆盖**：XM 仅 {xm_prep.get('n_dates', 'n/a')} 个日期、每天 "
+        f"{_hours_text(xm_prep)}，共 {xm_prep.get('n_buckets', 'n/a')} 个时间片；"
+        f"训练 {_train_buckets(xm)} 个、测试 {_test_buckets(xm)} 个。"
+        "无法做全天/晚高峰分析，也无法可信地估计周内周期。",
         "2. **时间字段缺陷**：XM 订单表 `UPDATE_TIME1` 只含日期、`UPDATE_TIME2` 只含时刻，"
         "适配器已显式拼接；若不处理，时间会全部落到 00:00。",
         "3. **空间稀疏（SH）**：约 68 × 68 km 摊 3,302 条/天，细网格几乎全零；"
