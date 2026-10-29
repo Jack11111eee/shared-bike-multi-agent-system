@@ -109,7 +109,7 @@ SH 选 2 km：零值占比 76.39%（<80%），WAPE 为 0.7016；4 km 的 WAPE �
 | XM 停放容量 | 围栏数 × 5 车位 | 数据 + 估计 | 10,522 围栏 × 5 = 52,610 个车位；订单契约中出现的唯一车辆数为 52,933。围栏数来自原始围栏文件；车位密度与单格上限属于估计，可在配置中覆盖。 |
 | SH 停放容量 | 40 | 约定 | 无围栏数据，只能假设 |
 
-**敏感性分析**：`outputs/sim_sensitivity.<source>.json` 给出初始库存、预算、容量变化下的结果；汇总见 `REPORT.md` 的仿真假设表。
+**敏感性分析**：`outputs/sim_sensitivity.xm.json`、`outputs/sim_sensitivity.sh.json` 给出初始库存、预算、容量变化下的结果；汇总见 `REPORT.md` 的仿真假设表。
 
 **可逆性**：高，全部在 `bike_agent/config/default.yaml` 中可覆盖。
 
