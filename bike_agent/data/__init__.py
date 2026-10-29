@@ -93,8 +93,8 @@ def _source_notes(source: str, adapter_stats: dict[str, Any], extras: dict[str, 
         )
         if "fences" in extras:
             notes.append(
-                f"电子围栏文件实际包含 {len(extras['fences']):,} 个围栏，"
-                "与 REQUIREMENTS.md 2.1 中记载的 2,492 个不一致；本报告以实际文件为准。"
+                f"电子围栏文件包含 {len(extras['fences']):,} 个围栏（含四角坐标），"
+                "是仿真中停放容量约束的唯一数据来源。"
             )
         notes.append("轨迹数据（2,849,243 个 GPS 点）未参与本流水线，仅使用订单、围栏与天气。")
     if source == "sh":
