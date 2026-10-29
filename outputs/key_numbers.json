@@ -116,12 +116,12 @@
   },
   {
     "metric": "SH · time buckets",
-    "value": 768,
+    "value": 743,
     "source_file": "outputs/summary.sh.json"
   },
   {
     "metric": "SH · zero-departure share",
-    "value": 0.7715379901960784,
+    "value": 0.763850843163645,
     "source_file": "outputs/summary.sh.json"
   },
   {
@@ -131,62 +131,62 @@
   },
   {
     "metric": "SH · out_count baseline MAE",
-    "value": 0.5443862803862805,
+    "value": 0.5335703382023951,
     "source_file": "outputs/forecast_metrics.sh.json"
   },
   {
     "metric": "SH · out_count model MAE",
-    "value": 0.49838348085234274,
+    "value": 0.5102694700735417,
     "source_file": "outputs/forecast_metrics.sh.json"
   },
   {
     "metric": "SH · in_count baseline MAE",
-    "value": 0.5490958453311395,
+    "value": 0.539551783129359,
     "source_file": "outputs/forecast_metrics.sh.json"
   },
   {
     "metric": "SH · in_count model MAE",
-    "value": 0.4970658120384404,
+    "value": 0.5128821317574307,
     "source_file": "outputs/forecast_metrics.sh.json"
   },
   {
     "metric": "SH · replenish candidates",
-    "value": 134,
+    "value": 124,
     "source_file": "outputs/risk_summary.sh.json"
   },
   {
     "metric": "SH · clear candidates",
-    "value": 121,
+    "value": 131,
     "source_file": "outputs/risk_summary.sh.json"
   },
   {
     "metric": "SH · rule unmet requests",
-    "value": 142,
+    "value": 181,
     "source_file": "outputs/strategy_comparison.sh.json"
   },
   {
     "metric": "SH · optimized unmet requests",
-    "value": 140,
+    "value": 170,
     "source_file": "outputs/strategy_comparison.sh.json"
   },
   {
     "metric": "SH · rule distance bike-km",
-    "value": 3634.655265788627,
+    "value": 3559.4207877520885,
     "source_file": "outputs/strategy_comparison.sh.json"
   },
   {
     "metric": "SH · optimized distance bike-km",
-    "value": 3606.247132558059,
+    "value": 3547.0926179873723,
     "source_file": "outputs/strategy_comparison.sh.json"
   },
   {
     "metric": "SH · rule composite cost",
-    "value": 868.9310531577254,
+    "value": 892.8841575504177,
     "source_file": "outputs/strategy_comparison.sh.json"
   },
   {
     "metric": "SH · optimized composite cost",
-    "value": 861.2494265116119,
+    "value": 879.4185235974745,
     "source_file": "outputs/strategy_comparison.sh.json"
   }
 ]

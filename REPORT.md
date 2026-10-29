@@ -12,7 +12,7 @@
 | 数据源 | 规模 | 时间覆盖 | 空间覆盖 | 附加数据 | 许可 |
 |---|---|---|---|---|---|
 | DS-XM（厦门，Zenodo 17415891） | 220,675 行程 / 441,350 条锁状态记录 | 2020-12-21～12-25，仅 06:00–10:00 | 14.7 × 13.8 km，密集 | 10,522 个电子围栏、逐小时天气 | 仅学术/教学，禁止商用，须署名 |
-| DS-SH（上海 Mobike 样本） | 102,361 行程 | 2016-08-01～08-31，31 天 | 约 68 × 68 km，稀疏 | 无 | 公开仓库 |
+| DS-SH（上海 Mobike 样本） | 102,361 行程 | 2016-08-01～08-31，31 天订单（跨夜归还落到 2016-09-01 凌晨） | 约 68 × 68 km，稀疏 | 无 | 公开仓库 |
 
 原始数据只读；sha256 记录在 `data/raw/manifest.json`。
 
@@ -30,16 +30,16 @@
 | 指标 | DS-XM | DS-SH |
 |---|---|---|
 | 网格格子数 | 169 | 255 |
-| 时间桶数 | 20 | 768 |
-| 零借出占比 | 29.76% | 77.15% |
-| 基线 MAE（借出） | 7.0754 | 0.5444 |
-| 模型 MAE（借出） | 7.3755 | 0.4984 |
-| 基线 MAE（归还） | 6.9712 | 0.5491 |
-| 模型 MAE（归还） | 6.7322 | 0.4971 |
-| S-RULE 未满足请求 | 3617 | 142 |
-| S-OPT 未满足请求 | 3669 | 140 |
-| S-RULE 综合代价 | 3,788.15 | 868.93 |
-| S-OPT 综合代价 | 3,829.88 | 861.25 |
+| 时间桶数 | 20 | 743 |
+| 零借出占比 | 29.76% | 76.39% |
+| 基线 MAE（借出） | 7.0754 | 0.5336 |
+| 模型 MAE（借出） | 7.3755 | 0.5103 |
+| 基线 MAE（归还） | 6.9712 | 0.5396 |
+| 模型 MAE（归还） | 6.7322 | 0.5129 |
+| S-RULE 未满足请求 | 3617 | 181 |
+| S-OPT 未满足请求 | 3669 | 170 |
+| S-RULE 综合代价 | 3,788.15 | 892.88 |
+| S-OPT 综合代价 | 3,829.88 | 879.42 |
 
 详细结果见：`reports/forecast_eval.xm.md`、`reports/forecast_eval.sh.md`、`reports/risk.xm.md`、`reports/risk.sh.md`、`reports/strategy_comparison.xm.md`、`reports/strategy_comparison.sh.md`、`reports/cross_source.md`。
 
@@ -47,7 +47,7 @@
 
 - **DS-XM**：S-OPT 未优于 S-RULE（F5-5 允许，已如实报告）。未满足请求 3617 → 3669，搬运距离 855.77 → 804.38 bike-km，综合代价 3788.15 → 3829.88。
 
-- **DS-SH**：S-OPT 的综合代价不高于 S-RULE。未满足请求 142 → 140，搬运距离 3634.66 → 3606.25 bike-km，综合代价 868.93 → 861.25。
+- **DS-SH**：S-OPT 的综合代价不高于 S-RULE。未满足请求 181 → 170，搬运距离 3559.42 → 3547.09 bike-km，综合代价 892.88 → 879.42。
 
 ## 6. 仿真假设表（6.2 / DoD 9）
 
@@ -72,25 +72,27 @@
 | XM | budget=400 | 3306 | 3471 | 3,662.91 | 3,784.21 |
 | XM | capacity=0.5x | 7431 | 7351 | 7,633.56 | 7,514.47 |
 | XM | capacity=2x | 1315 | 1311 | 1,476.50 | 1,470.99 |
-| SH | baseline | 142 | 140 | 868.93 | 861.25 |
-| SH | initial_fill=0.3 | 350 | 348 | 1,110.11 | 1,097.32 |
-| SH | initial_fill=0.7 | 91 | 98 | 803.92 | 809.86 |
-| SH | budget=100 | 142 | 140 | 868.93 | 861.25 |
-| SH | budget=400 | 142 | 140 | 868.93 | 861.25 |
-| SH | capacity=0.5x | 716 | 699 | 1,464.38 | 1,441.19 |
-| SH | capacity=2x | 12 | 12 | 724.76 | 724.19 |
+| SH | baseline | 181 | 170 | 892.88 | 879.42 |
+| SH | initial_fill=0.3 | 401 | 409 | 1,141.71 | 1,143.82 |
+| SH | initial_fill=0.7 | 119 | 116 | 816.66 | 814.15 |
+| SH | budget=100 | 181 | 170 | 892.88 | 879.42 |
+| SH | budget=400 | 181 | 170 | 892.88 | 879.42 |
+| SH | capacity=0.5x | 797 | 801 | 1,530.96 | 1,526.25 |
+| SH | capacity=2x | 37 | 35 | 737.78 | 735.96 |
 
 ## 7. 局限与边界（F6-3）
 
 1. **数据时间覆盖**：XM 仅 5 个工作日、每天 06:00–10:00，共 20 个小时片；训练 16 个、测试 4 个。无法做全天/晚高峰分析，也无法可信地估计周内周期。
 2. **时间字段缺陷**：XM 订单表 `UPDATE_TIME1` 只含日期、`UPDATE_TIME2` 只含时刻，适配器已显式拼接；若不处理，时间会全部落到 00:00。
-3. **空间稀疏（SH）**：约 68 × 68 km 摊 3,302 条/天，细网格几乎全零；本流水线使用稳健包围盒 + 2 km 网格，零借出占比约 77.15%。
+3. **空间稀疏（SH）**：约 68 × 68 km 摊 3,302 条/天，细网格几乎全零；本流水线使用稳健包围盒 + 2 km 网格，零借出占比约 76.39%。
 4. **附加数据缺失（SH）**：无天气、无围栏、无容量；仿真容量只能假设，不能来自数据。
 5. **仿真是模拟不是实测**：所有未满足请求、搬运距离、综合代价均为模拟值；`未满足请求` ≠ `实际缺车数量`——真实缺车需要库存数据，本项目没有。
 6. **预测未优于基线（XM）**：见 `reports/forecast_eval.xm.md`；原因是训练时间片过少与基线过强，未通过调整测试集或隐藏基线来制造提升。
 7. **粒度敏感性**：见 D2 与上表；不同粒度下误差与零值占比会变化，结论不应被当作与粒度无关。
 8. **调度模型边界**：未建模完整车队路径（VRP），搬运成本按 bike-km 计；策略差异只在给定预算与容量假设下成立。
 9. **个体隐私**：不产出任何可识别个体的结果；SH 的 userid 在适配器边界即被丢弃。
+10. **容量溢出**：回放中超过格子停放容量的归还被单独统计为 `returns_overflow`（见 `outputs/sim_rule.*.json`），这部分车辆不进入后续库存，因此模拟服务率在容量紧张时会偏保守；两策略使用同一规则，对比仍然公平。
+11. **数据源规模不一致**：REQUIREMENTS.md 2.1 记载 XM 有 2,492 个电子围栏，实际文件为 10,522 个；本流水线以实际文件为准，并在 `reports/data_quality.xm.md` 中披露。
 
 ## 8. 跨数据源一致性
 
@@ -123,21 +125,21 @@
 | SH · duplicate rate | 0 | outputs/summary.sh.json |
 | SH · abnormal duration share | 0.0005 | outputs/summary.sh.json |
 | SH · grid cells | 255 | outputs/summary.sh.json |
-| SH · time buckets | 768 | outputs/summary.sh.json |
-| SH · zero-departure share | 0.7715 | outputs/summary.sh.json |
+| SH · time buckets | 743 | outputs/summary.sh.json |
+| SH · zero-departure share | 0.7639 | outputs/summary.sh.json |
 | SH · total departures | 99920 | outputs/summary.sh.json |
-| SH · out_count baseline MAE | 0.5444 | outputs/forecast_metrics.sh.json |
-| SH · out_count model MAE | 0.4984 | outputs/forecast_metrics.sh.json |
-| SH · in_count baseline MAE | 0.5491 | outputs/forecast_metrics.sh.json |
-| SH · in_count model MAE | 0.4971 | outputs/forecast_metrics.sh.json |
-| SH · replenish candidates | 134 | outputs/risk_summary.sh.json |
-| SH · clear candidates | 121 | outputs/risk_summary.sh.json |
-| SH · rule unmet requests | 142 | outputs/strategy_comparison.sh.json |
-| SH · optimized unmet requests | 140 | outputs/strategy_comparison.sh.json |
-| SH · rule distance bike-km | 3,634.66 | outputs/strategy_comparison.sh.json |
-| SH · optimized distance bike-km | 3,606.25 | outputs/strategy_comparison.sh.json |
-| SH · rule composite cost | 868.9311 | outputs/strategy_comparison.sh.json |
-| SH · optimized composite cost | 861.2494 | outputs/strategy_comparison.sh.json |
+| SH · out_count baseline MAE | 0.5336 | outputs/forecast_metrics.sh.json |
+| SH · out_count model MAE | 0.5103 | outputs/forecast_metrics.sh.json |
+| SH · in_count baseline MAE | 0.5396 | outputs/forecast_metrics.sh.json |
+| SH · in_count model MAE | 0.5129 | outputs/forecast_metrics.sh.json |
+| SH · replenish candidates | 124 | outputs/risk_summary.sh.json |
+| SH · clear candidates | 131 | outputs/risk_summary.sh.json |
+| SH · rule unmet requests | 181 | outputs/strategy_comparison.sh.json |
+| SH · optimized unmet requests | 170 | outputs/strategy_comparison.sh.json |
+| SH · rule distance bike-km | 3,559.42 | outputs/strategy_comparison.sh.json |
+| SH · optimized distance bike-km | 3,547.09 | outputs/strategy_comparison.sh.json |
+| SH · rule composite cost | 892.8842 | outputs/strategy_comparison.sh.json |
+| SH · optimized composite cost | 879.4185 | outputs/strategy_comparison.sh.json |
 
 完整机器可读版本：`outputs/key_numbers.json`。
 

@@ -1,6 +1,8 @@
 # 失衡风险与调度优先级报告 · XM
 
-预测时间单元：`2020-12-25 09:00:00`；评分格数 169，补车候选 35 个，清运候选 134 个。
+预测时间单元：`2020-12-25 09:00:00`（该桶观测借还总量 14701）；评分格数 169，补车候选 35 个，清运候选 134 个。
+
+时间单元选取规则：在测试时段内取**观测借还总量不低于峰值 10%** 的最后一个时间桶，避免把数据尾部（例如跨夜归还落在次日凌晨）的空桶当作调度目标。
 
 ## 评分公式（可手工复算）
 
@@ -56,4 +58,4 @@ score      = 0.60 * magnitude/max(magnitude)
 - 补车第一：`net_outflow=+54.14 (pred_out=171.31, pred_in=117.17); demand=288.47; volatility=73.43; normalised[mag=0.287, demand=0.362, vol=0.348]; score=0.60*0.287+0.25*0.362+0.15*0.348=0.3153`
 - 清运第一：`net_outflow=-188.33 (pred_out=44.60, pred_in=232.93); demand=277.52; volatility=172.61; normalised[mag=1.000, demand=0.349, vol=0.818]; score=0.60*1.000+0.25*0.349+0.15*0.818=0.8098`
 
-完整清单见 `outputs/priority_replenish.<source>.csv` 与 `outputs/priority_clear.<source>.csv`。
+完整清单见 `outputs/priority_replenish.xm.csv` 与 `outputs/priority_clear.xm.csv`。
