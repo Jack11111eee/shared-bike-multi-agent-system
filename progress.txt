@@ -40,3 +40,14 @@ Implemented the complete pipeline from an empty repository:
   existed, so it only contained "no tests ran").
 - The min-cost-flow planner must exclude deficit cells from the supply set; otherwise
   the solver "serves" a cell from itself with zero-distance flow and wastes the budget.
+
+## Git milestones
+
+- milestone-M0 → c7888ea
+- milestone-M1 → d6951b2
+- milestone-M2 → 640e6e4（M2 基线与 M3 模型同属 forecast 模块，共用该提交）
+- milestone-M3 → 640e6e4
+- milestone-M4 → 9b7d223
+- milestone-M5 → 5e85055
+- milestone-M6 → 24f3d2d
+- milestone-M7 → c072823（含评审后的面板/风险时间桶修复，最终验证状态）
