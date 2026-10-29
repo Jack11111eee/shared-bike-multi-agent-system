@@ -10,7 +10,7 @@ from bike_agent.config import Layout, source_config
 from bike_agent.prep.grid import build_grid
 from bike_agent.sim.capacity import cell_capacities
 from bike_agent.sim.engine import simulate
-from bike_agent.utils import markdown_table, pct, write_json
+from bike_agent.utils import delta_pct, markdown_table, pct, write_json
 
 
 def _load_inputs(config: dict[str, Any], layout: Layout, source: str) -> dict[str, Any]:
@@ -175,12 +175,6 @@ def run_sim_sensitivity(
     return results
 
 
-def _delta(rule_value: float, opt_value: float) -> str:
-    if rule_value == 0:
-        return "n/a" if opt_value != 0 else "0.0%"
-    return f"{(opt_value - rule_value) / rule_value * 100:+.2f}%"
-
-
 def render_comparison(report: dict[str, Any]) -> str:
     rule = report["rule"]
     optimized = report["optimized"]
@@ -201,15 +195,15 @@ def render_comparison(report: dict[str, Any]) -> str:
             ["指标", "S-RULE（规则）", "S-OPT（优化）", "变化"],
             [
                 ("未满足借车请求数", rule["unmet_requests"], optimized["unmet_requests"],
-                 _delta(rule["unmet_requests"], optimized["unmet_requests"])),
+                 delta_pct(rule["unmet_requests"], optimized["unmet_requests"])),
                 ("车辆搬运距离（bike-km）", f"{rule['distance_bike_km']:.2f}", f"{optimized['distance_bike_km']:.2f}",
-                 _delta(rule["distance_bike_km"], optimized["distance_bike_km"])),
+                 delta_pct(rule["distance_bike_km"], optimized["distance_bike_km"])),
                 ("综合代价（模拟单位）", f"{rule['composite_cost']:.2f}", f"{optimized['composite_cost']:.2f}",
-                 _delta(rule["composite_cost"], optimized["composite_cost"])),
+                 delta_pct(rule["composite_cost"], optimized["composite_cost"])),
                 ("服务率", pct(rule["service_rate"]), pct(optimized["service_rate"]),
-                 _delta(rule["service_rate"], optimized["service_rate"])),
+                 delta_pct(rule["service_rate"], optimized["service_rate"])),
                 ("搬运车辆数（bikes）", rule["bikes_moved"], optimized["bikes_moved"],
-                 _delta(rule["bikes_moved"], optimized["bikes_moved"])),
+                 delta_pct(rule["bikes_moved"], optimized["bikes_moved"])),
             ],
         ),
         "",

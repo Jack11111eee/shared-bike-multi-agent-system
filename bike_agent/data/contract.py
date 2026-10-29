@@ -128,20 +128,3 @@ def assert_contract(frame: pd.DataFrame, **kwargs: Any) -> dict[str, Any]:
     if problems:
         raise ContractError("contract validation failed: " + "; ".join(problems))
     return report
-
-
-def empty_contract() -> pd.DataFrame:
-    """An empty frame with the contract dtypes (used by tests and fixtures)."""
-    return pd.DataFrame(
-        {
-            "trip_id": pd.Series(dtype="object"),
-            "bike_id": pd.Series(dtype="object"),
-            "start_time": pd.Series(dtype="datetime64[ns]"),
-            "end_time": pd.Series(dtype="datetime64[ns]"),
-            "start_lat": pd.Series(dtype="float64"),
-            "start_lon": pd.Series(dtype="float64"),
-            "end_lat": pd.Series(dtype="float64"),
-            "end_lon": pd.Series(dtype="float64"),
-            "duration_s": pd.Series(dtype="float64"),
-        }
-    )

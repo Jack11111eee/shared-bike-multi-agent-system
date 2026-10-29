@@ -204,7 +204,3 @@ TOOL_SCHEMA: dict[str, Any] = {
         },
     },
 }
-
-
-def tool_schema() -> dict[str, Any]:
-    return TOOL_SCHEMA

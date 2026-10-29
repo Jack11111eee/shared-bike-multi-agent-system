@@ -123,9 +123,6 @@ class Layout:
     def fences_path(self, source: str) -> Path:
         return self.processed / f"fences.{source}.parquet"
 
-    def weather_path(self, source: str) -> Path:
-        return self.processed / f"weather.{source}.parquet"
-
     # -- outputs ------------------------------------------------------------
     def forecast_path(self, source: str) -> Path:
         return self.outputs / f"forecast.{source}.parquet"
@@ -141,9 +138,6 @@ class Layout:
 
     def sim_path(self, source: str, strategy: str, suffix: str) -> Path:
         return self.outputs / f"sim_{strategy}.{source}.{suffix}"
-
-    def sensitivity_path(self, source: str) -> Path:
-        return self.outputs / f"sensitivity.{source}.json"
 
     def key_numbers_path(self) -> Path:
         return self.outputs / "key_numbers.json"

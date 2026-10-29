@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-from bike_agent.config import Layout, load_config
+from bike_agent.config import Layout
 from bike_agent.data.base import DataSourceAdapter, DataSourceError
 from bike_agent.data.contract import assert_contract, validate_contract
 from bike_agent.data.quality import build_quality_report, render_quality_markdown
@@ -152,7 +152,3 @@ def validate_source(config: dict[str, Any], layout: Layout, source: str) -> dict
         raise DataSourceError(f"integrity checks failed for {source}; see reports/data_quality.{source}.md")
     return report
 
-
-def configured_sources(config: dict[str, Any] | None = None) -> list[str]:
-    config = config or load_config()
-    return list(config.get("sources", {}).keys())

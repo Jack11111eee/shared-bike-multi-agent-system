@@ -10,7 +10,7 @@ from bike_agent.tools.handlers import (
     validate_input,
     validate_output,
 )
-from bike_agent.tools.schemas import TOOL_SCHEMA, tool_schema
+from bike_agent.tools.schemas import TOOL_SCHEMA
 
 __all__ = [
     "TOOL_HANDLERS",
@@ -20,7 +20,6 @@ __all__ = [
     "get_forecast",
     "get_risk_ranking",
     "run_simulation",
-    "tool_schema",
     "validate_input",
     "validate_output",
 ]

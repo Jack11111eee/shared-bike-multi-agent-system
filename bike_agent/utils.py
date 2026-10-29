@@ -90,3 +90,10 @@ def pct(value: float, digits: int = 2) -> str:
     return f"{value * 100:.{digits}f}%"
 
 
+def delta_pct(baseline: float, value: float) -> str:
+    """Signed relative change, or "n/a" when there is no baseline to compare to."""
+    if baseline == 0:
+        return "0.0%" if value == 0 else "n/a"
+    return f"{(value - baseline) / baseline * 100:+.2f}%"
+
+

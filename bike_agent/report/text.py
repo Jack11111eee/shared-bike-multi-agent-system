@@ -6,13 +6,7 @@ from typing import Any
 
 
 from bike_agent.risk.score import WEIGHTS
-from bike_agent.utils import markdown_table, pct
-
-
-def _delta(baseline: float, model: float) -> str:
-    if baseline == 0:
-        return "n/a"
-    return f"{(model - baseline) / baseline * 100:+.2f}%"
+from bike_agent.utils import delta_pct, markdown_table, pct
 
 
 def render_forecast_report(d: dict[str, Any]) -> str:
@@ -30,7 +24,7 @@ def render_forecast_report(d: dict[str, Any]) -> str:
                 "借出量" if target == "out_count" else "归还量",
                 f"{base.get('mae', float('nan')):.4f}",
                 f"{model.get('mae', float('nan')):.4f}",
-                _delta(base.get("mae", 0), model.get("mae", 0)),
+                delta_pct(base.get("mae", 0), model.get("mae", 0)),
                 f"{base.get('rmse', float('nan')):.4f}",
                 f"{model.get('rmse', float('nan')):.4f}",
             )
@@ -554,10 +548,8 @@ def render_report(
     sh_prep = ((sh.get("prep") or {}).get("panel") or {})
 
     def metric(block: dict[str, Any], target: str, kind: str) -> str:
-        try:
-            return f"{block[kind][target]['mae']:.4f}"
-        except Exception:
-            return "n/a"
+        value = ((block.get(kind) or {}).get(target) or {}).get("mae")
+        return f"{value:.4f}" if isinstance(value, (int, float)) else "n/a"
 
     lines = [
         "# REPORT.md — 城市共享单车供需失衡预测与调度优先级分析",
