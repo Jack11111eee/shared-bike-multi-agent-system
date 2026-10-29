@@ -1,0 +1,42 @@
+# Ralph progress
+
+## Iteration 1 — full M0–M7 implementation
+
+Implemented the complete pipeline from an empty repository:
+
+- `bike_agent/data/`: adapter protocol, DS-XM adapter (Excel-in-.csv, forward-filled
+  BICYCLE_ID, UPDATE_TIME1+2 combined), DS-SH adapter, contract validation, quality report,
+  sha256 manifest.
+- `bike_agent/prep/`: five cleaning rules with per-rule counts, metre-based grid,
+  complete cell×hour panel with conservation checks.
+- `bike_agent/forecast/`: time-ordered split, seasonal-mean baseline, LightGBM Poisson,
+  MAE/RMSE/WAPE, reproducibility metadata, granularity sensitivity.
+- `bike_agent/risk/`: explainable weighted score, replenish/clear lists with factor columns.
+- `bike_agent/sim/`: replay engine, rule planner, min-cost-flow planner, capacity from fences,
+  conservation/capacity/budget violation counters, sensitivity scenarios.
+- `bike_agent/report/`: five figure families, per-source reports, cross-source report,
+  DECISIONS.md / REPORT.md generated from actual outputs, key-number traceability.
+- `bike_agent/tools/`: Draft 2020-12 tool schema + thin handlers.
+- `bike_agent/cli.py`: data/prep/forecast/risk/simulate/report/repro/tools.
+
+## Findings
+
+- DS-XM: 220,675 trips, 10,522 fences (REQUIREMENTS.md said 2,492 — actual file wins),
+  20 hourly buckets. LightGBM does not beat the seasonal baseline (16 train buckets).
+- DS-SH: 102,361 trips, 768 buckets. LightGBM beats the baseline on both targets.
+- D1 therefore splits roles: SH validates the forecasting method; XM remains the operational
+  scenario for risk + fence-constrained simulation.
+- Simulation: XM S-OPT is slightly worse than S-RULE (forecast-error dominated);
+  SH S-OPT is slightly better. Reported honestly per F5-5.
+
+## Learnings / gotchas
+
+- `order data.csv` and `STATION.csv` are actually XLSX files despite the extension.
+- The feedback gate fingerprints every non-filtered output line, so `pytest -q`'s
+  dots line counts as a "failure". The PRD feedback command was changed to
+  `python3 -m pytest -q --tb=no -rf 2>&1 | grep -E "^(FAILED|ERROR)" || true`,
+  which emits nothing on green and FAILED/ERROR lines on failure. The baseline was
+  re-recorded after that change (the original baseline was recorded before any tests
+  existed, so it only contained "no tests ran").
+- The min-cost-flow planner must exclude deficit cells from the supply set; otherwise
+  the solver "serves" a cell from itself with zero-distance flow and wastes the budget.
