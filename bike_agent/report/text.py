@@ -131,11 +131,9 @@ def render_cross_source(data: dict[str, Any]) -> str:
         "",
         "## 不一致的结论",
         "",
-        "- **模型是否优于基线**：SH 上 LightGBM 在两个目标上均优于基线；XM 上未能同时优于基线。"
-        "这与 XM 只有 5 天、20 个小时片直接相关。",
-        "- **策略胜负**：XM 上规则调度（S-RULE）的综合代价低于优化调度（S-OPT）；"
-        "SH 上 S-OPT 略优。差异来自需求密度、预测误差与容量假设的不同。",
-        "- **零值占比**：XM 1 km 网格零借出约 21%，SH 2 km 网格约 71%。SH 的稀疏性显著更高。",
+        f"- **模型是否优于基线**：{_model_verdict(data)}",
+        f"- **策略胜负**：{_strategy_verdict(data)}",
+        f"- **零值占比**：{_zero_verdict(data)}",
         "",
         "## 使用边界",
         "",
@@ -144,6 +142,85 @@ def render_cross_source(data: dict[str, Any]) -> str:
         "",
     ]
     return "\n".join(lines)
+
+
+def _model_wins(entry: dict[str, Any]) -> bool | None:
+    metrics = entry.get("forecast_metrics") or {}
+    try:
+        return all(
+            metrics["model"][t]["mae"] < metrics["baseline"][t]["mae"]
+            for t in ("out_count", "in_count")
+        )
+    except (KeyError, TypeError):
+        return None
+
+
+def _model_verdict(data: dict[str, Any]) -> str:
+    parts = []
+    for source, entry in data.items():
+        wins = _model_wins(entry)
+        label = source.upper()
+        if wins is None:
+            parts.append(f"{label} 无评估结果")
+        elif wins:
+            metrics = entry["forecast_metrics"]
+            parts.append(
+                f"{label} 上 LightGBM 在借出与归还两个目标上均优于基线"
+                f"（MAE {metrics['baseline']['out_count']['mae']:.4f} → {metrics['model']['out_count']['mae']:.4f}，"
+                f"{metrics['baseline']['in_count']['mae']:.4f} → {metrics['model']['in_count']['mae']:.4f}）"
+            )
+        else:
+            metrics = entry["forecast_metrics"]
+            parts.append(
+                f"{label} 上模型未能同时优于基线"
+                f"（借出 MAE {metrics['baseline']['out_count']['mae']:.4f} → {metrics['model']['out_count']['mae']:.4f}，"
+                f"归还 {metrics['baseline']['in_count']['mae']:.4f} → {metrics['model']['in_count']['mae']:.4f}）"
+            )
+    verdict = "；".join(parts) + "。"
+    xm = data.get("xm")
+    if xm is not None:
+        buckets = ((xm.get("prep") or {}).get("panel") or {}).get("n_buckets")
+        if buckets is not None:
+            verdict += f"XM 的时间覆盖只有 {buckets} 个时间片，这直接限制了树模型能学到的结构。"
+    return verdict
+
+
+def _strategy_verdict(data: dict[str, Any]) -> str:
+    parts = []
+    for source, entry in data.items():
+        comparison = entry.get("comparison") or {}
+        try:
+            rule = comparison["rule"]["composite_cost"]
+            optimized = comparison["optimized"]["composite_cost"]
+        except (KeyError, TypeError):
+            continue
+        label = source.upper()
+        if optimized <= rule:
+            parts.append(
+                f"{label} 上 S-OPT 略优（综合代价 {rule:.2f} → {optimized:.2f}）"
+            )
+        else:
+            parts.append(
+                f"{label} 上 S-RULE 优于 S-OPT（综合代价 {rule:.2f} → {optimized:.2f}）"
+            )
+    if not parts:
+        return "两个源都未产出策略对比结果。"
+    return "；".join(parts) + "。差异来自需求密度、预测误差与容量假设的不同。"
+
+
+def _zero_verdict(data: dict[str, Any]) -> str:
+    parts = []
+    for source, entry in data.items():
+        panel = ((entry.get("prep") or {}).get("panel") or {})
+        if "zero_out_share" not in panel:
+            continue
+        parts.append(
+            f"{source.upper()} {entry.get('cell_size_m')} m 网格零借出 "
+            f"{pct(panel['zero_out_share'])}（{panel.get('n_cells')} 个格子）"
+        )
+    if not parts:
+        return "零值占比尚未生成。"
+    return "；".join(parts) + "。稀疏程度更高的源，其风险清单的绝对幅度也更小。"
 
 
 def _cross_rows(data: dict[str, Any]) -> list[tuple[Any, ...]]:
