@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from bike_agent.config import Layout, source_config
 from bike_agent.forecast.baseline import seasonal_mean_predict
 from bike_agent.forecast.evaluate import error_metrics
+from bike_agent.stats import paired_bootstrap
 from bike_agent.forecast.features import TARGETS, build_features, design_matrix
 from bike_agent.forecast.model import predict_model, train_model
 from bike_agent.forecast.split import assert_time_ordered, time_split
@@ -49,6 +51,7 @@ def run_forecast(
     predictions = test.loc[:, ["cell_id", "time_bucket", "out_count", "in_count"]].copy()
     predictions = predictions.rename(columns={"out_count": "actual_out", "in_count": "actual_in"})
     metrics: dict[str, Any] = {"baseline": {}, "model": {}}
+    significance: dict[str, Any] = {}
 
     for target in TARGETS:
         baseline = seasonal_mean_predict(train, test, target)
@@ -57,8 +60,13 @@ def run_forecast(
         suffix = target.replace("_count", "")
         predictions[f"baseline_{suffix}"] = baseline
         predictions[f"pred_{suffix}"] = predicted
-        metrics["baseline"][target] = error_metrics(test[target].to_numpy(), baseline)
-        metrics["model"][target] = error_metrics(test[target].to_numpy(), predicted)
+        actual = test[target].to_numpy()
+        metrics["baseline"][target] = error_metrics(actual, baseline)
+        metrics["model"][target] = error_metrics(actual, predicted)
+        # Paired test on per-row absolute error: is the MAE gap real or noise?
+        significance[target] = paired_bootstrap(
+            np.abs(predicted - actual) - np.abs(baseline - actual)
+        )
 
     predictions["pred_net_flow"] = predictions["pred_out"] - predictions["pred_in"]
     predictions["baseline_net_flow"] = predictions["baseline_out"] - predictions["baseline_in"]
@@ -77,6 +85,7 @@ def run_forecast(
         "params": params,
         "features": feature_set.feature_columns,
         "metrics": metrics,
+        "significance": significance,
         "predictions": predictions,
     }
 
@@ -96,6 +105,7 @@ def run_forecast(
                 "params": params,
                 "features": feature_set.feature_columns,
                 "metrics": metrics,
+                "significance": significance,
                 "n_train_rows": int(feature_set.train_stats["n_train_rows"]),
                 "n_test_rows": int(feature_set.train_stats["n_test_rows"]),
             },

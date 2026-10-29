@@ -8,6 +8,7 @@ import pytest
 
 from bike_agent.sim.capacity import cell_capacities, initial_inventory
 from bike_agent.sim.engine import simulate
+from bike_agent.sim.pipeline import _paired_significance, comparison_verdict
 from bike_agent.sim.strategies import plan_optimized, plan_rule
 
 
@@ -107,6 +108,100 @@ def test_optimized_planner_never_moves_more_than_budget():
     assert sum(move[2] for move in rule) == 7
     assert sum(move[2] for move in optimized) == 7
     assert all(move[2] > 0 for move in optimized)
+
+
+def test_significance_matches_the_headline_composite_cost(tiny_config):
+    """The tested quantity must be the same cost the report headlines."""
+    panel, forecast, cells, capacities = _scenario()
+    config = _config(tiny_config)
+    rule = simulate(panel, forecast, cells, capacities, config, "rule")
+    optimized = simulate(panel, forecast, cells, capacities, config, "optimized")
+
+    stats = _paired_significance(rule.steps, optimized.steps, rule.summary["assumptions"])
+    rebuilt = {
+        "rule": rule.summary,
+        "optimized": optimized.summary,
+        "significance": stats,
+    }
+    # Per-bucket costs must sum to the headline totals the report quotes.
+    total_difference = optimized.summary["composite_cost"] - rule.summary["composite_cost"]
+    assert stats["mean_diff"] * stats["n"] == pytest.approx(total_difference)
+    assert stats["n"] == len(rule.steps)
+    assert stats["buckets_optimized_better"] + stats["buckets_rule_better"] + stats["buckets_tied"] == stats["n"]
+    assert comparison_verdict(rebuilt)
+
+
+def test_verdict_never_calls_an_insignificant_gap_a_win():
+    comparison = {
+        "rule": {"composite_cost": 100.0},
+        "optimized": {"composite_cost": 99.0},
+        "significance": {"n": 50, "ci_low": -3.0, "ci_high": 1.0, "significant": False},
+    }
+    verdict = comparison_verdict(comparison)
+    assert "差异不显著" in verdict
+    assert "显著更低" not in verdict
+
+
+def _comparison_report(cost_rule: float, cost_opt: float, better: int, worse: int, tied: int) -> dict:
+    summary = {
+        "unmet_requests": 10,
+        "distance_bike_km": 5.0,
+        "composite_cost": cost_rule,
+        "service_rate": 0.9,
+        "bikes_moved": 4,
+        "returns_overflow": 0,
+        "returns": 12,
+        "initial_inventory": 20,
+        "final_inventory": 18,
+        "capacity_total": 40,
+        "assumptions": {"initial_fill_ratio": 0.5, "safety_stock_ratio": 0.2,
+                        "max_moves_per_bucket": 5, "unmet_penalty": 1.0,
+                        "distance_cost_per_bike_km": 0.2},
+        "first_bucket": "2020-12-21 06:00:00",
+        "last_bucket": "2020-12-21 09:00:00",
+        "n_buckets": better + worse + tied,
+        "capacity_mode": "fences",
+        "violations": {"conservation": 0, "capacity": 0, "budget": 0,
+                       "negative_inventory": 0, "clamped_moves": 0},
+    }
+    optimized = dict(summary, composite_cost=cost_opt)
+    return {
+        "source": "xm",
+        "rule": summary,
+        "optimized": optimized,
+        "significance": {
+            "n": better + worse + tied,
+            "ci_low": -1.0, "ci_high": 1.0, "significant": False,
+            "mean_diff": cost_opt - cost_rule,
+            "buckets_optimized_better": better,
+            "buckets_rule_better": worse,
+            "buckets_tied": tied,
+        },
+    }
+
+
+def test_per_bucket_prose_matches_the_total_direction():
+    """Winning more buckets must not be described as a lower total when it is not."""
+    from bike_agent.sim.pipeline import render_comparison
+
+    # Fewer buckets won and a higher total: both layers agree.
+    consistent_loss = render_comparison(_comparison_report(100.0, 105.0, better=1, worse=2, tied=1))
+    assert "两个层面方向一致" in consistent_loss
+    assert "“总代价更低”成立" not in consistent_loss
+
+    # More buckets won but a higher total: must not claim an overall win.
+    misleading = render_comparison(_comparison_report(100.0, 105.0, better=3, worse=1, tied=0))
+    assert "总代价仍更高" in misleading
+    assert "“总代价更低”成立" not in misleading
+
+    # Lower total, wins on most buckets.
+    clean_win = render_comparison(_comparison_report(100.0, 95.0, better=3, worse=1, tied=0))
+    assert "与总代价的方向一致" in clean_win
+
+    # Lower total, but driven by a few buckets.
+    concentrated = render_comparison(_comparison_report(100.0, 95.0, better=1, worse=3, tied=0))
+    assert "“总代价更低”成立" in concentrated
+    assert "每个时段都更好" in concentrated
 
 
 def test_capacity_modes():

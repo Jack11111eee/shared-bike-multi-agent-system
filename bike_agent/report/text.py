@@ -6,7 +6,37 @@ from typing import Any
 
 
 from bike_agent.risk.score import WEIGHTS
+from bike_agent.sim.pipeline import comparison_verdict
+from bike_agent.stats import describe, is_significant
 from bike_agent.utils import delta_pct, markdown_table, pct
+
+
+def _forecast_significance(entry: dict[str, Any], target: str) -> dict[str, Any] | None:
+    return ((entry.get("forecast_meta") or {}).get("significance") or {}).get(target)
+
+
+def _model_verdict_for(entry: dict[str, Any], target: str) -> str:
+    """Wording for one target that follows the paired bootstrap, not the MAE gap."""
+    metrics = entry.get("forecast_metrics") or {}
+    try:
+        base_mae = metrics["baseline"][target]["mae"]
+        model_mae = metrics["model"][target]["mae"]
+    except (KeyError, TypeError):
+        return ""
+    stats = _forecast_significance(entry, target)
+    significant = is_significant(stats)
+    better = model_mae < base_mae
+    if significant is None:
+        return f"MAE {base_mae:.4f} → {model_mae:.4f}，显著性检验尚未生成"
+    if significant:
+        return (
+            f"MAE {base_mae:.4f} → {model_mae:.4f}，"
+            f"模型**显著{'更优' if better else '更差'}**（模型 − 基线的绝对误差，{describe(stats)}）"
+        )
+    return (
+        f"MAE {base_mae:.4f} → {model_mae:.4f}，"
+        f"**无显著差异**（模型 − 基线的绝对误差，{describe(stats)}）"
+    )
 
 
 def render_forecast_report(d: dict[str, Any]) -> str:
@@ -71,26 +101,40 @@ def render_forecast_report(d: dict[str, Any]) -> str:
         "## 结论（F3-3）",
         "",
     ]
-    if model_wins:
+    n_train = split.get("n_train_buckets")
+    n_test = split.get("n_test_buckets")
+    flags = [is_significant(_forecast_significance(d, target)) for target in ("out_count", "in_count")]
+    if not metrics:
+        lines.append("预测指标尚未生成。")
+    elif all(flag is True for flag in flags) and model_wins:
         lines.append(
-            "在本数据源与本次时间切分上，LightGBM 在两个目标上的 MAE 均优于季节均值基线。"
+            "在本数据源与本次时间切分上，LightGBM 在借出与归还两个目标上的 MAE 均"
+            "**显著优于**季节均值基线（配对 bootstrap，95% 置信区间不包含 0）。"
             "提升幅度见上表；未调整测试集、未隐藏基线结果、未改用随机切分。"
         )
-    else:
-        n_train = split.get("n_train_buckets")
-        n_test = split.get("n_test_buckets")
+    elif all(flag is False for flag in flags):
         lines += [
-            "在本数据源与本次时间切分上，LightGBM **未能在两个目标上同时优于基线**（见上表）。"
+            "在本数据源与本次时间切分上，LightGBM 与季节均值基线在两个目标上"
+            "**均无显著差异**（配对 bootstrap 的 95% 置信区间包含 0）。"
             "按 F3-3，这不视为失败，但必须说明原因：",
             "",
-            f"- 数据时间覆盖极薄：训练仅 {n_train} 个时间片，测试仅 {n_test} 个时间片。"
-            "树模型没有足够样本来稳定估计格子×小时的非线性关系。",
+            f"- 数据时间覆盖薄：训练仅 {n_train} 个时间片，测试仅 {n_test} 个时间片。"
+            "树模型没有足够样本稳定估计格子×小时的非线性关系。",
             "- 基线非常强：按格子×小时取训练集均值，直接捕捉了早晚高峰的空间格局；"
             "在样本极少时，简单均值往往难以被超越。",
             "- 预测目标包含大量零值，Poisson 目标虽适合计数，但在小样本下容易过拟合训练日的异常。",
             "",
             "后续改进方向：获取更长时间覆盖的数据、引入天气与日历特征、使用分层/全局平滑模型，"
             "或在更多时间片上做滚动评估。",
+        ]
+    else:
+        lines += [
+            "在本数据源与本次时间切分上，两个目标的显著性结论不一致，逐项列出：",
+            "",
+            f"- 借出量：{_model_verdict_for(d, 'out_count')}。",
+            f"- 归还量：{_model_verdict_for(d, 'in_count')}。",
+            "",
+            "按 F3-3，该结果如实报告，未调整测试集、未隐藏基线结果、未改用随机切分。",
         ]
     lines += [
         "",
@@ -161,15 +205,31 @@ def _test_buckets(entry: dict[str, Any]) -> str:
 
 
 def _model_verdict_short(data: dict[str, Any]) -> str:
-    wins = [source.upper() for source, entry in data.items() if _model_wins(entry)]
-    losses = [source.upper() for source, entry in data.items() if _model_wins(entry) is False]
-    if wins and losses:
-        return f"{'、'.join(wins)} 上模型优于基线；{'、'.join(losses)} 上未优于基线。"
+    wins, losses, ties = [], [], []
+    for source, entry in data.items():
+        metrics = entry.get("forecast_metrics") or {}
+        targets = ("out_count", "in_count")
+        try:
+            better = [metrics["model"][t]["mae"] < metrics["baseline"][t]["mae"] for t in targets]
+        except (KeyError, TypeError):
+            continue
+        flags = [is_significant(_forecast_significance(entry, t)) for t in targets]
+        if all(flags) and all(better):
+            wins.append(source.upper())
+        elif all(flags) and not any(better):
+            losses.append(source.upper())
+        elif any(flag is None for flag in flags):
+            continue
+        else:
+            ties.append(source.upper())
+    parts = []
     if wins:
-        return f"{'、'.join(wins)} 上模型优于基线。"
+        parts.append(f"{'、'.join(wins)} 上模型显著优于基线")
     if losses:
-        return f"{'、'.join(losses)} 上模型未优于基线。"
-    return "模型与基线的对比尚未生成。"
+        parts.append(f"{'、'.join(losses)} 上模型显著劣于基线")
+    if ties:
+        parts.append(f"{'、'.join(ties)} 上模型与基线无显著差异")
+    return "；".join(parts) + "。" if parts else "模型与基线的对比尚未生成。"
 
 
 def _capacity_note(config: dict[str, Any], xm_entry: dict[str, Any]) -> str:
@@ -189,17 +249,6 @@ def _capacity_note(config: dict[str, Any], xm_entry: dict[str, Any]) -> str:
     )
 
 
-def _model_wins(entry: dict[str, Any]) -> bool | None:
-    metrics = entry.get("forecast_metrics") or {}
-    try:
-        return all(
-            metrics["model"][t]["mae"] < metrics["baseline"][t]["mae"]
-            for t in ("out_count", "in_count")
-        )
-    except (KeyError, TypeError):
-        return None
-
-
 def _violation_verdict(data: dict[str, Any]) -> str:
     totals = {}
     for entry in data.values():
@@ -216,57 +265,69 @@ def _violation_verdict(data: dict[str, Any]) -> str:
     return f"两个源的仿真出现了约束违反，需逐项排查：{detail}。"
 
 
+def _forecast_limitation(data: dict[str, Any]) -> str:
+    """Summarise where the model failed to beat the baseline, from the tests."""
+    ties, wins = [], []
+    for source, entry in data.items():
+        if not (entry.get("forecast_metrics") or {}):
+            continue
+        flags = [is_significant(_forecast_significance(entry, t)) for t in ("out_count", "in_count")]
+        if all(flag is False for flag in flags):
+            ties.append(source.upper())
+        elif all(flag is True for flag in flags):
+            wins.append(source.upper())
+    parts = []
+    if ties:
+        parts.append(f"{'、'.join(ties)} 上模型与基线无显著差异")
+    if wins:
+        parts.append(f"{'、'.join(wins)} 上模型显著优于基线")
+    return "；".join(parts) + "。" if parts else ""
+
+
+def _thin_data_note(entry: dict[str, Any], label: str) -> str:
+    """Flag sources whose split is too small for the comparison to be stable."""
+    split = (entry.get("forecast_meta") or {}).get("split") or {}
+    n_train = split.get("n_train_buckets")
+    n_test = split.get("n_test_buckets")
+    if n_train is None or n_test is None:
+        return ""
+    if int(n_train) >= 100 and int(n_test) >= 30:
+        return ""
+    return (
+        f"{label} 的训练/测试时间片只有 {n_train}/{n_test} 个，"
+        "样本量本身就限制了树模型能学到的结构。"
+    )
+
+
 def _model_verdict(data: dict[str, Any]) -> str:
     parts = []
+    notes = []
     for source, entry in data.items():
-        wins = _model_wins(entry)
         label = source.upper()
-        if wins is None:
+        out = _model_verdict_for(entry, "out_count")
+        inn = _model_verdict_for(entry, "in_count")
+        if not out:
             parts.append(f"{label} 无评估结果")
-        elif wins:
-            metrics = entry["forecast_metrics"]
-            parts.append(
-                f"{label} 上 LightGBM 在借出与归还两个目标上均优于基线"
-                f"（MAE {metrics['baseline']['out_count']['mae']:.4f} → {metrics['model']['out_count']['mae']:.4f}，"
-                f"{metrics['baseline']['in_count']['mae']:.4f} → {metrics['model']['in_count']['mae']:.4f}）"
-            )
-        else:
-            metrics = entry["forecast_metrics"]
-            parts.append(
-                f"{label} 上模型未能同时优于基线"
-                f"（借出 MAE {metrics['baseline']['out_count']['mae']:.4f} → {metrics['model']['out_count']['mae']:.4f}，"
-                f"归还 {metrics['baseline']['in_count']['mae']:.4f} → {metrics['model']['in_count']['mae']:.4f}）"
-            )
+            continue
+        parts.append(f"{label} 借出 {out}；归还 {inn}")
+        note = _thin_data_note(entry, label)
+        if note:
+            notes.append(note)
     verdict = "；".join(parts) + "。"
-    xm = data.get("xm")
-    if xm is not None:
-        buckets = ((xm.get("prep") or {}).get("panel") or {}).get("n_buckets")
-        if buckets is not None:
-            verdict += f"XM 的时间覆盖只有 {buckets} 个时间片，这直接限制了树模型能学到的结构。"
-    return verdict
+    return verdict + "".join(notes)
 
 
 def _strategy_verdict(data: dict[str, Any]) -> str:
     parts = []
     for source, entry in data.items():
         comparison = entry.get("comparison") or {}
-        try:
-            rule = comparison["rule"]["composite_cost"]
-            optimized = comparison["optimized"]["composite_cost"]
-        except (KeyError, TypeError):
+        verdict = comparison_verdict(comparison)
+        if not verdict:
             continue
-        label = source.upper()
-        if optimized <= rule:
-            parts.append(
-                f"{label} 上 S-OPT 略优（综合代价 {rule:.2f} → {optimized:.2f}）"
-            )
-        else:
-            parts.append(
-                f"{label} 上 S-RULE 优于 S-OPT（综合代价 {rule:.2f} → {optimized:.2f}）"
-            )
+        parts.append(f"{source.upper()} 上 {verdict.rstrip('。')}")
     if not parts:
         return "两个源都未产出策略对比结果。"
-    return "；".join(parts) + "。差异来自需求密度、预测误差与容量假设的不同。"
+    return "。".join(parts) + "。"
 
 
 def _zero_verdict(data: dict[str, Any]) -> str:
@@ -641,8 +702,8 @@ def render_report(
         "4. **附加数据缺失（SH）**：无天气、无围栏、无容量；仿真容量只能假设，不能来自数据。",
         "5. **仿真是模拟不是实测**：所有未满足请求、搬运距离、综合代价均为模拟值；"
         "`未满足请求` ≠ `实际缺车数量`——真实缺车需要库存数据，本项目没有。",
-        "6. **预测未优于基线（XM）**：见 `reports/forecast_eval.xm.md`；原因是训练时间片过少与基线过强，"
-        "未通过调整测试集或隐藏基线来制造提升。",
+        "6. **预测能力边界**：" + _forecast_limitation(data)
+        + "未通过调整测试集或隐藏基线来制造提升，原因见各源的预测报告。",
         "7. **粒度敏感性**：见 D2 与上表；不同粒度下误差与零值占比会变化，结论不应被当作与粒度无关。",
         "8. **调度模型边界**：未建模完整车队路径（VRP），搬运成本按 bike-km 计；"
         "策略差异只在给定预算与容量假设下成立。",
@@ -697,14 +758,10 @@ def _strategy_conclusion(comparison: dict[str, Any], label: str) -> list[str]:
         return [f"- {label}：未产出策略对比。", ""]
     rule = comparison.get("rule", {})
     optimized = comparison.get("optimized", {})
-    if optimized.get("composite_cost", float("inf")) <= rule.get("composite_cost", float("inf")):
-        verdict = "S-OPT 的综合代价不高于 S-RULE"
-    else:
-        verdict = "S-OPT 未优于 S-RULE（F5-5 允许，已如实报告）"
+    verdict = comparison_verdict(comparison) or "策略对比尚未生成"
     return [
-        f"- **{label}**：{verdict}。未满足请求 {rule.get('unmet_requests')} → {optimized.get('unmet_requests')}，"
-        f"搬运距离 {_round(rule.get('distance_bike_km'))} → {_round(optimized.get('distance_bike_km'))} bike-km，"
-        f"综合代价 {_round(rule.get('composite_cost'))} → {_round(optimized.get('composite_cost'))}。",
+        f"- **{label}**：{verdict}未满足请求 {rule.get('unmet_requests')} → {optimized.get('unmet_requests')}，"
+        f"搬运距离 {_round(rule.get('distance_bike_km'))} → {_round(optimized.get('distance_bike_km'))} bike-km。",
         "",
     ]
 

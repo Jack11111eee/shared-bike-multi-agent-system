@@ -10,7 +10,47 @@ from bike_agent.config import Layout, source_config
 from bike_agent.prep.grid import build_grid
 from bike_agent.sim.capacity import cell_capacities
 from bike_agent.sim.engine import simulate
+from bike_agent.stats import describe, is_significant, paired_bootstrap
 from bike_agent.utils import delta_pct, markdown_table, pct, write_json
+
+
+def comparison_verdict(comparison: dict[str, Any]) -> str:
+    """One-sentence verdict on S-OPT vs S-RULE, gated on the paired bootstrap.
+
+    A lower point estimate is not the same claim as a real improvement, so the
+    wording follows ``significance`` rather than the raw cost difference.
+    """
+    rule = comparison.get("rule") or {}
+    optimized = comparison.get("optimized") or {}
+    try:
+        rule_cost = float(rule["composite_cost"])
+        opt_cost = float(optimized["composite_cost"])
+    except (KeyError, TypeError, ValueError):
+        return ""
+    lower = opt_cost < rule_cost
+    change = abs(opt_cost - rule_cost) / rule_cost * 100 if rule_cost else 0.0
+    detail = (
+        f"综合代价 {rule_cost:.2f} → {opt_cost:.2f}"
+        f"（点估计{'下降' if lower else '上升'} {change:.2f}%）"
+    )
+    stats = comparison.get("significance") or {}
+    significant = is_significant(stats)
+    if significant is None:
+        return f"{detail}；显著性检验尚未生成。"
+    if significant:
+        return (
+            f"S-OPT 的综合代价**显著{'更低' if lower else '更高'}**：{detail}；"
+            f"S-OPT − S-RULE 的 {describe(stats)}。"
+        )
+    if lower:
+        return (
+            f"S-OPT 的综合代价点估计更低，但**差异不显著**：{detail}；"
+            f"S-OPT − S-RULE 的 {describe(stats)}。"
+        )
+    return (
+        f"S-OPT 的综合代价点估计更高，但**差异不显著**：{detail}；"
+        f"S-OPT − S-RULE 的 {describe(stats)}。"
+    )
 
 
 def _load_inputs(config: dict[str, Any], layout: Layout, source: str) -> dict[str, Any]:
@@ -79,6 +119,40 @@ def run_simulation(
     }
 
 
+def _paired_significance(
+    rule_steps: pd.DataFrame,
+    optimized_steps: pd.DataFrame,
+    assumptions: dict[str, Any],
+) -> dict[str, Any]:
+    """Paired bootstrap on the per-bucket composite-cost difference.
+
+    The composite cost is the headline metric (unmet penalty + travel cost), so
+    it is what gets tested.  Both strategies replay the same buckets, so only
+    ``optimized - rule`` per bucket matters.  Also counts how often each side
+    actually wins, because a small mean difference spread over many tied
+    buckets is a different claim from a consistent win.
+    """
+    penalty = float(assumptions["unmet_penalty"])
+    distance_cost = float(assumptions["distance_cost_per_bike_km"])
+    merged = rule_steps[["time_bucket", "unmet_requests", "distance_bike_km"]].merge(
+        optimized_steps[["time_bucket", "unmet_requests", "distance_bike_km"]],
+        on="time_bucket",
+        suffixes=("_rule", "_optimized"),
+    )
+    rule_cost = merged["unmet_requests_rule"] * penalty + merged["distance_bike_km_rule"] * distance_cost
+    opt_cost = (
+        merged["unmet_requests_optimized"] * penalty
+        + merged["distance_bike_km_optimized"] * distance_cost
+    )
+    diff = (opt_cost - rule_cost).to_numpy(dtype=float)
+    stats = paired_bootstrap(diff)
+    stats["metric"] = "composite_cost"
+    stats["buckets_optimized_better"] = int((diff < 0).sum())
+    stats["buckets_rule_better"] = int((diff > 0).sum())
+    stats["buckets_tied"] = int((diff == 0).sum())
+    return stats
+
+
 def run_comparison(
     config: dict[str, Any],
     layout: Layout,
@@ -92,6 +166,9 @@ def run_comparison(
         "source": source,
         "rule": rule["summary"],
         "optimized": optimized["summary"],
+        "significance": _paired_significance(
+            rule["steps"], optimized["steps"], rule["summary"]["assumptions"]
+        ),
     }
     if write:
         layout.ensure()
@@ -119,6 +196,13 @@ def write_comparison_from_disk(layout: Layout, source: str) -> bool:
         "rule": read_json(paths["rule"]),
         "optimized": read_json(paths["optimized"]),
     }
+    steps = {strategy: layout.sim_path(source, strategy, "csv") for strategy in ("rule", "optimized")}
+    if all(path.exists() for path in steps.values()):
+        report["significance"] = _paired_significance(
+            pd.read_csv(steps["rule"]),
+            pd.read_csv(steps["optimized"]),
+            report["rule"]["assumptions"],
+        )
     layout.ensure()
     layout.report_path(f"strategy_comparison.{source}.md").write_text(
         render_comparison(report), encoding="utf-8"
@@ -232,18 +316,41 @@ def render_comparison(report: dict[str, Any]) -> str:
         "## 结果解读",
         "",
     ]
-    if optimized["composite_cost"] <= rule["composite_cost"]:
+    verdict = comparison_verdict(report)
+    lines.append("在本回放条件下，" + verdict if verdict else "在本回放条件下，策略对比尚未生成。")
+    lines.append("")
+    lines.append(
+        f"未满足请求 {rule['unmet_requests']} → {optimized['unmet_requests']}，"
+        f"搬运距离 {rule['distance_bike_km']:.2f} → {optimized['distance_bike_km']:.2f} bike-km。"
+    )
+    stats = report.get("significance") or {}
+    if stats.get("buckets_tied") is not None:
+        better = stats["buckets_optimized_better"]
+        worse = stats["buckets_rule_better"]
+        lines.append("")
         lines.append(
-            "在本回放条件下，S-OPT 的综合代价不高于 S-RULE。"
-            f"未满足请求 {rule['unmet_requests']} → {optimized['unmet_requests']}，"
-            f"搬运距离 {rule['distance_bike_km']:.2f} → {optimized['distance_bike_km']:.2f} bike-km。"
+            f"逐时间单元看：共 {stats['n']} 个单元，S-OPT 综合代价更低 {better} 个、"
+            f"更高 {worse} 个、持平 {stats['buckets_tied']} 个。"
         )
-    else:
-        lines.append(
-            "在本回放条件下，S-OPT **未**优于 S-RULE（F5-5 允许该结果）。"
-            "可能原因：回放窗口短、预测误差主导、或预算约束并未真正绑定。"
-            "该结果如实报告，未通过调整假设来制造优势。"
-        )
+        total_lower = float(optimized["composite_cost"]) < float(rule["composite_cost"])
+        if total_lower and better >= worse:
+            lines.append("改善在多数或并列多数的时间单元上出现，与总代价的方向一致。")
+        elif total_lower:
+            lines.append(
+                "改善并非在每个单元上一致：S-OPT 的收益集中在少数单元（单次幅度较大），"
+                "S-RULE 则在更多单元上略占优（单次幅度很小）。因此“总代价更低”成立，"
+                "但不能表述为“每个时段都更好”。"
+            )
+        elif better >= worse:
+            lines.append(
+                "S-OPT 在多数单元上略占优，但总代价仍更高——少数单元上 S-RULE 的优势幅度更大。"
+            )
+        else:
+            lines.append(
+                "S-OPT 在更少的单元上占优，总代价也更高，两个层面方向一致。"
+            )
+    lines.append("")
+    lines.append("按 F5-5，无论 S-OPT 胜出与否都如实报告，未通过调整假设制造优势。")
     lines += [
         "",
         "## 守恒与容量溢出",
