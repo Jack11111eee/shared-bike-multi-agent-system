@@ -51,3 +51,4 @@ Implemented the complete pipeline from an empty repository:
 - milestone-M5 → 5e85055
 - milestone-M6 → 24f3d2d
 - milestone-M7 → c072823（含评审后的面板/风险时间桶修复，最终验证状态）
+- push: milestone-M0..M7 未推送（OMC git guardrail 在 ralph 运行期间拦截推送，详见 .omc/notepads/ralph/issues.md）
