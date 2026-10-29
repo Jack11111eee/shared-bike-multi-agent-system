@@ -74,3 +74,35 @@ def test_grid_assignment_is_deterministic():
     second = grid.assign(trips["start_lat"], trips["start_lon"])
     assert first.tolist() == second.tolist()
     assert first.isin(grid.cells["cell_id"]).all()
+
+
+def test_panel_does_not_invent_unobserved_tail_buckets():
+    """A trip ending after midnight must not create a whole synthetic day."""
+    rows = []
+    for trip_id, start, end in [
+        ("a", "2020-12-21 22:05", "2020-12-21 22:20"),
+        ("b", "2020-12-21 23:05", "2020-12-22 00:10"),
+        ("c", "2020-12-22 00:30", "2020-12-22 00:45"),
+    ]:
+        rows.append(
+            {
+                "trip_id": trip_id,
+                "bike_id": "b1",
+                "start_time": pd.Timestamp(start),
+                "end_time": pd.Timestamp(end),
+                "start_lat": 24.5000,
+                "start_lon": 118.1000,
+                "end_lat": 24.5010,
+                "end_lon": 118.1010,
+                "duration_s": 900.0,
+            }
+        )
+    trips = pd.DataFrame(rows)
+    grid = build_grid(trips, 200)
+    panel, meta = build_panel(trips, grid)
+
+    observed = set(trips["start_time"].dt.floor("h")) | set(trips["end_time"].dt.floor("h"))
+    assert set(panel["time_bucket"].unique()) == observed
+    assert meta["n_buckets"] == len(observed) == 3
+    # 2020-12-22 only has 00:00 observed; 01:00..23:00 must not appear.
+    assert pd.Timestamp("2020-12-22 05:00") not in set(panel["time_bucket"].unique())

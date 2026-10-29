@@ -227,6 +227,24 @@ def render_comparison(report: dict[str, Any]) -> str:
         )
     lines += [
         "",
+        "## 守恒与容量溢出",
+        "",
+        markdown_table(
+            ["指标", "S-RULE", "S-OPT"],
+            [
+                ("回放归还总数", rule["returns"], optimized["returns"]),
+                ("因容量不足未能入库的归还（returns_overflow）", rule["returns_overflow"], optimized["returns_overflow"]),
+                ("初始库存", rule["initial_inventory"], optimized["initial_inventory"]),
+                ("末期库存", rule["final_inventory"], optimized["final_inventory"]),
+                ("总容量", rule["capacity_total"], optimized["capacity_total"]),
+            ],
+        ),
+        "",
+        "`returns_overflow` 是回放中**超过该格子停放容量**的归还数量。这些车辆被计为溢出并"
+        "从被跟踪的库存中剔除，而不是凭空消失后又被当成可用供给；两策略使用相同的溢出规则，"
+        "因此不影响对比的公平性。守恒计数器（`violations`）覆盖调度搬运与借还，不含溢出，"
+        "溢出单独统计，见上表与 `outputs/sim_<strategy>.<source>.json`。",
+        "",
         "## 局限",
         "",
         "- 仿真只回放 F3 测试时段，窗口长度受数据时间覆盖限制（XM 仅 4 个小时片，SH 约 6 天）。",

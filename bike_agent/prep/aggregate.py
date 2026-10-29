@@ -1,8 +1,11 @@
 """Spatio-temporal aggregation to (cell, time bucket) counts (F2-2).
 
-The panel is complete: every grid cell is present for every time bucket, with
-explicit zeros.  A complete panel is required by the forecast stage and makes
-the zero-value share (F2-4) measurable.
+The panel is complete *for every observed time bucket*: each grid cell appears
+once per bucket that actually contains a departure or a return, with explicit
+zeros.  Buckets are taken from the observed data rather than from a
+``dates x hours`` cross product, because a source whose data ends mid-night
+would otherwise gain a full day of purely synthetic buckets (which downstream
+forecasting and risk ranking would then treat as real time units).
 """
 
 from __future__ import annotations
@@ -24,14 +27,11 @@ def build_panel(trips: pd.DataFrame, grid: Grid) -> tuple[pd.DataFrame, dict[str
     work["start_bucket"] = work["start_time"].dt.floor("h")
     work["end_bucket"] = work["end_time"].dt.floor("h")
 
-    all_buckets = pd.Index(
+    buckets = pd.DatetimeIndex(
         sorted(set(work["start_bucket"].unique()) | set(work["end_bucket"].unique()))
     )
-    dates = pd.Index(sorted({ts.normalize() for ts in all_buckets}))
-    hours = sorted({int(ts.hour) for ts in all_buckets})
-    buckets = pd.DatetimeIndex(
-        [date + pd.Timedelta(hours=hour) for date in dates for hour in hours]
-    ).sort_values()
+    dates = pd.Index(sorted({ts.normalize() for ts in buckets}))
+    hours = sorted({int(ts.hour) for ts in buckets})
 
     out_counts = (
         work.groupby(["start_cell", "start_bucket"], observed=True)

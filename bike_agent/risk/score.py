@@ -34,15 +34,43 @@ def _normalise(values: pd.Series) -> pd.Series:
     return values / maximum
 
 
+def select_risk_bucket(
+    forecast: pd.DataFrame,
+    panel: pd.DataFrame,
+    min_demand_share: float = 0.1,
+) -> pd.Timestamp:
+    """Pick the time bucket the priority lists are scored for.
+
+    The lists answer "what should we dispatch next", so the bucket must be a
+    real, representative time unit.  Taking the last forecast bucket blindly is
+    wrong when the data ends mid-night: that bucket can be a near-empty tail.
+    We therefore take the last bucket whose observed demand is at least
+    ``min_demand_share`` of the peak bucket demand, falling back to the last
+    forecast bucket when nothing qualifies.
+    """
+    totals = panel.groupby("time_bucket")[["out_count", "in_count"]].sum().sum(axis=1)
+    forecast_buckets = pd.DatetimeIndex(sorted(forecast["time_bucket"].unique()))
+    totals = totals.reindex(forecast_buckets).fillna(0.0)
+    peak = float(totals.max())
+    if peak <= 0:
+        return pd.Timestamp(forecast_buckets.max())
+    eligible = totals.loc[totals >= peak * float(min_demand_share)]
+    if eligible.empty:
+        return pd.Timestamp(forecast_buckets.max())
+    return pd.Timestamp(eligible.index.max())
+
+
 def build_risk_table(
     forecast: pd.DataFrame,
     panel: pd.DataFrame,
     train_buckets: pd.DatetimeIndex,
     time_bucket: pd.Timestamp | None = None,
+    min_demand_share: float = 0.1,
 ) -> pd.DataFrame:
     """Score every cell for one time bucket."""
     if time_bucket is None:
-        time_bucket = pd.Timestamp(forecast["time_bucket"].max())
+        time_bucket = select_risk_bucket(forecast, panel, min_demand_share)
+    time_bucket = pd.Timestamp(time_bucket)
     current = forecast.loc[forecast["time_bucket"] == time_bucket].copy()
     if current.empty:
         raise ValueError(f"no forecast rows for time bucket {time_bucket}")

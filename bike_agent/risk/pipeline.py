@@ -13,6 +13,7 @@ from bike_agent.risk.score import (
     WEIGHTS,
     build_risk_table,
     priority_lists,
+    select_risk_bucket,
 )
 from bike_agent.utils import markdown_table, write_json
 
@@ -35,17 +36,22 @@ def run_risk(
     forecast = pd.read_parquet(forecast_path)
     panel = pd.read_parquet(panel_path)
     split = time_split(panel, float(config.get("forecast", {}).get("train_fraction", 0.8)))
-    table = build_risk_table(forecast, panel, split.train_buckets)
+    min_share = float(config.get("risk", {}).get("min_bucket_demand_share", 0.1))
+    time_bucket = select_risk_bucket(forecast, panel, min_share)
+    table = build_risk_table(forecast, panel, split.train_buckets, time_bucket=time_bucket)
     lists = priority_lists(table)
 
     result = {
         "source": source,
         "cell_size_m": cell_size,
-        "time_bucket": str(pd.Timestamp(forecast["time_bucket"].max())),
+        "time_bucket": str(time_bucket),
         "weights": WEIGHTS,
         "n_cells": int(len(table)),
         "n_replenish": int(len(lists["replenish"])),
         "n_clear": int(len(lists["clear"])),
+        "observed_demand_in_bucket": int(
+            panel.loc[panel["time_bucket"] == time_bucket, ["out_count", "in_count"]].to_numpy().sum()
+        ),
         "table": table,
         "replenish": lists["replenish"],
         "clear": lists["clear"],
@@ -87,8 +93,12 @@ def render_risk_report(result: dict[str, Any]) -> str:
     lines = [
         f"# 失衡风险与调度优先级报告 · {source}",
         "",
-        f"预测时间单元：`{result['time_bucket']}`；评分格数 {result['n_cells']}，"
+        f"预测时间单元：`{result['time_bucket']}`（该桶观测借还总量 "
+        f"{result['observed_demand_in_bucket']}）；评分格数 {result['n_cells']}，"
         f"补车候选 {result['n_replenish']} 个，清运候选 {result['n_clear']} 个。",
+        "",
+        "时间单元选取规则：在测试时段内取**观测借还总量不低于峰值 10%** 的最后一个时间桶，"
+        "避免把数据尾部（例如跨夜归还落在次日凌晨）的空桶当作调度目标。",
         "",
         "## 评分公式（可手工复算）",
         "",
@@ -140,7 +150,8 @@ def render_risk_report(result: dict[str, Any]) -> str:
         lines.append(f"- 清运第一：`{clear.iloc[0]['explanation']}`")
     lines += [
         "",
-        "完整清单见 `outputs/priority_replenish.<source>.csv` 与 `outputs/priority_clear.<source>.csv`。",
+        f"完整清单见 `outputs/priority_replenish.{result['source']}.csv` 与 "
+        f"`outputs/priority_clear.{result['source']}.csv`。",
         "",
     ]
     return "\n".join(lines)

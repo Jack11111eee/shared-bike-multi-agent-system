@@ -100,3 +100,49 @@ def test_priority_lists_write_expected_csv_columns(tiny_config, tiny_layout):
     for frame in (replenish, clear):
         assert frame.columns.tolist()[: len(required)] == required
         assert len(frame) > 0
+
+
+def test_risk_bucket_skips_near_empty_tail():
+    from bike_agent.risk.score import select_risk_bucket
+
+    buckets = pd.date_range("2020-12-21 20:00", periods=5, freq="h")
+    counts = [120, 110, 90, 4, 0]  # the last two are a near-empty tail
+    panel = pd.DataFrame(
+        [
+            {"cell_id": c, "time_bucket": b, "out_count": n, "in_count": n, "net_flow": 0}
+            for b, n in zip(buckets, counts)
+            for c in ("A", "B")
+        ]
+    )
+    forecast = pd.DataFrame(
+        [{"cell_id": c, "time_bucket": b, "pred_out": 1.0, "pred_in": 1.0} for b in buckets for c in ("A", "B")]
+    )
+    assert select_risk_bucket(forecast, panel, 0.1) == buckets[2]
+    # An explicit threshold of 0 keeps the last bucket.
+    assert select_risk_bucket(forecast, panel, 0.0) == buckets[-1]
+
+
+def test_selected_risk_bucket_has_observed_demand(tiny_config, tiny_layout):
+    from bike_agent.risk.pipeline import run_risk
+
+    buckets = pd.date_range("2020-12-21 06:00", periods=5, freq="h")
+    counts = [(6, 2), (5, 3), (4, 4), (1, 1), (0, 0)]
+    rows = []
+    forecast_rows = []
+    for bucket, (out, inn) in zip(buckets, counts):
+        for cell in ("A", "B"):
+            rows.append(
+                {"cell_id": cell, "time_bucket": bucket, "out_count": out, "in_count": inn, "net_flow": out - inn}
+            )
+            forecast_rows.append(
+                {"cell_id": cell, "time_bucket": bucket, "pred_out": float(out), "pred_in": float(inn)}
+            )
+    panel = pd.DataFrame(rows)
+    forecast = pd.DataFrame(forecast_rows)
+    cell_size = tiny_config["sources"]["xm"]["cell_size_m"]
+    panel.to_parquet(tiny_layout.panel_path("xm", cell_size), index=False)
+    forecast.to_parquet(tiny_layout.forecast_path("xm"), index=False)
+
+    result = run_risk(tiny_config, tiny_layout, "xm")
+    assert result["observed_demand_in_bucket"] > 0
+    assert result["time_bucket"] != str(buckets[-1])

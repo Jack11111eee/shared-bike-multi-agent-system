@@ -123,6 +123,8 @@ def assert_contract(frame: pd.DataFrame, **kwargs: Any) -> dict[str, Any]:
         problems.append("coordinates outside plausible lat/lon ranges")
     if report["time_parse_failures"]:
         problems.append(f"{report['time_parse_failures']} unparseable timestamps")
+    if report["null_counts"]["trip_id"] or report["null_counts"]["bike_id"]:
+        problems.append("null trip_id or bike_id")
     if problems:
         raise ContractError("contract validation failed: " + "; ".join(problems))
     return report
