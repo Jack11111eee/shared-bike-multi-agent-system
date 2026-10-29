@@ -234,6 +234,28 @@
         }
       }
     },
+    "significance": {
+      "out_count": {
+        "n": 676,
+        "n_bootstrap": 2000,
+        "seed": 42,
+        "alpha": 0.05,
+        "mean_diff": 0.3000501587442876,
+        "ci_low": -0.8530281653974193,
+        "ci_high": 1.499064865423626,
+        "significant": false
+      },
+      "in_count": {
+        "n": 676,
+        "n_bootstrap": 2000,
+        "seed": 42,
+        "alpha": 0.05,
+        "mean_diff": -0.23893494823180308,
+        "ci_low": -1.3232995433042645,
+        "ci_high": 1.000997857078238,
+        "significant": false
+      }
+    },
     "n_train_rows": 2704,
     "n_test_rows": 676
   },
@@ -446,6 +468,20 @@
       "simulated": true,
       "source": "xm",
       "capacity_mode": "fences"
+    },
+    "significance": {
+      "n": 4,
+      "n_bootstrap": 2000,
+      "seed": 42,
+      "alpha": 0.05,
+      "mean_diff": 10.43033415477926,
+      "ci_low": -67.11800302609764,
+      "ci_high": 92.99508444109864,
+      "significant": false,
+      "metric": "composite_cost",
+      "buckets_optimized_better": 1,
+      "buckets_rule_better": 2,
+      "buckets_tied": 1
     }
   },
   "sim_sensitivity": [

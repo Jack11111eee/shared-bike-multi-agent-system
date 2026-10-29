@@ -62,6 +62,28 @@
       }
     }
   },
+  "significance": {
+    "out_count": {
+      "n": 37995,
+      "n_bootstrap": 2000,
+      "seed": 42,
+      "alpha": 0.05,
+      "mean_diff": -0.02330086812885339,
+      "ci_low": -0.025691350752642842,
+      "ci_high": -0.02066398219899392,
+      "significant": true
+    },
+    "in_count": {
+      "n": 37995,
+      "n_bootstrap": 2000,
+      "seed": 42,
+      "alpha": 0.05,
+      "mean_diff": -0.02666965137192842,
+      "ci_low": -0.02912573173084174,
+      "ci_high": -0.02407925797031174,
+      "significant": true
+    }
+  },
   "n_train_rows": 151470,
   "n_test_rows": 37995
 }

@@ -73,5 +73,19 @@
     "simulated": true,
     "source": "sh",
     "capacity_mode": "fixed"
+  },
+  "significance": {
+    "n": 149,
+    "n_bootstrap": 2000,
+    "seed": 42,
+    "alpha": 0.05,
+    "mean_diff": -0.09037338223451796,
+    "ci_low": -0.16984254572052754,
+    "ci_high": -0.007241251907866988,
+    "significant": true,
+    "metric": "composite_cost",
+    "buckets_optimized_better": 23,
+    "buckets_rule_better": 60,
+    "buckets_tied": 66
   }
 }

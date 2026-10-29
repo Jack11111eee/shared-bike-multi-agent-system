@@ -73,5 +73,19 @@
     "simulated": true,
     "source": "xm",
     "capacity_mode": "fences"
+  },
+  "significance": {
+    "n": 4,
+    "n_bootstrap": 2000,
+    "seed": 42,
+    "alpha": 0.05,
+    "mean_diff": 10.43033415477926,
+    "ci_low": -67.11800302609764,
+    "ci_high": 92.99508444109864,
+    "significant": false,
+    "metric": "composite_cost",
+    "buckets_optimized_better": 1,
+    "buckets_rule_better": 2,
+    "buckets_tied": 1
   }
 }
