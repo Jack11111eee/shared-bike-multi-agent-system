@@ -29,6 +29,11 @@ class SimResult:
     steps: pd.DataFrame
     moves: pd.DataFrame
     violations: dict[str, int] = field(default_factory=dict)
+    # Per-(cell, bucket) replay state (F8).  ``bikes_moved`` here is the
+    # "moved out" reading only: one dispatch touches two cells, so counting it
+    # on both sides would double the total and break the F8-2 self-consistency
+    # sum against ``steps``.
+    cell_states: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def distance_matrix(cells: pd.DataFrame) -> np.ndarray:
@@ -81,6 +86,22 @@ def simulate(
     per_bucket_budget = int(budget if budget is not None else sim_cfg.get("max_moves_per_bucket", 25))
     max_candidates = int(sim_cfg.get("max_candidate_surplus_per_deficit", 20))
 
+    # F8: the per-cell state is accumulated here and returned as a long table.
+    # Every field below is summed per bucket by ``tests/test_replay.py`` and
+    # must reproduce the corresponding ``steps`` column exactly.
+    state_names = (
+        "inventory_start",
+        "borrow_requests",
+        "borrow_met",
+        "unmet_requests",
+        "returns",
+        "returns_applied",
+        "returns_overflow",
+        "bikes_moved",
+        "inventory_end",
+    )
+    cell_state = {name: np.zeros((len(bucket_values), len(cell_ids)), dtype=np.int64) for name in state_names}
+
     steps: list[dict[str, Any]] = []
     move_rows: list[dict[str, Any]] = []
     violations = {
@@ -121,6 +142,7 @@ def simulate(
             inventory[source] -= allowed
             inventory[target] += allowed
             moved += allowed
+            cell_state["bikes_moved"][index, source] += allowed
             distance_m += allowed * dist
             move_rows.append(
                 {
@@ -136,8 +158,13 @@ def simulate(
             violations["budget"] += 1
 
         room_after_moves = capacity - inventory
-        applied_returns = np.minimum(returned[index].astype(int), np.clip(room_after_moves, 0, None))
-        overflow = returned[index].astype(int) - applied_returns
+        # Truncate once, here, and use the same integers for the per-cell state
+        # and the step total.  Truncating per cell and summing floats at the
+        # step level would disagree on non-integral counts, which would break
+        # the F8-2 reconciliation without any visible cause.
+        returns_count = returned[index].astype(int)
+        applied_returns = np.minimum(returns_count, np.clip(room_after_moves, 0, None))
+        overflow = returns_count - applied_returns
         inventory += applied_returns
 
         requests = requested[index].astype(int)
@@ -154,13 +181,22 @@ def simulate(
         if int(inventory.sum()) != expected_total:
             violations["conservation"] += 1
 
+        cell_state["inventory_start"][index] = inventory_before
+        cell_state["borrow_requests"][index] = requests
+        cell_state["borrow_met"][index] = met
+        cell_state["unmet_requests"][index] = unmet
+        cell_state["returns"][index] = returns_count
+        cell_state["returns_applied"][index] = applied_returns
+        cell_state["returns_overflow"][index] = overflow
+        cell_state["inventory_end"][index] = inventory
+
         steps.append(
             {
                 "time_bucket": bucket,
                 "borrow_requests": int(requests.sum()),
                 "borrow_met": int(met.sum()),
                 "unmet_requests": int(unmet.sum()),
-                "returns": int(returned[index].sum()),
+                "returns": int(returns_count.sum()),
                 "returns_applied": int(applied_returns.sum()),
                 "returns_overflow": int(overflow.sum()),
                 "bikes_moved": int(moved),
@@ -172,6 +208,13 @@ def simulate(
 
     steps_frame = pd.DataFrame(steps)
     moves_frame = pd.DataFrame(move_rows)
+    cell_states_frame = pd.DataFrame(
+        {
+            "time_bucket": np.repeat(bucket_values.to_numpy(), len(cell_ids)),
+            "cell_id": np.tile(np.asarray(cell_ids, dtype=object), len(bucket_values)),
+            **{name: cell_state[name].reshape(-1) for name in state_names},
+        }
+    )
     total_requests = int(steps_frame["borrow_requests"].sum())
     total_met = int(steps_frame["borrow_met"].sum())
     total_unmet = int(steps_frame["unmet_requests"].sum())
@@ -208,4 +251,10 @@ def simulate(
         "violations": violations,
         "simulated": True,
     }
-    return SimResult(summary=summary, steps=steps_frame, moves=moves_frame, violations=violations)
+    return SimResult(
+        summary=summary,
+        steps=steps_frame,
+        moves=moves_frame,
+        violations=violations,
+        cell_states=cell_states_frame,
+    )

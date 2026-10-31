@@ -15,6 +15,24 @@ def _optional_json(path: Path) -> Any:
     return read_json(path) if path.exists() else None
 
 
+def _sim_steps(layout: Layout, source: str) -> dict[str, dict[str, int]]:
+    """Phase 2 replay sizes, so F10's page numbers resolve through key_numbers."""
+    sizes: dict[str, dict[str, int]] = {}
+    for strategy in ("rule", "optimized"):
+        steps = layout.sim_path(source, strategy, "csv")
+        replay = layout.replay_path(source, strategy)
+        moves = layout.outputs / f"sim_moves.{strategy}.{source}.json"
+        if not (steps.exists() and replay.exists() and moves.exists()):
+            continue
+        sizes[strategy] = {
+            "n_buckets": int(len(pd.read_csv(steps))),
+            "n_cells": int(len(pd.read_parquet(replay)["cell_id"].unique())),
+            "n_moves": int(len(read_json(moves))),
+            "bytes": int(replay.stat().st_size),
+        }
+    return sizes
+
+
 def collect_source(layout: Layout, config: dict[str, Any], source: str) -> dict[str, Any]:
     src_cfg = source_config(config, source)
     cell_size = int(src_cfg["cell_size_m"])
@@ -29,6 +47,11 @@ def collect_source(layout: Layout, config: dict[str, Any], source: str) -> dict[
         "risk": _optional_json(layout.outputs / f"risk_summary.{source}.json"),
         "comparison": _optional_json(layout.outputs / f"strategy_comparison.{source}.json"),
         "sim_sensitivity": _optional_json(layout.outputs / f"sim_sensitivity.{source}.json"),
+        "sim_steps": _sim_steps(layout, source),
+        "sim_summary": {
+            strategy: _optional_json(layout.sim_path(source, strategy, "json"))
+            for strategy in ("rule", "optimized")
+        },
     }
 
 
@@ -86,4 +109,20 @@ def build_key_numbers(data: dict[str, Any]) -> list[dict[str, Any]]:
             add("optimized distance bike-km", comparison["optimized"]["distance_bike_km"], f"outputs/strategy_comparison.{source}.json")
             add("rule composite cost", comparison["rule"]["composite_cost"], f"outputs/strategy_comparison.{source}.json")
             add("optimized composite cost", comparison["optimized"]["composite_cost"], f"outputs/strategy_comparison.{source}.json")
+        # Phase 2 (F10-5): the replay page traces its numbers to these three
+        # artefacts, so they must be resolvable through key_numbers.json too.
+        for strategy in ("rule", "optimized"):
+            steps_path = d.get("sim_steps", {}).get(strategy)
+            if steps_path is None:
+                continue
+            add(f"{strategy} replay frames", d["sim_steps"][strategy]["n_buckets"], f"outputs/sim_{strategy}.{source}.csv")
+            add(f"{strategy} replay cells", d["sim_steps"][strategy]["n_cells"], f"outputs/replay.{strategy}.{source}.parquet")
+            add(
+                f"{strategy} replay moves",
+                d["sim_steps"][strategy]["n_moves"],
+                f"outputs/sim_moves.{strategy}.{source}.json",
+            )
+            summary = (d.get("sim_summary") or {}).get(strategy)
+            if summary:
+                add(f"{strategy} service rate", summary["service_rate"], f"outputs/sim_{strategy}.{source}.json")
     return numbers

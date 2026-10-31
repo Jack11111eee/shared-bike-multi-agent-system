@@ -593,5 +593,95 @@
         "service_rate": 0.9686783256880734
       }
     }
-  ]
+  ],
+  "sim_steps": {
+    "rule": {
+      "n_buckets": 4,
+      "n_cells": 169,
+      "n_moves": 17,
+      "bytes": 18630
+    },
+    "optimized": {
+      "n_buckets": 4,
+      "n_cells": 169,
+      "n_moves": 13,
+      "bytes": 18599
+    }
+  },
+  "sim_summary": {
+    "rule": {
+      "strategy": "rule",
+      "n_buckets": 4,
+      "first_bucket": "2020-12-25 06:00:00",
+      "last_bucket": "2020-12-25 09:00:00",
+      "borrow_requests": 41856,
+      "borrow_met": 38239,
+      "unmet_requests": 3617,
+      "service_rate": 0.9135846712538226,
+      "bikes_moved": 800,
+      "distance_bike_km": 855.773262585488,
+      "composite_cost": 3788.1546525170975,
+      "returns": 41856,
+      "returns_overflow": 6160,
+      "initial_inventory": 26410,
+      "final_inventory": 23867,
+      "capacity_total": 52825,
+      "budget_per_bucket": 200,
+      "assumptions": {
+        "initial_fill_ratio": 0.5,
+        "safety_stock_ratio": 0.2,
+        "max_moves_per_bucket": 200,
+        "unmet_penalty": 1.0,
+        "distance_cost_per_bike_km": 0.2,
+        "max_candidate_surplus_per_deficit": 20
+      },
+      "violations": {
+        "conservation": 0,
+        "capacity": 0,
+        "budget": 0,
+        "negative_inventory": 0,
+        "clamped_moves": 0
+      },
+      "simulated": true,
+      "source": "xm",
+      "capacity_mode": "fences"
+    },
+    "optimized": {
+      "strategy": "optimized",
+      "n_buckets": 4,
+      "first_bucket": "2020-12-25 06:00:00",
+      "last_bucket": "2020-12-25 09:00:00",
+      "borrow_requests": 41856,
+      "borrow_met": 38187,
+      "unmet_requests": 3669,
+      "service_rate": 0.9123423165137615,
+      "bikes_moved": 800,
+      "distance_bike_km": 804.379945681073,
+      "composite_cost": 3829.8759891362147,
+      "returns": 41856,
+      "returns_overflow": 6255,
+      "initial_inventory": 26410,
+      "final_inventory": 23824,
+      "capacity_total": 52825,
+      "budget_per_bucket": 200,
+      "assumptions": {
+        "initial_fill_ratio": 0.5,
+        "safety_stock_ratio": 0.2,
+        "max_moves_per_bucket": 200,
+        "unmet_penalty": 1.0,
+        "distance_cost_per_bike_km": 0.2,
+        "max_candidate_surplus_per_deficit": 20
+      },
+      "violations": {
+        "conservation": 0,
+        "capacity": 0,
+        "budget": 0,
+        "negative_inventory": 0,
+        "clamped_moves": 0
+      },
+      "simulated": true,
+      "source": "xm",
+      "capacity_mode": "fences"
+    }
+  }
 }
