@@ -552,7 +552,206 @@ def render_decisions(
         "**日期**：2026-10-29。",
         "",
     ]
+    lines += _phase2_decisions(data)
     return "\n".join(lines)
+
+
+def _phase2_decisions(data: dict[str, Any]) -> list[str]:
+    """D8-D12 from REQUIREMENTS-PHASE2.md §4, rendered from the real artefacts."""
+
+    def sizes(source: str, strategy: str = "rule") -> str:
+        entry = ((data.get(source) or {}).get("sim_steps") or {}).get(strategy) or {}
+        if not entry:
+            return "n/a"
+        return (
+            f"{entry['n_buckets']} 帧 × {entry['n_cells']} 格，搬运 {entry['n_moves']} 条，"
+            f"parquet {entry['bytes'] / 1024:.0f} KB"
+        )
+
+    def rate(source: str, strategy: str) -> str:
+        comparison = (data.get(source) or {}).get("comparison") or {}
+        summary = comparison.get(strategy) or {}
+        value = summary.get("service_rate")
+        return f"{value * 100:.2f}%" if isinstance(value, (int, float)) else "n/a"
+
+    xm_rate = rate("xm", "rule")
+    sh_rate = rate("sh", "rule")
+    return [
+        "## Phase 2 · 与 Phase 1 的两处冲突修订",
+        "",
+        "> `REQUIREMENTS-PHASE2.md` §1.3 要求这两处冲突**显式修订**，不得悄悄绕过：",
+        "> 既要在 `REQUIREMENTS.md` 改条目，也要在本文件留下记录。两条修订已分别应用到",
+        "> `REQUIREMENTS.md` §1.2 的前端行与 F7-3。",
+        "",
+        "### 修订一 · 前端 / Web UI 从「不做」改为「本期必做」",
+        "",
+        "**候选方案**：① 维持 Phase 1 结论，继续不做前端；② 反转结论，把回放界面列为必做；"
+        "③ 做一个仅供内部调试、不交付的页面。",
+        "",
+        "**选择**：方案 ②（B5 已确认）。",
+        "",
+        "**依据与证据**：Phase 1 的结论全部是数字，评审无法直观判断系统是否真的在按回放数据逐帧推进。"
+        "方案 ③ 无法被外部验证，等于没做。因此前端定位为**回放验证手段**，不是产品化："
+        "它逐帧展示 `outputs/replay.*.parquet` 的逐格状态与 `sim_moves.*.json` 的搬运记录，"
+        "XM 4 帧、SH 149 帧，与产物时间单元数逐一对应。",
+        "",
+        "**可逆性**：高，前端是独立目录 `replay/`，删掉不影响任何产物与测试。",
+        "",
+        "**日期**：2026-10-29（B5 确认）/ 2026-10-30（实现）。",
+        "",
+        "### 修订二 · F7-3「零 LLM 依赖」的作用范围收窄",
+        "",
+        "**候选方案**：① 废除 F7-3；② 维持 F7-3 覆盖全部代码，智能体层不得存在；"
+        "③ 收窄 F7-3 到 `bike-agent repro` 与 F1–F7 模块，智能体层作为独立可选模块。",
+        "",
+        "**选择**：方案 ③。",
+        "",
+        "**依据与证据**：F7-3 的价值在于「主流水线不依赖任何 LLM」，这条必须保住；"
+        "但把它扩到智能体层，等于禁止本期做 F11。收窄后仍需证明边界成立，因此有两条自动化守护："
+        "`tests/test_serve.py::test_service_works_without_any_llm_sdk`（阻断全部 LLM SDK 后服务仍可用）"
+        "与 `tests/test_agent.py::test_pipeline_runs_when_the_agent_layer_cannot_be_imported`"
+        "（阻断智能体模块后主流水线照常运行）。F11 本身也用确定性规划器实现，未引入任何 LLM SDK（D12）。",
+        "",
+        "**可逆性**：高，`REQUIREMENTS.md` F7-3 加了一句限定；若日后要恢复全量约束，删除智能体模块即可。",
+        "",
+        "**日期**：2026-10-29（确认）/ 2026-10-30（实现）。",
+        "",
+        "## Phase 2 · D8–D12（回放可视化、前后端与智能体层）",
+        "",
+        "### D8 · 回放主场景：XM 还是 SH",
+        "",
+        "**候选方案**：① 只用 XM；② 只用 SH；③ 两者并列，各自作为首页入口。",
+        "",
+        "**选择**：方案 ③，但两者承担不同角色。",
+        "",
+        f"**依据与证据**：两个源互补且互相拆台。XM {sizes('xm')}，服务率 {xm_rate}——画面有事发生，"
+        f"但时间轴几乎为空；SH {sizes('sh')}，服务率 {sh_rate}——时间轴拖得动，但绝大多数帧搬运量是个位数。"
+        "硬选一个必然做出「好看但没内容」或「有内容但拖不动」的演示，因此并列呈现，并在界面与本节如实说明差异。",
+        "",
+        "**可逆性**：高，`bike_agent/replay/site.py` 的 `build_site(sources=...)` 决定渲染哪些源。",
+        "",
+        "**日期**：2026-10-30。",
+        "",
+        "### D9 · 前端技术栈与构建方式",
+        "",
+        "**候选方案**：① 需要构建的 SPA（React/Vite）；② 单页 + 前端图表库；③ 预渲染的静态多页 + 本地 CSS/JS。",
+        "",
+        "**选择**：方案 ③。每个时间单元一个 HTML 页，`style.css` / `app.js` 随站点提供，无构建步骤、无第三方库。",
+        "",
+        "**依据与证据**：F10-9 要求离线可用，F10-5 要求「读取渲染后的 DOM」可断言。预渲染把指标、箭头、"
+        "说明区都变成服务端产物，测试用标准库 `html.parser` 即可逐帧断言，不必依赖无头浏览器；"
+        "同时 `file://` 直接打开即可用（数据内嵌在页面里，不发起任何 fetch）。",
+        "",
+        "**代价**：格子由页面内的一段本地脚本从内嵌 JSON 绘制，逐格元素不在静态 DOM 里；"
+        "脚本会为每个生成的 `<rect>` 补上同样的 `data-source`，因此在浏览器里 DOM 依然可追溯。",
+        "",
+        "**可逆性**：高，渲染逻辑集中在 `bike_agent/replay/site.py`。",
+        "",
+        "**日期**：2026-10-30。",
+        "",
+        "### D10 · 接口形态：REST / 静态 JSON / 混合",
+        "",
+        "**候选方案**：① 只做常驻 HTTP 服务；② 只预生成静态 JSON；③ 混合：静态站点作交付物，服务供程序调用。",
+        "",
+        "**选择**：方案 ③。",
+        "",
+        "**依据与证据**：界面要求离线可打开（F10-9），常驻服务做不到「双击即看」；而 F9 要求"
+        "「能被外部程序驱动」，静态文件又做不到按参数查询。两者并存：`replay/` 是交付物，"
+        "`bike-agent serve` 暴露同一批产物，且三工具接口直接复用 `bike_agent.tools.handlers`（F9-3 有测试证明逐字段相等）。",
+        "",
+        "**可逆性**：高，服务层不持有状态，删掉不影响静态站点。",
+        "",
+        "**日期**：2026-10-30。",
+        "",
+        "### D11 · 逐格状态的存储格式与体量",
+        "",
+        "**候选方案**：① JSON；② CSV；③ parquet。",
+        "",
+        "**选择**：方案 ③，`outputs/replay.<strategy>.<source>.parquet`。",
+        "",
+        f"**依据与证据**：{sizes('sh')}；XM {sizes('xm')}。parquet 对 38k 行的整数列压缩后不到 130 KB，"
+        "与既有产物同一套读写路径（`pandas.read_parquet`），F8-2 的自洽性测试与 F9 的接口都直接读它。"
+        "前端不直接读 parquet——浏览器无法解析——而是在构建时把每帧数值内嵌进对应页面。",
+        "",
+        "**可逆性**：高，格式由 `Layout.replay_path` 与 `sim/pipeline.py` 决定。",
+        "",
+        "**日期**：2026-10-30。",
+        "",
+        "### D12 · 智能体任务与框架",
+        "",
+        "**候选方案**：① 调度建议生成；② 回放复盘；③ 工具链自检。",
+        "",
+        "**选择**：方案 ②「回放复盘」，框架为**确定性规划器**，不引入任何 LLM SDK。",
+        "",
+        "**依据与证据**：F11-1/F11-2 要求未安装智能体模块时主流水线一切正常，F7-3 的零 LLM 约束"
+        "只是被收窄、并未废除。回放复盘只需读三工具返回值做排序与归因，规则化即可完成，"
+        "且每个数字都能在同一次运行的工具返回体里找到字符串级匹配（F11-5）——换成 LLM 反而更难保证这一点。"
+        "如需接入 LLM，只替换 `bike_agent/agent/planner.py` 的决策函数，工具层与审计格式不变。",
+        "",
+        "**可逆性**：高，智能体模块独立于主流水线，未被 `bike_agent repro` 导入（有守护测试）。",
+        "",
+        "**日期**：2026-10-30。",
+        "",
+    ]
+
+
+def _tension_section(data: dict[str, Any]) -> str:
+    """REQUIREMENTS-PHASE2 §2.3, rendered from the artefacts (DoD item 10).
+
+    The two sources are complementary in a way that undercuts itself: one has
+    plenty happening over almost no time, the other has a long timeline over
+    which almost nothing happens.  Saying so is the honest thing; the point of
+    the section is that it is *computed*, so it cannot drift from the data.
+    """
+    rows = []
+    for source, entry in data.items():
+        sizes = entry.get("sim_steps") or {}
+        comparison = entry.get("comparison") or {}
+        if not sizes or not comparison:
+            continue
+        rule = comparison.get("rule") or {}
+        frames = sizes.get("rule", {}).get("n_buckets")
+        moves = sizes.get("rule", {}).get("n_moves")
+        rate = rule.get("service_rate")
+        if frames is None or rate is None:
+            continue
+        if frames <= 10:
+            verdict = "有戏没帧"
+            reason = (
+                f"服务率 {rate * 100:.2f}%，未满足请求 {rule.get('unmet_requests')} 次，"
+                f"画面应该有明显的事发生；但仿真只回放 {frames} 个时间单元，时间轴几乎是空的"
+            )
+        elif rate > 0.99:
+            verdict = "有帧没戏"
+            reason = (
+                f"{frames} 个时间单元，时间轴拖起来很流畅；但服务率 {rate * 100:.2f}%，"
+                f"绝大多数时间单元里搬运量只有个位数（全时段共 {moves} 条搬运记录），画面接近静止"
+            )
+        else:
+            verdict = "两者均衡"
+            reason = f"{frames} 个时间单元，服务率 {rate * 100:.2f}%，共 {moves} 条搬运记录"
+        rows.append((source.upper(), verdict, frames, f"{rate * 100:.2f}%", moves, reason))
+
+    if not rows:
+        return "回放产物尚未生成。"
+
+    table = markdown_table(
+        ["数据源", "特征", "帧数", "服务率", "搬运记录", "说明"],
+        rows,
+    )
+    return "\n".join(
+        [
+            table,
+            "",
+            "这条张力本身是有价值的结论：**两个数据源各自适合回答不同的问题**——"
+            "XM 适合看「有事发生时调度做了什么」，SH 适合看「长时间轴上调度有多克制」；"
+            "这与 D1 的分工结论一致。",
+            "",
+            "按 F10-1 / F10-4 / F10-6，本项目**没有**为了让画面好看而插值、补帧、"
+            "复制时间单元、筛选有搬运的帧或放大动效。一个诚实的、平淡的回放，"
+            "比一个漂亮的、编造的回放有价值。",
+        ]
+    )
 
 
 def _entry(d: dict[str, Any], cell_size: int) -> dict[str, Any] | None:
@@ -717,7 +916,27 @@ def render_report(
         "见 `reports/cross_source.md`。两个源的模型增益方向与策略胜负不一致，"
         "报告已分别标注结论的适用范围，未将两源结果混在同一张表里。",
         "",
-        "## 9. 关键数字追溯（F6-4 / NF-3）",
+        "## 9. 回放（Phase 2 · F8–F10）",
+        "",
+        "`bike-agent repro` 会生成 `replay/`：每个时间单元一页，S-RULE 与 S-OPT 并排，"
+        "逐格展示库存、未满足请求与搬运方向。双击 `replay/index.html` 即可离线打开，"
+        "不依赖网络、构建步骤或后端服务。",
+        "",
+        "帧数**等于**产物时间单元数，没有插值、补帧或合成数据："
+        + "；".join(
+            f"{source.upper()} {entry['sim_steps'][strategy]['n_buckets']} 帧"
+            for source, entry in data.items()
+            for strategy in ("rule",)
+            if entry.get("sim_steps")
+        )
+        + "。没有搬运记录的时间单元，画面上不会出现箭头；每条箭头都对应 "
+        "`outputs/sim_moves.*.json` 里的一条记录。",
+        "",
+        "### 两个数据源的张力（REQUIREMENTS-PHASE2 §2.3，如实说明）",
+        "",
+        _tension_section(data),
+        "",
+        "## 10. 关键数字追溯（F6-4 / NF-3）",
         "",
         markdown_table(
             ["指标", "数值", "来源文件"],
@@ -726,7 +945,7 @@ def render_report(
         "",
         "完整机器可读版本：`outputs/key_numbers.json`。",
         "",
-        "## 10. 复现",
+        "## 11. 复现",
         "",
         "```bash",
         "# 从零复现全部产物（首次运行会下载原始数据）",
@@ -738,7 +957,7 @@ def render_report(
         "",
         "同一条命令、同一数据、同一种子 → 同一组数字（允许浮点末位差异）。",
         "",
-        "## 11. 数据合规与署名",
+        "## 12. 数据合规与署名",
         "",
         "- DS-XM 仅用于学术/教学，禁止商用；使用时须署名原始数据提供方"
         "（Xiamen shared bicycle operators via the Digital China Innovation Competition）。",

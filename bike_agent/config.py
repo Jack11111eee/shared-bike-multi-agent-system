@@ -139,6 +139,10 @@ class Layout:
     def sim_path(self, source: str, strategy: str, suffix: str) -> Path:
         return self.outputs / f"sim_{strategy}.{source}.{suffix}"
 
+    def replay_path(self, source: str, strategy: str) -> Path:
+        """Per-(cell, bucket) replay state (F8-1)."""
+        return self.outputs / f"replay.{strategy}.{source}.parquet"
+
     def key_numbers_path(self) -> Path:
         return self.outputs / "key_numbers.json"
 

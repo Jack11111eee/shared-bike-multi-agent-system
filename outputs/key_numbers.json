@@ -95,6 +95,46 @@
     "source_file": "outputs/strategy_comparison.xm.json"
   },
   {
+    "metric": "XM · rule replay frames",
+    "value": 4,
+    "source_file": "outputs/sim_rule.xm.csv"
+  },
+  {
+    "metric": "XM · rule replay cells",
+    "value": 169,
+    "source_file": "outputs/replay.rule.xm.parquet"
+  },
+  {
+    "metric": "XM · rule replay moves",
+    "value": 17,
+    "source_file": "outputs/sim_moves.rule.xm.json"
+  },
+  {
+    "metric": "XM · rule service rate",
+    "value": 0.9135846712538226,
+    "source_file": "outputs/sim_rule.xm.json"
+  },
+  {
+    "metric": "XM · optimized replay frames",
+    "value": 4,
+    "source_file": "outputs/sim_optimized.xm.csv"
+  },
+  {
+    "metric": "XM · optimized replay cells",
+    "value": 169,
+    "source_file": "outputs/replay.optimized.xm.parquet"
+  },
+  {
+    "metric": "XM · optimized replay moves",
+    "value": 13,
+    "source_file": "outputs/sim_moves.optimized.xm.json"
+  },
+  {
+    "metric": "XM · optimized service rate",
+    "value": 0.9123423165137615,
+    "source_file": "outputs/sim_optimized.xm.json"
+  },
+  {
     "metric": "SH · trip rows",
     "value": 102361,
     "source_file": "outputs/summary.sh.json"
@@ -188,5 +228,45 @@
     "metric": "SH · optimized composite cost",
     "value": 879.4185235974745,
     "source_file": "outputs/strategy_comparison.sh.json"
+  },
+  {
+    "metric": "SH · rule replay frames",
+    "value": 149,
+    "source_file": "outputs/sim_rule.sh.csv"
+  },
+  {
+    "metric": "SH · rule replay cells",
+    "value": 255,
+    "source_file": "outputs/replay.rule.sh.parquet"
+  },
+  {
+    "metric": "SH · rule replay moves",
+    "value": 1404,
+    "source_file": "outputs/sim_moves.rule.sh.json"
+  },
+  {
+    "metric": "SH · rule service rate",
+    "value": 0.9937363740180641,
+    "source_file": "outputs/sim_rule.sh.json"
+  },
+  {
+    "metric": "SH · optimized replay frames",
+    "value": 149,
+    "source_file": "outputs/sim_optimized.sh.csv"
+  },
+  {
+    "metric": "SH · optimized replay cells",
+    "value": 255,
+    "source_file": "outputs/replay.optimized.sh.parquet"
+  },
+  {
+    "metric": "SH · optimized replay moves",
+    "value": 1409,
+    "source_file": "outputs/sim_moves.optimized.sh.json"
+  },
+  {
+    "metric": "SH · optimized service rate",
+    "value": 0.9941170363705575,
+    "source_file": "outputs/sim_optimized.sh.json"
   }
 ]

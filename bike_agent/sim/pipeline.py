@@ -106,6 +106,7 @@ def run_simulation(
         layout.ensure()
         result.steps.to_csv(layout.sim_path(source, strategy, "csv"), index=False)
         write_json(layout.sim_path(source, strategy, "json"), summary)
+        result.cell_states.to_parquet(layout.replay_path(source, strategy), index=False)
         if source == config.get("primary_source"):
             result.steps.to_csv(layout.outputs / f"sim_{strategy}.csv", index=False)
             write_json(layout.outputs / f"sim_{strategy}.json", summary)

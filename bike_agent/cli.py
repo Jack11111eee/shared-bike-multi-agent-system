@@ -18,6 +18,9 @@ from bike_agent.forecast.pipeline import run_baseline_sensitivity, run_forecast
 from bike_agent.prep.pipeline import render_prep_report, run_prep
 from bike_agent.report.pipeline import run_reports
 from bike_agent.risk.pipeline import render_risk_report, run_risk
+from bike_agent.replay import build_site
+from bike_agent.serve import check as serve_check
+from bike_agent.serve import make_server
 from bike_agent.sim.pipeline import (
     run_comparison,
     run_sim_sensitivity,
@@ -28,7 +31,7 @@ from bike_agent.tools.handlers import ToolError, call_tool
 from bike_agent.tools.schemas import TOOL_SCHEMA
 from bike_agent.utils import write_json
 
-_DERIVED_DIRS = ("processed", "outputs", "reports", "figures")
+_DERIVED_DIRS = ("processed", "outputs", "reports", "figures", "replay")
 
 
 def _layout(args: argparse.Namespace) -> Layout:
@@ -167,9 +170,59 @@ def cmd_repro(args: argparse.Namespace) -> int:
         run_sim_sensitivity(config, layout, source)
 
     run_reports(config, layout, sources)
+    built = build_site(config, layout, sources)
+    frames = sum(info["n_frames"] for info in built["sources"].values())
     Draft202012Validator.check_schema(TOOL_SCHEMA)
     write_json(layout.outputs / "tool_schema.json", TOOL_SCHEMA)
+    print(f"[replay] wrote {frames} frame pages -> replay/")
     print(f"[repro] complete for {', '.join(sources)}")
+    return 0
+
+
+def cmd_replay(args: argparse.Namespace) -> int:
+    config, layout = _config(args), _layout(args)
+    built = build_site(config, layout, _sources(args, config))
+    for source, info in built["sources"].items():
+        print(f"[replay] {source}: {info['n_frames']} frames x {info['n_cells']} cells -> replay/{source}/")
+    return 0
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    config, layout = _config(args), _layout(args)
+    if args.check:
+        result = serve_check(config, layout)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0 if result["ok"] else 1
+    server = make_server(config, layout, host=args.host, port=args.port)
+    host, port = server.server_address[:2]
+    print(f"[serve] listening on http://{host}:{port}", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return 0
+
+
+def cmd_agent(args: argparse.Namespace) -> int:
+    # Imported here, not at module scope: `bike-agent repro` must never pull the
+    # agent layer into its import graph (F11-2).
+    from bike_agent.agent import ToolGateway, render_markdown, replay_review
+
+    config, layout = _config(args), _layout(args)
+    source = args.source or config.get("primary_source", "xm")
+    gateway = ToolGateway(config, layout)
+    record = replay_review(gateway, source=source, strategy=args.strategy, top_k=args.top_k)
+    payload = record.to_dict()
+
+    layout.ensure()
+    json_path = layout.outputs / f"agent_run.{source}.json"
+    md_path = layout.outputs / f"agent_run.{source}.md"
+    write_json(json_path, payload)
+    md_path.write_text(render_markdown(payload), encoding="utf-8")
+    print(record.conclusion)
+    print(f"\n[agent] record -> {json_path} , {md_path}")
     return 0
 
 
@@ -234,6 +287,23 @@ def build_parser() -> argparse.ArgumentParser:
     repro.add_argument("--sources", default=None, help="comma separated list (default: all)")
     repro.add_argument("--fresh", action="store_true", help="delete derived artefacts first")
     repro.set_defaults(func=cmd_repro)
+
+    replay = sub.add_parser("replay", help="render the static replay site")
+    replay.add_argument("--source", choices=["xm", "sh"])
+    replay.add_argument("--sources", default=None, help="comma separated list")
+    replay.set_defaults(func=cmd_replay)
+
+    serve = sub.add_parser("serve", help="replay HTTP service")
+    serve.add_argument("--check", action="store_true", help="validate artefacts without binding a port")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.set_defaults(func=cmd_serve)
+
+    agent = sub.add_parser("agent", help="auditable agent layer (optional module)")
+    agent.add_argument("--source", choices=["xm", "sh"])
+    agent.add_argument("--strategy", choices=["rule", "optimized"], default="rule")
+    agent.add_argument("--top-k", type=int, default=5)
+    agent.set_defaults(func=cmd_agent)
 
     tools = sub.add_parser("tools", help="agent tool contracts")
     tools.add_argument("--schema", action="store_true")

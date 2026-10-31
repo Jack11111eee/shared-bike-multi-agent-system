@@ -53,3 +53,94 @@ Implemented the complete pipeline from an empty repository:
 - milestone-M7 → c072823（含评审后的面板/风险时间桶修复，最终验证状态）
 - push: milestone-M0..M7 未推送（OMC git guardrail 在 ralph 运行期间拦截推送，详见 .omc/notepads/ralph/issues.md）
 git: 15 commits, 最新 tag=milestone-M7
+
+## Iteration 2 — Phase 2 (M8–M11, F8–F11)
+
+Implemented REQUIREMENTS-PHASE2.md on top of the untouched Phase 1 pipeline.
+
+- **M8 / F8** `bike_agent/sim/engine.py` now accumulates a per-(cell, bucket) state
+  array alongside `steps` and returns it as `SimResult.cell_states`;
+  `sim/pipeline.py` writes `outputs/replay.<strategy>.<source>.parquet`
+  (XM 4×169 = 676 rows, SH 149×255 = 37,995 rows, ~130 KB each).
+  `bikes_moved` is recorded at the **source cell only**, so per-cell sums equal the
+  step total; the "moved in" side is rebuilt from the moves table in the
+  conservation test rather than double-counted.
+- **M9 / F9** `bike_agent/serve/app.py` — stdlib `http.server`, no new dependency.
+  Thin: every response is a CSV/parquet row or a `bike_agent.tools.handlers` return.
+  Endpoints: `/api/sources`, `/api/replay/{index,frame}`, `/api/tools/{forecast,risk,simulate}`.
+  `bike-agent serve --check` validates without binding a port.
+- **M10 / F10** `bike_agent/replay/site.py` — one static page per persisted bucket,
+  shared `style.css` / `app.js`, frame data embedded so `file://` works with zero
+  network. 153 pages (XM 4, SH 149). Arrows are rendered in Python from
+  `sim_moves.*.json`; the grid is drawn by local JS from the embedded JSON.
+- **M11 / F11** `bike_agent/agent/` — deterministic replay retrospective over the
+  three tool contracts. No LLM SDK, no filesystem access; the CLI (outside the
+  package) persists `outputs/agent_run.<source>.{json,md}`.
+- `bike_agent/report/` — key_numbers gains 12 replay rows (so F10-5's
+  `data-source` set covers the replay artefacts); DECISIONS.md gains the two §1.3
+  conflict revisions plus D8–D12, all rendered from real artefacts.
+- `scripts/check_regression.py` + `scripts/phase1-snapshot.json` — captures a
+  sha256 + parsed-value snapshot of the pre-Phase-2 artefacts and proves on every
+  `pytest` run that no existing value moved.
+
+## Findings (Phase 2)
+
+- F8-3 verified by a real before/after `repro`: 65 pre-existing artefacts, 60
+  byte-identical, 5 changed **additively only** (DECISIONS.md, REPORT.md,
+  key_numbers.json, summary.{xm,sh}.json), 0 value changes, 0 missing.
+- The replay site is 3.8 MB for 153 pages (largest page 44 KB). Kept per-frame so
+  nothing is loaded as one bundle (NF-13); each page carries only its own frame.
+- The §2.3 tension reproduces exactly as documented: XM 91.36% over 4 frames,
+  SH 99.37% over 149. The index page now *computes* that sentence from the
+  artefacts instead of asserting it, so it cannot drift.
+
+## Learnings / gotchas (Phase 2)
+
+- `pandas` `.astype(int)` on the pivoted returns array truncates per cell; that is
+  safe only because panel counts are integral. F8-2 checks the sum on every bucket,
+  so a future fractional panel would fail loudly rather than silently.
+- `file://` cannot `fetch()` sibling JSON (CORS), so the frame payload has to be
+  inlined in each page. That is the reason for the 23 KB/page average, not a bug.
+- An SVG `marker` without `markerUnits="userSpaceOnUse"` scales with `stroke-width`
+  and produces arrowheads larger than the cells; both are needed to look right.
+- The first version of the agent conclusion quoted a computed percentage and a
+  summed total. F11-5 rejects those — every cited number must be copied verbatim
+  from a tool response, so the planner now quotes only direct values.
+
+
+## Review round (iteration 2)
+
+Architect: every acceptance criterion PASS (F8-1..5, NF-7, F9-1..6, F10-1..6, F10-9, F11-1..6).
+Verifier: all 8 independent claims PASS — 2,754 per-bucket/field sum comparisons with 0
+mismatches, 306 interface-vs-CSV frame comparisons with 0 mismatches, 2,843 arrows with 0
+mismatches, 4,743 metric elements all resolving to real files in key_numbers.json.
+
+Code review found real defects; all substantive ones fixed and locked with tests:
+- the risk ranking covers the horizon's last bucket, not necessarily the loss peak — the
+  conclusion had been attributing the ranking's cells to the peak bucket (now states the
+  mismatch explicitly and attributes the peak only to that bucket's own forecast);
+- reusing a gateway duplicated audit steps and dropped later calls (now cursor-based);
+- "绝大多数帧搬运量只有个位数" was asserted, not computed (now derived, 72.5% for SH);
+- the JS grid pitch hardcoded `cell_px + 1` while Python used CELL_PX + CELL_GAP;
+- every ToolError became 404, so bad arguments looked like missing artefacts (now 400);
+- malformed body / non-numeric Content-Length / `null` body escaped as 500;
+- `available` ignored the replay parquet, so a source could claim availability and then 404;
+- `source` was the one unescaped value reaching HTML attributes;
+- per-cell and step-level returns truncated differently (latent, fixed in the engine).
+
+Final: 118 tests pass, `bike-agent repro` exit 0, serve --check exit 0, regression check clean.
+
+## Late review reports (same round, arrived after closeout)
+
+The teammates' full reports landed after their verdicts had already been extracted from
+transcripts and acted on. Two items from them were still open and are now fixed:
+
+- `frame_index` / `frame_count` cited `sim_rule.<source>.csv`, which does not literally
+  contain those values. They are now marked `data-derived="row-position"` /
+  `"row-count"`, and `test_derived_metrics_really_derive_from_their_cited_file` reproduces
+  the derivation from the cited file instead of trusting the attribute.
+- `scripts/check_regression.py:_values()` would have parsed any `.md` added to
+  `VALUE_FILES` as CSV. It now returns None for non-JSON/non-CSV, so such a file is
+  reported as "changed, NOT value-checked" (a failure) rather than misread.
+
+Final: 119 tests pass, repro exit 0, serve --check exit 0, regression clean, ralph verify clean.

@@ -97,7 +97,24 @@
 
 见 `reports/cross_source.md`。两个源的模型增益方向与策略胜负不一致，报告已分别标注结论的适用范围，未将两源结果混在同一张表里。
 
-## 9. 关键数字追溯（F6-4 / NF-3）
+## 9. 回放（Phase 2 · F8–F10）
+
+`bike-agent repro` 会生成 `replay/`：每个时间单元一页，S-RULE 与 S-OPT 并排，逐格展示库存、未满足请求与搬运方向。双击 `replay/index.html` 即可离线打开，不依赖网络、构建步骤或后端服务。
+
+帧数**等于**产物时间单元数，没有插值、补帧或合成数据：XM 4 帧；SH 149 帧。没有搬运记录的时间单元，画面上不会出现箭头；每条箭头都对应 `outputs/sim_moves.*.json` 里的一条记录。
+
+### 两个数据源的张力（REQUIREMENTS-PHASE2 §2.3，如实说明）
+
+| 数据源 | 特征 | 帧数 | 服务率 | 搬运记录 | 说明 |
+|---|---|---|---|---|---|
+| XM | 有戏没帧 | 4 | 91.36% | 17 | 服务率 91.36%，未满足请求 3617 次，画面应该有明显的事发生；但仿真只回放 4 个时间单元，时间轴几乎是空的 |
+| SH | 有帧没戏 | 149 | 99.37% | 1404 | 149 个时间单元，时间轴拖起来很流畅；但服务率 99.37%，绝大多数时间单元里搬运量只有个位数（全时段共 1404 条搬运记录），画面接近静止 |
+
+这条张力本身是有价值的结论：**两个数据源各自适合回答不同的问题**——XM 适合看「有事发生时调度做了什么」，SH 适合看「长时间轴上调度有多克制」；这与 D1 的分工结论一致。
+
+按 F10-1 / F10-4 / F10-6，本项目**没有**为了让画面好看而插值、补帧、复制时间单元、筛选有搬运的帧或放大动效。一个诚实的、平淡的回放，比一个漂亮的、编造的回放有价值。
+
+## 10. 关键数字追溯（F6-4 / NF-3）
 
 | 指标 | 数值 | 来源文件 |
 |---|---|---|
@@ -120,6 +137,14 @@
 | XM · optimized distance bike-km | 804.3799 | outputs/strategy_comparison.xm.json |
 | XM · rule composite cost | 3,788.15 | outputs/strategy_comparison.xm.json |
 | XM · optimized composite cost | 3,829.88 | outputs/strategy_comparison.xm.json |
+| XM · rule replay frames | 4 | outputs/sim_rule.xm.csv |
+| XM · rule replay cells | 169 | outputs/replay.rule.xm.parquet |
+| XM · rule replay moves | 17 | outputs/sim_moves.rule.xm.json |
+| XM · rule service rate | 0.9136 | outputs/sim_rule.xm.json |
+| XM · optimized replay frames | 4 | outputs/sim_optimized.xm.csv |
+| XM · optimized replay cells | 169 | outputs/replay.optimized.xm.parquet |
+| XM · optimized replay moves | 13 | outputs/sim_moves.optimized.xm.json |
+| XM · optimized service rate | 0.9123 | outputs/sim_optimized.xm.json |
 | SH · trip rows | 102361 | outputs/summary.sh.json |
 | SH · duplicate rate | 0 | outputs/summary.sh.json |
 | SH · abnormal duration share | 0.0005 | outputs/summary.sh.json |
@@ -139,10 +164,18 @@
 | SH · optimized distance bike-km | 3,547.09 | outputs/strategy_comparison.sh.json |
 | SH · rule composite cost | 892.8842 | outputs/strategy_comparison.sh.json |
 | SH · optimized composite cost | 879.4185 | outputs/strategy_comparison.sh.json |
+| SH · rule replay frames | 149 | outputs/sim_rule.sh.csv |
+| SH · rule replay cells | 255 | outputs/replay.rule.sh.parquet |
+| SH · rule replay moves | 1404 | outputs/sim_moves.rule.sh.json |
+| SH · rule service rate | 0.9937 | outputs/sim_rule.sh.json |
+| SH · optimized replay frames | 149 | outputs/sim_optimized.sh.csv |
+| SH · optimized replay cells | 255 | outputs/replay.optimized.sh.parquet |
+| SH · optimized replay moves | 1409 | outputs/sim_moves.optimized.sh.json |
+| SH · optimized service rate | 0.9941 | outputs/sim_optimized.sh.json |
 
 完整机器可读版本：`outputs/key_numbers.json`。
 
-## 10. 复现
+## 11. 复现
 
 ```bash
 # 从零复现全部产物（首次运行会下载原始数据）
@@ -154,7 +187,7 @@ bike-agent repro --sources xm
 
 同一条命令、同一数据、同一种子 → 同一组数字（允许浮点末位差异）。
 
-## 11. 数据合规与署名
+## 12. 数据合规与署名
 
 - DS-XM 仅用于学术/教学，禁止商用；使用时须署名原始数据提供方（Xiamen shared bicycle operators via the Digital China Innovation Competition）。
 - 所有分析均为聚合级别，不做个体识别或轨迹追踪。

@@ -1,0 +1,46 @@
+:root{--bg:#ffffff;--panel:#f5f6f8;--fg:#14181d;--muted:#5b6672;--line:#d7dce2;
+--accent:#1f6feb;--warn:#c0392b;--cell:#1f6feb;--arrow:#b3341f}
+@media (prefers-color-scheme: dark){
+:root{--bg:#0f1318;--panel:#171d24;--fg:#e8edf3;--muted:#9aa7b4;--line:#2b343d;
+--accent:#6aa8ff;--warn:#ff7b6b;--cell:#6aa8ff;--arrow:#ffb08a}
+}
+*{box-sizing:border-box}
+a{color:var(--accent)}
+body{margin:0;padding:16px;background:var(--bg);color:var(--fg);
+font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif}
+header{margin-bottom:16px}
+h1{font-size:20px;margin:0 0 6px}
+h2{font-size:15px;margin:0 0 8px}
+h3{font-size:14px;margin:0 0 4px}
+.meta,.notice,.hint,.rate{color:var(--muted);font-size:13px;margin:4px 0}
+.pager{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}
+.pager a,.pager span{padding:4px 10px;border:1px solid var(--line);border-radius:6px;text-decoration:none}
+.pager a{color:var(--accent)}
+.pager .disabled{color:var(--muted);opacity:.6}
+main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.strategy,.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.card.wide{grid-column:1/-1}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px 12px;margin:8px 0}
+.kpi{margin:0}
+.kpi dt{font-size:11px;color:var(--muted)}
+.kpi dd{margin:0;font-variant-numeric:tabular-nums;font-weight:600}
+.canvas{overflow:auto;max-width:100%;margin-top:8px}
+svg.grid{display:block;width:100%;height:auto;max-width:640px}
+svg.grid rect{fill:var(--cell);stroke:none}
+svg.grid rect.unmet{stroke:var(--warn);stroke-width:1.5}
+svg.grid line.arrow{stroke:var(--arrow);fill:none;opacity:.9;stroke-linecap:round}
+.legend{font-size:11px;color:var(--muted);margin:6px 0 0}
+.note{font-size:12px;border-left:3px solid var(--line);padding:6px 10px;margin:8px 0 0;color:var(--muted)}
+.note.sparse{border-color:var(--accent)}
+.note.dense{border-color:var(--warn)}
+.frames{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.frames a{font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:4px;
+text-decoration:none;color:var(--accent)}
+a.start{display:inline-block;margin-top:8px;padding:6px 12px;border:1px solid var(--accent);
+border-radius:6px;text-decoration:none;color:var(--accent)}
+code{font-size:11px}
+@media (max-width:760px){
+main{grid-template-columns:1fr}
+body{padding:12px}
+svg.grid{max-width:100%}
+}
