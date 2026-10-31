@@ -114,6 +114,33 @@
 
 按 F10-1 / F10-4 / F10-6，本项目**没有**为了让画面好看而插值、补帧、复制时间单元、筛选有搬运的帧或放大动效。一个诚实的、平淡的回放，比一个漂亮的、编造的回放有价值。
 
+## 9.5 图表与总览页（Phase 3 · F14）
+
+全部图表也汇总在 [回放总览页](replay/dashboard.html)，并附关键数字、两源对照与策略对比。每张图都由 `bike-agent repro` 从 `outputs/` 的产物生成，路径均可在仓库内直接打开。
+
+![需求热力图：网格 × 时间单元的借出量（XM）](figures/demand_heatmap.xm.png)
+
+![高峰时段分布（XM）](figures/peak_hours.xm.png)
+
+![预测值与实际值对比（测试段）（XM）](figures/forecast_vs_actual.xm.png)
+
+![优先补车 / 优先清运清单（XM）](figures/priority_lists.xm.png)
+
+![同一回放条件下的两策略对比（XM）](figures/strategy_comparison.xm.png)
+
+![需求热力图：网格 × 时间单元的借出量（SH）](figures/demand_heatmap.sh.png)
+
+![高峰时段分布（SH）](figures/peak_hours.sh.png)
+
+![预测值与实际值对比（测试段）（SH）](figures/forecast_vs_actual.sh.png)
+
+![优先补车 / 优先清运清单（SH）](figures/priority_lists.sh.png)
+
+![同一回放条件下的两策略对比（SH）](figures/strategy_comparison.sh.png)
+
+![六条结论的变化幅度与 95% 置信区间](figures/significance.png)
+
+
 ## 10. 关键数字追溯（F6-4 / NF-3）
 
 | 指标 | 数值 | 来源文件 |

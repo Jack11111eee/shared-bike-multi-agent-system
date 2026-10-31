@@ -13,18 +13,35 @@ installed.
 from __future__ import annotations
 
 import json
+import posixpath
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 import pandas as pd
 
 from bike_agent.config import Layout, load_config, source_config
+from bike_agent.replay.player import build_replay_data
 from bike_agent.tools import handlers
 from bike_agent.utils import read_json
 
 STRATEGIES = ("rule", "optimized")
+# GET paths served as JSON even though they do not start with /api or /tools.
+# ``_Handler._is_api`` reads this set, so adding an endpoint here is what keeps
+# the static file handler from swallowing it.
+LEGACY_API_PATHS = frozenset({"/sources", "/health", "/replay/index", "/replay/frame", "/replay/timeline"})
+STATIC_TYPES = {
+    ".html": "text/html",
+    ".css": "text/css",
+    ".js": "application/javascript",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".json": "application/json",
+    ".txt": "text/plain",
+    ".ico": "image/x-icon",
+}
 
 
 class ServiceError(RuntimeError):
@@ -228,6 +245,49 @@ def replay_frame(
     }
 
 
+# -- F15 static hosting + timeline -----------------------------------------
+def replay_timeline(config: dict[str, Any], layout: Layout, source: str | None) -> dict[str, Any]:
+    """The player bundle, served over HTTP (F15-3).
+
+    This is the *same* :func:`bike_agent.replay.player.build_replay_data` the
+    static site is built from -- not a second derivation.  A source whose
+    artefacts are missing is an explicit 404, never an empty success (F15-4).
+    """
+    source = _resolve_source(config, source)
+    try:
+        return build_replay_data(config, layout, source)
+    except FileNotFoundError as exc:
+        raise ServiceError(str(exc), HTTPStatus.NOT_FOUND) from exc
+
+
+def resolve_static(layout: Layout, request_path: str) -> Path:
+    """Map a URL path to a file inside ``replay/``, or refuse.
+
+    Defensive on purpose (F15-2): the path is decoded repeatedly (so a
+    double-encoded traversal cannot slip through), any ``..`` segment or
+    backslash is a 400, and the resolved target must stay inside the site
+    directory even after symlink resolution.
+    """
+    decoded = request_path
+    for _ in range(3):
+        expanded = unquote(decoded)
+        if expanded == decoded:
+            break
+        decoded = expanded
+    if "\x00" in decoded or "\\" in decoded:
+        raise ServiceError("invalid path", HTTPStatus.BAD_REQUEST)
+    relative = decoded.lstrip("/")
+    parts = [part for part in relative.split("/") if part not in ("", ".")]
+    if any(part == ".." for part in parts):
+        raise ServiceError("path traversal is not allowed", HTTPStatus.BAD_REQUEST)
+    normalized = posixpath.normpath("/".join(parts)) if parts else "index.html"
+    root = (layout.root / "replay").resolve()
+    target = (root / normalized).resolve()
+    if target != root and root not in target.parents:
+        raise ServiceError("path traversal is not allowed", HTTPStatus.BAD_REQUEST)
+    return target
+
+
 # -- F7 tool contracts, re-exported unchanged -------------------------------
 # Input validation happens here so a bad parameter is a 400, not a 404 that
 # claims the artefact is missing.  Successful responses still come straight
@@ -322,6 +382,32 @@ class _Handler(BaseHTTPRequestHandler):
         else:
             self._send(HTTPStatus.OK, payload)
 
+    def _send_static(self, target: Path) -> None:
+        if not target.is_file():
+            raise ServiceError(f"not found: {target.name}", HTTPStatus.NOT_FOUND)
+        content_type = STATIC_TYPES.get(target.suffix.lower())
+        if content_type is None:
+            raise ServiceError(f"refusing to serve {target.suffix!r}", HTTPStatus.NOT_FOUND)
+        body = target.read_bytes()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _run_static(self, path: str) -> None:
+        try:
+            target = resolve_static(self.layout, path)
+            self._send_static(target)
+        except ServiceError as exc:
+            self._send(exc.status, {"error": str(exc), "kind": "ServiceError"})
+        except Exception as exc:  # pragma: no cover - last-resort guard
+            self._send(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc), "kind": type(exc).__name__})
+
+    @staticmethod
+    def _is_api(path: str) -> bool:
+        return path.startswith(("/api/", "/tools/")) or path in LEGACY_API_PATHS
+
     def _route_get(self, path: str, params: dict[str, str]) -> dict[str, Any]:
         if path in ("/api/sources", "/sources"):
             return list_sources(self.config, self.layout)
@@ -332,6 +418,8 @@ class _Handler(BaseHTTPRequestHandler):
             if not bucket:
                 raise ServiceError("missing query parameter `time_bucket`", HTTPStatus.BAD_REQUEST)
             return replay_frame(self.config, self.layout, params.get("source"), params.get("strategy"), bucket)
+        if path in ("/api/replay/timeline", "/replay/timeline"):
+            return replay_timeline(self.config, self.layout, params.get("source"))
         if path in ("/api/tools/forecast", "/tools/forecast"):
             cells = params.get("cells")
             return tool_forecast(
@@ -376,6 +464,9 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
         path = urlparse(self.path).path
         params = self._query()
+        if not self._is_api(path):
+            self._run_static(path)
+            return
         self._run(lambda: self._route_get(path, params))
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib naming
@@ -454,5 +545,30 @@ def check(config: dict[str, Any] | None = None, layout: Layout | None = None) ->
                 checks.append(
                     {"capability": "replay_frame", "ok": False, "detail": f"{source}/{strategy}: {exc}"}
                 )
+    replay_dir = layout.root / "replay"
+    players = sorted(path.name for path in replay_dir.glob("*/player.html")) if replay_dir.exists() else []
+    checks.append(
+        {
+            "capability": "static_site",
+            "ok": (replay_dir / "index.html").exists() and bool(players),
+            "detail": f"replay/index.html={'yes' if (replay_dir / 'index.html').exists() else 'no'}, "
+            f"players={players or 'none'}",
+        }
+    )
+    for entry in listing["sources"]:
+        if not entry["available"]:
+            continue
+        source = entry["source"]
+        try:
+            timeline = replay_timeline(config, layout, source)
+            checks.append(
+                {
+                    "capability": "replay_timeline",
+                    "ok": timeline["n_frames"] > 0 and len(timeline["frames"]) == timeline["n_frames"],
+                    "detail": f"{source}: {timeline['n_frames']} frames",
+                }
+            )
+        except ServiceError as exc:
+            checks.append({"capability": "replay_timeline", "ok": False, "detail": f"{source}: {exc}"})
     failures = [item for item in checks if not item["ok"]]
     return {"ok": not failures, "checks": checks}

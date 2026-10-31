@@ -1,0 +1,60 @@
+/* F12/F13 player + F14 dashboard additions; follows the system theme. */
+.player header,.dashboard header{margin-bottom:12px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;
+padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.controls button,.controls input[type=range]{font:inherit}
+.controls button{padding:5px 12px;border:1px solid var(--line);border-radius:6px;
+background:var(--bg);color:var(--fg);cursor:pointer}
+.controls button[data-control="play"]{border-color:var(--accent);color:var(--accent);min-width:64px}
+.controls .scrub{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+.controls input[type=range]{accent-color:var(--accent);min-width:160px}
+.controls .speeds{display:flex;gap:4px;align-items:center;color:var(--muted);font-size:13px}
+.controls .speed.active{border-color:var(--accent);color:var(--accent);font-weight:600}
+.controls .loop{color:var(--muted);font-size:13px}
+.scale{display:flex;flex-wrap:wrap;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin:8px 0}
+.scale-bar{display:inline-block;width:120px;height:8px;border:1px solid var(--line);border-radius:4px;
+background:linear-gradient(90deg,rgba(31,111,235,.12),rgba(31,111,235,.95))}
+.scale-end{font-variant-numeric:tabular-nums;color:var(--fg)}
+.player main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.player .trend-card{grid-column:1/-1}
+.player .kpi dd .delta{margin-left:6px;font-size:11px;font-weight:500;color:var(--muted)}
+.player .kpi dd .delta.up{color:var(--warn)}
+.player .kpi dd .value{font-variant-numeric:tabular-nums}
+.player .details{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.player .details h3{font-size:12px;margin:6px 0 4px;color:var(--muted)}
+.player .move-list,.player .unmet-list{max-height:150px;overflow:auto;margin:0;padding-left:18px;
+font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.player .move-list li,.player .unmet-list li{margin:1px 0}
+svg.cell.unmet,svg .cell.unmet{stroke:var(--warn);stroke-width:1.5}
+svg.trend{display:block;width:100%;height:auto;max-height:150px;overflow:visible}
+svg.trend .trend-axis{stroke:var(--line);stroke-width:1}
+svg.trend .trend-bar{fill:var(--accent);opacity:.55}
+svg.trend .trend-bar[data-strategy="optimized"]{fill:var(--arrow);opacity:.5}
+svg.trend .trend-bar.is-current{opacity:1}
+svg.trend .trend-point{fill:var(--warn);stroke:var(--bg);stroke-width:1}
+svg.trend .trend-point.is-current{r:4}
+svg.trend .trend-line{fill:none;stroke:var(--warn);stroke-width:1;opacity:.7}
+svg.trend .trend-cursor{stroke:var(--fg);stroke-width:1;opacity:.35;stroke-dasharray:3 3}
+.series-legend{display:flex;flex-wrap:wrap;gap:16px;color:var(--muted);font-size:12px;margin:6px 0}
+.dashboard .num-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.dashboard .num-card{border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+background:var(--bg);display:flex;flex-direction:column;gap:2px;min-width:0}
+.dashboard .num-label{font-size:11px;color:var(--muted)}
+.dashboard .num-card .metric{font-size:16px;font-variant-numeric:tabular-nums}
+.dashboard .num-source{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+.dashboard table.compare{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+.dashboard table.compare th,.dashboard table.compare td{border:1px solid var(--line);padding:4px 8px;text-align:right}
+.dashboard table.compare thead th:first-child,.dashboard table.compare tbody th{text-align:left}
+.dashboard .fig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.dashboard figure.fig{margin:0;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg)}
+.dashboard figure.fig img{display:block;width:100%;height:auto;border-radius:4px}
+.dashboard figcaption{font-size:11px;color:var(--muted);margin-top:6px}
+.dashboard .fig-source{color:var(--muted)}
+@media (max-width:760px){
+.player main{grid-template-columns:1fr}
+.player .details{grid-template-columns:1fr}
+.controls input[type=range]{min-width:120px}
+}
+@media (prefers-reduced-motion: reduce){
+.player *, .dashboard *{transition:none !important; animation:none !important; scroll-behavior:auto !important}
+}

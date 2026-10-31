@@ -1,4 +1,4 @@
-"""F9 replay service: a thin, standard-library HTTP facade over the artefacts."""
+"""F9/F15 replay service: a thin, standard-library HTTP facade over the artefacts."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from bike_agent.serve.app import (
     make_server,
     replay_frame,
     replay_index,
+    replay_timeline,
+    resolve_static,
     tool_forecast,
     tool_risk,
     tool_simulate,
@@ -21,6 +23,8 @@ __all__ = [
     "make_server",
     "replay_frame",
     "replay_index",
+    "replay_timeline",
+    "resolve_static",
     "tool_forecast",
     "tool_risk",
     "tool_simulate",

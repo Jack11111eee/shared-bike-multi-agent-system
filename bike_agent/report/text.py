@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 
@@ -692,6 +693,159 @@ def _phase2_decisions(data: dict[str, Any]) -> list[str]:
         "",
         "**日期**：2026-10-30。",
         "",
+    ] + _phase3_decisions(data)
+
+
+def _phase3_decisions(data: dict[str, Any]) -> list[str]:
+    """D13–D17 and the Phase 3 §1.3 revision record, with real measurements."""
+    bundle: dict[str, dict[str, Any]] = {}
+    try:
+        from bike_agent.config import Layout, load_config
+        from bike_agent.replay.player import build_replay_data, replay_data_js
+
+        config, layout = load_config(), Layout()
+        for source in ("xm", "sh"):
+            packed = build_replay_data(config, layout, source)
+            bundle[source] = {
+                "bytes": len(replay_data_js(packed).encode("utf-8")),
+                "frames": packed["n_frames"],
+                "cells": len(packed["cell_ids"]),
+                "color_max": packed["color_domain"]["max"],
+                "empty_frames": {
+                    strategy: sum(1 for frame in packed["frames"] if not frame["moves"][strategy])
+                    for strategy in ("rule", "optimized")
+                },
+            }
+    except Exception:  # pragma: no cover - partial artefacts; quotes n/a instead
+        bundle = {}
+
+    def size_text(source: str) -> str:
+        entry = bundle.get(source)
+        if not entry:
+            return "n/a"
+        return (
+            f"{entry['frames']} 帧 × {entry['cells']} 格，"
+            f"`replay-data.js` {entry['bytes'] / 1024:.1f} KB，色标上界 {entry['color_max']}，"
+            f"零搬运帧 {entry['empty_frames']['rule']}（S-RULE）/ "
+            f"{entry['empty_frames']['optimized']}（S-OPT）"
+        )
+
+    try:
+        from bike_agent.config import Layout as _Layout
+
+        _layout = _Layout()
+        n_key_numbers = len(json.loads(_layout.key_numbers_path().read_text(encoding="utf-8")))
+        n_figures = len(list(_layout.figures.glob("*.png")))
+    except Exception:  # pragma: no cover - partial artefacts
+        n_key_numbers, n_figures = 0, 0
+
+    # Frame pages are one per persisted bucket, so the count comes from the step
+    # artefacts rather than from a number typed into this sentence.
+    n_frame_pages = sum(
+        int((entry.get("sim_steps") or {}).get("rule", {}).get("n_buckets", 0))
+        for entry in data.values()
+    )
+    pages_text = f"{n_frame_pages} 个逐帧页（站点共 {n_frame_pages + 1} 个 HTML，含首页）"
+
+    return [
+        "## Phase 3 · 与 Phase 2 的两处冲突修订（REQUIREMENTS-PHASE3 §1.3）",
+        "",
+        "**修订一 · NF-13「回放帧按需加载」的作用范围**",
+        "",
+        "Phase 2 的 NF-13 对**逐帧页**继续有效：" + pages_text + "仍然每页只带自己那一帧的数据，"
+        "按需打开。播放器页 `replay/<source>/player.html` 必须连续播放，跨帧不能走网络或整页跳转，"
+        "因此它是**唯一例外**，一次性载入该源全部帧。作为交换，体量由 Phase 3 NF-15 硬约束"
+        "（`replay/` 总量 < 6 MB、单源 `replay-data.js` ≤ 1 MB、单个 `player.html` ≤ 256 KB）。",
+        "该修订已落到 `REQUIREMENTS-PHASE2.md` NF-13 末尾，指向 `REQUIREMENTS-PHASE3.md` NF-15。",
+        "",
+        "**修订二 · D9「预渲染的静态多页」与连续播放的分工**",
+        "",
+        "Phase 2 的 D9 没有废除：" + pages_text + "**全部保留**，继续承担深链、自动验收锚点与无 JavaScript 回退（B9）。"
+        "Phase 3 **新增**播放器页作为首页主入口，逐帧页降为深链与回退路径；"
+        "`replay/index.html` 同时链接两者。逐帧页的 DOM 契约零改动，"
+        "`tests/test_replay_site.py` 未修改且全绿，这是「没有回归」的直接证据。",
+        "该修订已落到 `REQUIREMENTS-PHASE2.md` F10 开头，指向 `REQUIREMENTS-PHASE3.md`。",
+        "",
+        "## Phase 3 · D13–D17（播放器与总览页）",
+        "",
+        "### D13 · 播放器数据的组织方式",
+        "",
+        "**候选方案**：① 每帧一个文件；② 每策略一个文件；③ 每源一个全量文件（两策略同包）。",
+        "",
+        "**选择**：方案 ③，`replay/<source>/replay-data.js`（经典脚本，内容仅为 "
+        "`window.REPLAY_DATA = <JSON>;`）。",
+        "",
+        "**依据与证据**：`file://` 下无法 `fetch` 兄弟 JSON（CORS），逐帧取数会导致每次切帧都整页跳转，"
+        "无法连续播放；分策略拆包则要求播放器同时维护两份帧索引，容易出现两策略错位。"
+        f"实测单文件体量完全在预算内：XM {size_text('xm')}；SH {size_text('sh')}。"
+        "三处消费者（`replay-data.js`、`player.html` 首帧、`/api/replay/timeline`）"
+        "共用 `build_replay_data` 一个函数，不存在第二套取数逻辑。",
+        "",
+        "**可逆性**：高，打包逻辑集中在 `bike_agent/replay/player.py` 的 `build_replay_data`。",
+        "",
+        "**日期**：2026-10-31。",
+        "",
+        "### D14 · 动画语义",
+        "",
+        "**候选方案**：① 连续补间（插值过渡）；② 离散定时切帧；③ 导出视频。",
+        "",
+        "**选择**：方案 ②。默认 1×，每帧停留 900 ms，循环**默认关闭**，走到末帧即停；"
+        "0.5× / 2× / 4× 只改变停留时长，不改变任何一帧的内容。",
+        "",
+        "**依据与证据**：① 会制造出比产物更细的时间分辨率，③ 无法逐帧审计，二者都违反 NF-17。"
+        f"离散切帧下，帧数恒等于产物时间单元数：XM {size_text('xm')}；SH {size_text('sh')}。"
+        "空搬运帧一律显示为空，不做放大或跳过；`prefers-reduced-motion` 时不自动播放且不启用过渡（NF-20）。",
+        "",
+        "**可逆性**：高，停留时长与默认循环是 `bike_agent/replay/player.py` 中的常量与初始状态。",
+        "",
+        "**日期**：2026-10-31。",
+        "",
+        "### D15 · 色标方案",
+        "",
+        "**候选方案**：① 沿用逐帧相对最大值；② 每个源固定线性域；③ 固定分位数域；④ 对数域。",
+        "",
+        "**选择**：方案 ②，`color_domain = {min: 0, max: 该源两策略 inventory_end 的全局最大值}`。",
+        "",
+        f"**依据与证据**：① 正是相邻两帧无法比较的原因（颜色随帧漂移）。② 最易验证："
+        f"XM 上界 {bundle.get('xm', {}).get('color_max', 'n/a')}、SH 上界 {bundle.get('sh', {}).get('color_max', 'n/a')}，"
+        "相差约 30 倍，但两个源各自固定，跨帧不变；页面上给出 0 与上界两个端点。"
+        "③④ 会引入额外的分位数/对数解释，且端点文本无法再直接等于数据域，验收成本更高。",
+        "",
+        "**可逆性**：高，域在 `build_replay_data` 中计算一次，渲染只消费 `color_domain`。",
+        "",
+        "**日期**：2026-10-31。",
+        "",
+        "### D16 · 总览页的信息组织",
+        "",
+        "**候选方案**：① 卡片优先；② 图表优先；③ 按数据源分栏。",
+        "",
+        "**选择**：卡片 + 两源对照表 + 策略对比表 + 全部图表，单页自上而下。",
+        "",
+        "**依据与证据**：`outputs/key_numbers.json` 现有 "
+        f"{n_key_numbers} 条可追溯数字，`figures/` 有 {n_figures} 张图；"
+        "卡片直接绑定 key_numbers 条目，表格只列出两源都存在的指标，"
+        "图表逐张带图注与来源。这样「每个数字都能回到产物」不依赖人工抄写。"
+        "按源分栏会让两源对照被拆散，图表优先则把最需要先看的数字推到了下面。",
+        "",
+        "**可逆性**：高，页面模板在 `bike_agent/replay/player.py` 的 `render_dashboard`。",
+        "",
+        "**日期**：2026-10-31。",
+        "",
+        "### D17 · 静态托管的安全边界",
+        "",
+        "**候选方案**：① 目录白名单；② 后缀白名单；③ 两者结合 + 解析后包含性检查。",
+        "",
+        "**选择**：方案 ③。只读托管 `replay/`，只允许 html/css/js/png/svg/json/txt/ico 后缀，"
+        "路径多次解码后拒绝 `..`、反斜杠、NUL，并在 `resolve()` 之后确认目标仍在站点目录内。",
+        "",
+        "**依据与证据**：单独任何一项都不够——目录白名单挡不住符号链接逃逸，后缀白名单挡不住"
+        "同目录下的敏感文件。解析后包含性检查同时覆盖两者。`tests/test_serve_static.py` 对 "
+        "`/../REQUIREMENTS.md`、`/%2e%2e/REQUIREMENTS.md`、`/etc/passwd` 三种形式断言 4xx 且正文不含目标内容（F15-2）。",
+        "",
+        "**可逆性**：高，规则集中在 `bike_agent/serve/app.py` 的 `resolve_static`。",
+        "",
+        "**日期**：2026-10-31。",
+        "",
     ]
 
 
@@ -936,6 +1090,13 @@ def render_report(
         "",
         _tension_section(data),
         "",
+        "## 9.5 图表与总览页（Phase 3 · F14）",
+        "",
+        "全部图表也汇总在 [回放总览页](replay/dashboard.html)，并附关键数字、两源对照与策略对比。"
+        "每张图都由 `bike-agent repro` 从 `outputs/` 的产物生成，路径均可在仓库内直接打开。",
+        "",
+        *_figure_gallery(data),
+        "",
         "## 10. 关键数字追溯（F6-4 / NF-3）",
         "",
         markdown_table(
@@ -970,6 +1131,26 @@ def render_report(
 
 def _round(value: Any) -> Any:
     return round(value, 2) if isinstance(value, (int, float)) else "n/a"
+
+
+def _figure_gallery(data: dict[str, Any]) -> list[str]:
+    """Every figure the pipeline produces, referenced from the report (F14-4).
+
+    Captions come from :data:`bike_agent.replay.player.FIGURE_CAPTIONS`, the same
+    map the dashboard uses, so the two cannot describe one figure differently.
+    """
+    from bike_agent.replay.player import FIGURE_CAPTIONS
+
+    lines: list[str] = []
+    for source in data:
+        for stem, caption in FIGURE_CAPTIONS.items():
+            if stem == "significance":
+                continue
+            lines.append(f"![{caption}（{source.upper()}）](figures/{stem}.{source}.png)")
+            lines.append("")
+    lines.append(f"![{FIGURE_CAPTIONS['significance']}](figures/significance.png)")
+    lines.append("")
+    return lines
 
 
 def _strategy_conclusion(comparison: dict[str, Any], label: str) -> list[str]:

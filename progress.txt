@@ -144,3 +144,95 @@ transcripts and acted on. Two items from them were still open and are now fixed:
   reported as "changed, NOT value-checked" (a failure) rather than misread.
 
 Final: 119 tests pass, repro exit 0, serve --check exit 0, regression clean, ralph verify clean.
+
+## Iteration 3 — Phase 3 (M12–M16, F12–F15)
+
+Implemented REQUIREMENTS-PHASE3.md on top of the untouched Phase 1–2 pipeline.
+
+- **M12 / F12** `bike_agent/replay/player.py` — `build_replay_data(config, layout, source)`
+  is the single packing function: `replay/<source>/replay-data.js`,
+  `player.html` and `GET /api/replay/timeline` all consume it, so there is no second
+  derivation. The bundle carries every frame, every cell and every move record straight
+  from `replay.*.parquet`, `sim_*.csv` and `sim_moves.*.json`; nothing is interpolated.
+  `player.html` prerenders the first frame (KPIs, 169/255 grid rects, arrows, sparse note,
+  trend SVG, detail lists) in Python, so `tests/test_replay_player.py` can assert it with
+  `html.parser` and no headless browser. Controls: play/pause, prev, next, scrub, four
+  speed tiers (default 1×), loop (off), keyboard Space/←/→/Home/End, `aria-live` frame label,
+  `<noscript>` → `frame-0000.html`, `prefers-reduced-motion` → no autoplay, no transitions.
+- **M13 / F13** fixed colour domain per source (`{min: 0, max: 1228/40}`, computed once over
+  both strategies) with `data-scale="inventory"` endpoint text; trend chart prerendered as
+  SVG (`2 × n` bars + `n` points, each with `data-frame-index`, `data-value`, `data-seek`);
+  first-frame move/unmet detail lists with `data-source`; ≥3 KPI deltas vs the previous frame;
+  the F10-6 sparse/dense note is reused (same function, same wording).
+- **M14 / F14** `replay/dashboard.html` — 54 key-number cards (every number matched by
+  metric+value to `key_numbers.json`), cross-source table, strategy table, all 11
+  `figures/*.png` copied to `replay/figures/` and referenced with captions and
+  `data-source`. `REPORT.md` now embeds all 11 figures and links the dashboard;
+  `replay/index.html` and `README.md` link it too.
+- **M15 / F15** `serve` now hosts `replay/` read-only at `/` (exact bytes, correct MIME),
+  adds `/api/replay/timeline?source=` from the same builder, refuses traversal
+  (`/../`, `%2e%2e`, `/etc/passwd`) with 4xx and no file content, and keeps the F9
+  endpoints unchanged. `check()` validates static hosting and the timeline too.
+- **M16** `DECISIONS.md` gains the Phase 3 §1.3 revisions (NF-13 scope, D9 division) and
+  D13–D17 with candidates / choice / evidence / reversibility / date. `REQUIREMENTS-PHASE2.md`
+  NF-13 and the F10 opening now point at Phase 3. `README.md`, `REPORT.md`, `progress.txt`
+  updated.
+
+## Findings (Phase 3)
+
+- Measured bundle sizes: XM `replay-data.js` 18.3 KB, SH 872.7 KB; player pages 112 KB / 245 KB
+  (budgets 1 MB / 256 KB); `replay/` total 5.46 MB (< 6 MB) including the 0.5 MB figure mirror.
+- Empty-move frames are exactly SH 40 per strategy and XM 0; they are `[]` in the bundle and
+  render no arrows. Frame counts stay 4 / 149, equal to the product time buckets.
+- `repro --fresh` regenerated all 153 frame pages byte-identically; `tests/test_replay_site.py`
+  has no diff and still passes. `outputs/agent_run.*` had to be regenerated after `--fresh`
+  (repro does not run the agent command); after regenerating them git shows no deletions.
+
+## Manual checks still owed to a human (REQUIREMENTS-PHASE3 §6.2)
+
+1. 连续播放：打开 `replay/sh/player.html` 与 `replay/xm/player.html`，确认自动走完全部帧、不跳帧、不整页重载。
+2. 响应式：约 400px 宽时两策略上下堆叠，无横向滚动。
+3. 明暗主题：切换系统主题后文字、网格、箭头、趋势图仍可读。
+4. 性能：4× 播放不卡顿，拖动进度滑块时数字同步。
+5. 箭头语义：箭头只在有搬运的帧出现，且页面说明它不代表更细的时间分辨率。
+
+## Deslop pass (post-review, bounded to this session's changed files)
+
+Reviewer-approved cleanup, behavior locked by the existing Phase 3 tests:
+
+- deleted the unused `strategy` parameter of `_detail_block` (dead argument).
+- `render_player` now hoists `cell_ids` / `color_min` / `move_counts` out of the
+  strategy loop instead of recomputing them per strategy and re-indexing `data[...]`.
+- the KPI updater reads each element's own `data-format` instead of hardcoding
+  `name === 'distance_bike_km'` twice — one source of truth for number formatting.
+- `_trend_svg`'s horizontal basis is now `TREND_CANVAS_W`, so it is no longer a
+  bare `900.0` that reads like the `TREND_STEP` pause.
+- `LEGACY_API_PATHS` is defined once and `_is_api` reads it; a new test asserts every
+  legacy alias still reaches the API router instead of falling through to the file
+  server (that drift would have silently turned `/health` into a 404 static lookup).
+- `resolve_static` / `_send_static` carry `Path` annotations.
+
+Verification after the pass: replay rebuilt (bundles unchanged in shape and values:
+XM 4×169 max 1228, SH 149×255 max 40, empty-move 0/0 and 40/40), 44 Phase 3 tests
+pass, `tests/test_serve.py` + `tests/test_replay_site.py` untouched and green,
+`check_regression.py` clean, `serve --check` exit 0, `ralph verify` clean.
+
+## Final verification (Phase 3 closeout)
+
+```
+bike-agent repro --fresh      exit 0   (153 frame pages regenerated byte-identically)
+python3 -m pytest             exit 0   164 passed
+python3 scripts/check_regression.py    every pre-existing value preserved, additive only
+bike-agent serve --check      exit 0   ok=true, 12 checks (xm 4 / sh 149 frames, static_site, replay_timeline)
+ralph verify                  exit 0   clean vs baseline
+```
+
+Red lines: `tests/test_replay_site.py` and `tests/test_serve.py` are byte-identical to
+HEAD (`git hash-object` == `git rev-parse HEAD:<path>`); 0 frame pages changed or deleted;
+SH 40 empty-move frames per strategy are `[]`; no npm/build/CDN/ES module/fetch anywhere
+under `replay/`; every frame is kept (no sampling, no interpolation).
+
+Still owed to a human: the five §6.2 checks (continuous playback, ~400px responsive,
+light/dark theme, 4× performance, arrow semantics). They are behavioural and cannot be
+asserted from the DOM; the automatic side already proves every frame's data, every control
+and the first frame's static rendering.

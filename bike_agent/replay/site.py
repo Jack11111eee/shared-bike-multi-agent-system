@@ -289,11 +289,17 @@ def _render_frame(
 # -- site -------------------------------------------------------------------
 def build_site(config: dict[str, Any], layout: Layout, sources: list[str] | None = None) -> dict[str, Any]:
     """Write ``<root>/replay/`` from the persisted artefacts; returns a summary."""
+    # Imported here, not at module scope: player.py reuses this module's
+    # formatting helpers, and a top-level mutual import would be circular.
+    from bike_agent.replay.player import PLAYER_CSS, PLAYER_JS, build_dashboard, write_player
+
     sources = sources or list(config.get("sources", {}).keys())
     site_dir = layout.root / "replay"
     site_dir.mkdir(parents=True, exist_ok=True)
     (site_dir / "style.css").write_text(_CSS, encoding="utf-8")
     (site_dir / "app.js").write_text(_JS, encoding="utf-8")
+    (site_dir / "player.css").write_text(PLAYER_CSS, encoding="utf-8")
+    (site_dir / "player.js").write_text(PLAYER_JS, encoding="utf-8")
 
     built: dict[str, Any] = {}
     for source in sources:
@@ -364,8 +370,10 @@ def build_site(config: dict[str, Any], layout: Layout, sources: list[str] | None
             "last_bucket": _bucket_str(buckets[-1]),
             "n_moves": {strategy: sum(len(v) for v in moves[strategy].values()) for strategy in STRATEGIES},
             "service_rate": {strategy: float(summaries[strategy]["service_rate"]) for strategy in STRATEGIES},
+            "player": write_player(config, layout, source),
         }
 
+    build_dashboard(config, layout)
     (site_dir / "index.html").write_text(_render_index(built), encoding="utf-8")
     return {"site": str(site_dir), "sources": built}
 
@@ -388,7 +396,8 @@ def _render_index(built: dict[str, Any]) -> str:
             f'data-value="{info["n_frames"]}">{info["n_frames"]}</b> · '
             f'<span>{html.escape(info["first_bucket"])} → {html.escape(info["last_bucket"])}</span></p>'
             f"<ul>{rate_lines}</ul>"
-            f'<p><a class="start" href="{src_attr}/frame-0000.html">开始回放 →</a></p></section>'
+            f'<p><a class="start" href="{src_attr}/player.html">播放 →</a> '
+            f'<a href="{src_attr}/frame-0000.html">逐帧查看 →</a></p></section>'
         )
         links = "".join(
             f'<a href="{src_attr}/frame-{index:04d}.html">{index + 1}</a>' for index in range(info["n_frames"])
@@ -412,6 +421,8 @@ def _render_index(built: dict[str, Any]) -> str:
 <p class="notice">逐帧重演 Phase 1 的仿真产物：S-RULE 与 S-OPT 并排，同一时间单元下各自展示。
 所有数字均为<strong>模拟值</strong>；帧数等于产物时间单元数，没有插值、补帧或合成数据。</p>
 <p class="notice">两个数据源的短板不同，如实说明：{_tension_text(built)}</p>
+<p class="notice">播放器会自动逐帧播放，可暂停、拖动与跳帧；全部图表与关键数字见
+<a href="dashboard.html">总览页</a>。逐帧页仍然保留，供深链与无脚本回退使用。</p>
 </header>
 <main>
 {''.join(cards)}
