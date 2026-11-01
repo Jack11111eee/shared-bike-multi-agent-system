@@ -236,3 +236,383 @@ Still owed to a human: the five §6.2 checks (continuous playback, ~400px respon
 light/dark theme, 4× performance, arrow semantics). They are behavioural and cannot be
 asserted from the DOM; the automatic side already proves every frame's data, every control
 and the first frame's static rendering.
+
+---
+
+# Phase 4 · 演示导览与交互复盘（REQUIREMENTS-PHASE4.md，F16–F20）
+
+## PRD 切换与基线（开工前）
+
+- Active PRD 为本会话作用域 `.omc/state/sessions/194b3654-5fb6-4cc6-be99-86ce56845823/prd.json`，
+  description 为 `Phase 4 / REQUIREMENTS-PHASE4.md — 演示导览与交互复盘（F16–F20，M17–M24）`，
+  故事 P4-M17…P4-M24，全部 `passes: false`，未预填 `architectVerified`。
+- 旧 `.omc/prd.json`（F1–F15，8 条故事全部 `passes: true`）原样保留，未清空、未改写，
+  未把旧 `passes: true` 搬进本期。其 `feedbackCommands` 含 `|| true`，本期不继承。
+- 本期 `feedbackCommands`：`python3 -m pytest`、`python3 scripts/check_presentation.py --phase 4`，
+  原样传播退出码，无 `|| true`、无过滤、无恒零脚本。
+- 反馈基线（`omc ralph verify --write-baseline --session 194b3654-…`，2026-10-31T15:25:47Z）：
+  - `python3 -m pytest` → `164 passed`，无失败签名；
+  - `python3 scripts/check_presentation.py --phase 4` → `can't open file … No such file or directory`
+    （退出码 2）。**这是本期交付物缺失的如实失败证据**：先让它失败，M24 实现后再要求它通过。
+- 会话冲突检查：本会话作用域 PRD 此前不存在；项目级 `.omc/prd.json` 属已完成的历史任务，
+  无其他任务占用 active PRD，无冲突。
+
+## M17 · Phase 3 基线核验与 §1.3 授权修订
+
+实测（2026-10-31，`replay/` 为 Phase 3 产物，未重建）：
+
+| 项目 | REQUIREMENTS-PHASE4 §2.1 快照 | 本次实测 | 差异 |
+|---|---|---|---|
+| `replay/` 全部文件总量 | 5,476,594 字节 | 5,476,594 字节（5.223 MiB） | 0 |
+| HTML 页数 | 157 | 157 | 0 |
+| `xm/replay-data.js` | 18,752 字节 | 18,752 字节 | 0 |
+| `sh/replay-data.js` | 893,600 字节 | 893,600 字节 | 0 |
+
+补充实测：`xm/player.html` 112,030；`sh/player.html` 244,791；`dashboard.html` 32,345；
+最大逐帧页 `replay/sh/frame-0094.html` 44,207（上限 96 KiB）；8 MiB 预算余量 2,912,014 字节。
+
+§1.3 授权修订落地（唯一获准的旧测试改动，局部 diff）：
+
+```diff
+diff --git a/tests/test_replay_player.py b/tests/test_replay_player.py
+@@ -427,7 +427,7 @@ def test_trend_series_have_units_and_known_sources(source):
+     total = sum(path.stat().st_size for path in SITE.rglob("*") if path.is_file())
+-    assert total < 6 * 1024 * 1024, f"replay/ is {total / 1024 / 1024:.2f} MB"
++    assert total < 8 * 1024 * 1024, f"replay/ is {total / 1024 / 1024:.2f} MB"
+
+diff --git a/tests/test_replay_site.py b/tests/test_replay_site.py
+@@ -327,7 +327,7 @@ def test_site_stays_small_and_frames_are_per_page():
+     total = sum(p.stat().st_size for p in SITE.rglob("*") if p.is_file())
+-    assert total < 6 * 1024 * 1024, f"replay/ is {total / 1024 / 1024:.2f} MB"
++    assert total < 8 * 1024 * 1024, f"replay/ is {total / 1024 / 1024:.2f} MB"
+```
+
+`git diff --stat` = `2 files changed, 2 insertions(+), 2 deletions(-)`；其他断言、帧数常量
+（`EXPECTED_FRAMES` 4/149、`EXPECTED_EMPTY_MOVES` 0/40、`EXPECTED_COLOR_MAX` 1228/40）、
+DOM 契约、离线检查、单文件上限（replay-data.js ≤ 1 MiB、player.html ≤ 256 KiB、
+dashboard.html ≤ 512 KiB、逐帧页 < 96 KiB）均未改动；未新增 skip/xfail，未删除断言。
+
+## M18 · 共享分析状态与展示数据契约
+
+新增 `bike_agent/presentation/`：
+
+- `analysis.py::build_presentation(config, layout, source)` 是唯一构建入口。帧/KPI/搬运记录复用 Phase 3 的
+  `build_replay_data`；逐格账本、`delta_unmet`、四类事件、七个场景、五章导览与证据记录都在同一返回值里。
+  `presentation_js()` 把它发布成 `replay/<source>/presentation.js`（经典脚本，`file://` 可读）。
+- 体积控制：不复制 `inventory_end` / `unmet` / `moved` / `moves` / `kpi`——工作台从同一页已加载的
+  `replay-data.js` 取，`presentation.js` 用 `shared_with_player` 显式声明这一分工。
+  实测：XM 56,082 字节、SH 1,196,159 字节（上限 2 MiB/源）。
+
+全量校验（`tests/test_presentation_data.py`，两源全部帧/全部格）：
+`delta_unmet` 逐格等于两份 parquet 相减、逐帧求和等于 CSV 汇总差；`gain == -net` 逐帧成立；
+色域 M 独立复算（XM 102 / SH 3）；每条事件/场景/导览证据都有 `source_file` + `join_key` + `formula`；
+空态（`all_zero` / `no_improvement` / `no_regression`）与零分母都是显式状态，不用 0 顶替。
+
+## M19 · F18 差分地图
+
+`tests/test_presentation_delta.py`：静态差分网格 169 / 255 个 rect 与打包 `delta` 逐个相等；
+`data-scale="delta"` 每源恰一个、与 `[-M, M]` 一致；净差/改善格/退步格可从 parquet 独立复算；
+node 驱动状态机验证切模式保留 source/frame/cell、非法模式被拒、选格驱动账本。
+
+## M20 · F17 关键事件
+
+`tests/test_presentation_events.py`：四类事件从原 CSV 全帧复算并逐项相等（含平手计数）；
+改善只取 `gain>0`、退步只取 `gain<0`；六个合成用例覆盖平手/全零/只有改善/只有退步/无差异/同帧多标签；
+对两源全部 8 个事件执行跳转，断言目标帧、时间一致且 `playing == false`。
+
+实测事件：XM 未满足 2,541（帧 2）、搬运 200（帧 0，4 帧并列）、改善 +85（帧 2）、退步 −125（帧 1）；
+SH 未满足 8（帧 121，2 帧并列）、搬运 69（帧 93）、改善 +3（帧 122）、退步 −3（帧 143）。
+
+## M21 · F19 单格账本
+
+`tests/test_presentation_ledger.py`：XM 4×169、SH 149×255、双策略下账本原始字段与四条等式逐格成立；
+每帧全格调入总量 == 调出总量 == `sim_moves` 记录车辆数 == CSV `bikes_moved`；逐格调出 == `bikes_moved`。
+调入按 `to_cell` 从搬运明细求和（`bikes_moved` 只是搬出，不能当双向量）。默认格 = 累计 S-RULE
+未满足最高（XM `C0007_0010` 655 次、SH `C0007_0006` 24 次），平手按 `cell_id` 升序。
+账本给出该帧涉及该格的原始搬运记录（两个方向），全回放历史逐帧一行。
+
+## M22 · F20 场景切换
+
+`tests/test_presentation_scenarios.py`：七个场景 × 双策略 × 四指标与 `sim_sensitivity` 逐项相等；
+baseline 与 `strategy_comparison` 一致；相对变化可复算，零分母标记为 `zero_denominator`（percent = None）；
+node 遍历每个场景并回到 baseline，断言 `frames[0].delta` 与账本 JSON 在切换前后完全相同。
+
+## M23 · F16 五章导览 + NF-27 行为验证
+
+`tests/test_presentation_guide.py`：
+- F16-1 首页入口与目标存在、五章有序、五个导航动作齐全；
+- F16-2 每章 target 落在权威输入内，文案数字（总量/服务率/峰值 gain/净差与格数/默认格/场景值）
+  按关联键重新计算后逐项匹配；
+- F16-3 node 驱动前进/后退/退出/重启，断言章节与分析状态同步、退出保留位置、重启回首章、
+  切章与跳事件都会暂停；
+- F16-4 旧入口与全部逐帧页仍在，`<noscript>` 有介绍与链接。
+
+NF-27 两层：
+1. `tests/js_harness.py` 用 node 的 `vm` 加载**已发布**的 `replay-data.js` / `presentation.js` /
+   `workbench-core.js`，驱动状态机（不依赖 DOM）。
+2. `scripts/browser_smoke.py` 用 headless Chrome 加载真实页面、点击真实按钮、读取点击后的 DOM。
+   两源各 14 步全部通过；并把浏览器实际渲染出的账本字段与 parquet 逐项比对（不只是"控件存在"）。
+
+浏览器冒烟过程中发现并修掉的两个真实缺陷：
+- SVG `<rect>` 没有 `.click()`，冒烟脚本改为派发冒泡 `MouseEvent`（脚本问题，不是页面问题）；
+- 场景按钮选择器把表格行也匹配进来了（`[data-scenario]` 同时命中 `<tr>`），收窄为 `button[data-scenario]`。
+
+## M24 · 文档、验证命令、回归与视觉证据
+
+- `scripts/check_presentation.py --phase 4`：30 项确定性检查（F16-1a/1b/2/4、F17-1/sign、
+  F18-1/2/2b、F19-1/2/3、F20-1/2/3 各按源跑一遍、NF-22/23/24/27），
+  失败返回非零，写 `outputs/presentation_validation.phase4.json`（检查 ID、输入摘要、期望值/实测值/结果）。
+  **负向自测**：手动把页面色标由 ±102 改成 ±99，命令从 30/30 变成 29/30 且退出码 1；还原后回到 0。
+- 默认输出只打印失败项与一行固定摘要（成功时不带计数），避免计数变化在反馈基线里变成假回归；
+  `--verbose` 打印全部 30 项，`--json` 打印完整报告。
+- 文档：README 增加「复盘工作台与演示导览（Phase 4）」；REPORT 增加 §9.6（含 XM 未胜出、SH 改善小的如实说明）；
+  DECISIONS 追加 Phase 4 §1.3 修订表与 D18–D22（由 `bike_agent/report/text.py` 生成，数字取自构建结果）；
+  REQUIREMENTS-PHASE2 的 F10 与 NF-13、REQUIREMENTS-PHASE3 的 NF 表末尾各补指向 Phase 4 §1.3 的说明。
+- 视觉证据：`docs/VISUAL-CHECK-PHASE4.md` + `docs/visual-evidence/*.png`（1440 明/暗、500px 窄屏、整页）。
+  **400px 未实测**：headless Chrome 在 macOS 上把视口夹到最小 500 CSS px，`--force-device-scale-factor`
+  也不改变 CSS 视口，因此这一档如实记为"待人工确认"。
+
+## 反馈基线说明（必须如实记录）
+
+首次基线（2026-10-31T15:25:47Z）对 `python3 scripts/check_presentation.py --phase 4` 记录的签名是
+`can't open file ... No such file or directory`——这正是"本期交付物尚不存在"的证据，已保留在
+`.omc/state/sessions/194b3654-.../feedback-baseline.initial.json`。
+
+M24 交付该脚本并让它实际通过之后，旧基线里的这条"失败"已经永久消失；若继续沿用旧基线，
+每次 `ralph verify` 都会把 30 行 PASS 输出当成"新增失败"。因此在本期交付物齐备后**重新记录基线**
+（`--write-baseline`，2026-11-01），并在此说明原因：这不是把失败洗成通过，而是把
+"文件不存在"这一条已解决的基线项换成了真实的当前状态。`python3 -m pytest` 的基线失败集合
+在两次记录中都为空（164 passed → 282 passed，无失败），未因重记而放宽。
+
+## 最终验证（Phase 4 closeout，串行执行，2026-11-01）
+
+```
+python3 -m pytest                                   exit 0   282 passed
+bike-agent replay --sources xm,sh                   exit 0   xm 4×169 / sh 149×255
+bike-agent serve --check                            exit 0   ok=true, 12 checks, 0 failures
+python3 scripts/check_presentation.py --phase 4     exit 0   all checks passed (30 项)
+python3 scripts/check_regression.py                 exit 0   every pre-existing value preserved
+bike-agent repro --sources xm,sh                    exit 0   （未用 --fresh，未重下数据）
+```
+
+红线自查：
+
+- 旧测试只有两处体积常量改动（`git diff --stat` = 2 files, 2 insertions, 2 deletions），
+  帧数常量、DOM 契约、离线检查、单文件上限均未动；无新增 skip/xfail、无删断言。
+- `replay/*/frame-*.html` 与 `player.html`、`dashboard.html` 全部未被改动
+  （`git diff --name-only replay/` 只有 `replay/index.html`，即新增的导览入口）；
+  153 个逐帧页一页未少。
+- `outputs/key_numbers.json` 未改动（`check_regression.py` 判定 additive only，既有值全部保留）。
+- 站点无外部 URL、无 ES module、无 npm/package.json、无 fetch。
+
+## 已知环境噪声（如实记录，不掩盖）
+
+`omc ralph verify --session 194b3654-…` 在本期最后一次运行时报告 1 行 "new"：
+
+```
+new: python3 -m pytest: 282 passed, 14 warnings in <v> (0:02:32)
+```
+
+这不是失败：同一行的测试数与失败数（282 passed、0 failed）与基线完全一致，差异只有
+pytest 自己打印的**耗时括号** `(m:ss)`——反馈基线把 `in <v>` 归一化了，但没有归一化括号里的墙钟时间。
+基线里同一行是 `(0:03:45)`。`check_presentation.py` 那条命令在基线与当前运行中都是
+`phase 4: all checks passed`，无差异。
+
+处理方式：把最终基线记录在交付物齐备、全套测试全绿之后（两次记录中 pytest 的失败集合都为空，
+164 passed → 282 passed，没有因为重记而放宽任何检查），并在 closeout 里说明这一行噪声的来源。
+没有为了让 verify 变绿去过滤 pytest 输出或吞退出码——那会同时把真实失败一起藏掉。
+
+## Deslop pass（review 后，范围限定在本期改动文件）
+
+行为不变的清理，全部由既有测试锁定：
+
+- `analysis.py`：删掉未使用的 `_bucket_str`、`csv_opt`、`gain_event`；`_matrix` 的护栏从
+  "首块格子顺序 + 桶顺序"加强为"每个桶的格子集合都等于 cell_ids"——原来的检查挡不住
+  "A 桶少一格、B 桶多一格、总数刚好相等"这种错位，而错位会让后面每一行整体偏移一格且不报错。
+- `analysis.py`：`regression_note` 改用 `_signed`，零差值显示 `0` 而不是 `+0`。
+- `render.py`：删掉未使用的 `Path` 导入与两个未使用的 `source` 局部变量；
+  地图区提示从"点击或聚焦后用 Enter 选择格子"改成"点击格子即可选择；键盘用户请用账本上方的
+  「选择格子」下拉框"——因为格子 rect 已经没有 tabindex，原来那句话描述了一个不存在的交互
+  （169/255 个格子逐个做成 tab 停靠点本身也不可用）。
+- `check_presentation.py`：模块级导入 `Layout`（原来只在注解里出现，靠 `from __future__` 才没报错）、
+  删掉未使用的 `analysis_payload` 导入与 `moved_records` 死代码、`subprocess.run` 显式 `check=False`、
+  脚本加可执行位；默认输出改为"仅失败项 + 一行固定摘要"（成功时不带计数），`--verbose` 打全部。
+- 测试：删掉未使用的导入与 `_grid` 辅助函数，修掉两条我自查出来的恒真断言
+  （`assert X if cond else 0` 与 `assert len(a)==len(b) or len(a)>len(b)`），
+  `dict(...)` 改字面量。
+- **NF-24 新增一条**：`replay/` 里出现 `*.smoke.html` 或 `smoke-driver.js` 即判失败。
+  这条立刻抓到了一个真实残留——之前强杀超时的浏览器冒烟，在 `replay/xm/` 留下了
+  `workbench.smoke.html`，它会跟着站点一起发布。现已删除，且 `browser_smoke.run()` 每次启动前
+  先清理旧残留。
+
+清理后复跑：`python3 -m pytest` 282 passed；`bike-agent replay --sources xm,sh` 退出码 0；
+`python3 scripts/check_presentation.py --phase 4` 30/30 通过；新增文件 `ruff check` 全绿。
+
+## 第二轮：架构评审 REJECTED 后的修复（4 个阻塞缺陷）
+
+评审结论是 REJECTED，理由是"四个门禁都不看 JS 渲染后的 DOM"。我逐条复现后确认成立：
+
+**1（阻塞）差分图在真实浏览器里是空白。** `analysis_payload()` 不发布 `cell_px`/`cell_gap`，
+而 `workbench.js` 用 `data.cell_px + data.cell_gap` 算坐标、用它设 `width`/`height`，
+于是每帧 `renderGrids()` 把 Python 预渲染好的 rect 全删掉、重建出 169/255 个
+`x="NaN" width="undefined"` 的零尺寸格子。实测（headless Chrome，file://）169 个 rect 的
+`getBoundingClientRect().width` 全是 0，`browser_smoke.py` 的 `deltaCells` 只是 `querySelectorAll`
+计数，照样是 169 —— 门禁全绿，页面全空。
+
+修法不是补两个字段，而是**去掉第二个渲染器**：`renderGrids()` 改成原地更新预渲染的 rect
+（`data-delta`、`fill-opacity`、`class`、`title`、`aria-label`、以及新增的 `text.delta-glyph` 的
+`−`/`+`/空），不再 `createElementNS`。几何只由 Python 产出，`workbench.js` 里不再出现
+`cell_px`/`cell_gap`（新增检查项与测试断言这一点）。顺带删掉 JS 给每个 rect 加的
+`tabindex="0"` —— 那让 255 个格子变成 255 个 tab 停靠点，和 README 的说法自相矛盾。
+
+**2（阻塞）证据链与屏幕数字不一致。** `data-join-key`/`data-operands` 由 Python 按 `frames[0]`
+烤死，JS 只改 `data-value` 与文本。实测初始态：账本显示 `inventory_end = 163`，
+而它自己的 `data-operands` 是 `{inventory_start:0, moved_in:200, ...}`（算出 0）；
+`data-join-key` 写 `08:00` 而页面显示 `06:00`。
+修法：`renderSummary`/`renderLedger` 每帧从同一份 state 重写 `data-join-key`，
+派生值重写 `data-operands`（非派生值 `removeAttribute`），`#frame-label`/`#bucket-label` 的
+关联键也随帧更新。
+
+**3（阻塞）数据源切换是死控件。** XM 页只加载 `xm/presentation.js`，`PRESENTATION_DATA` 只有
+`['xm']`，`core.sourceHref('sh')` 返回 `null`，点击无任何反应；而首页还写着"可随时切换"。
+同时 `test_presentation_ledger.py` 的 node 夹具**同时加载两源**，测了一个线上页面不存在的行为。
+修法：切换控件改成 `<a href="../sh/workbench.html">`（每源一页、各自加载自己的包；两包同页会
+把 `replay/` 推过 8 MiB 上限），删掉那段永远走不到的 click 处理；测试改成只加载本页单源，
+并断言"另一源的 bundle 未加载 → `sourceHref` 返回 null"，正是死控件的成因；首页文案改成
+"每个数据源各有独立的工作台页，页首的 S-XM / S-SH 链接直接跳到另一源"。
+
+**4（阻塞）`build_presentation` 的返回值不是契约里枚举的那份。** 缺 `evidence`，
+`frames[i].delta_summary`/`gain`/`moved_in` 没有任何溯源字段，且 `guide` 要再调一次
+`attach_guide()` —— "单次构建"实际是两步。修法：`build_presentation` 现在自己返回
+`guide`（章 1 要比较另一源，就用 `_other_source_summary()` 读对方 3 个廉价文件）
+与顶层 `evidence`（`build`/`frames`/`events`/`scenarios`/`ledger`）；`attach_guide` 降级为
+兼容空操作；所有调用点改用 `build_all_presentations()`。
+
+**顺带修的 NOTE**：静态页"当前帧 1 / 06:00"配着第 3 帧（08:00）的账本数字 —— 账本改为渲染
+`frames[0]`，与页面标签一致（导览第 4 章才跳到 `top["frame"]`）。
+
+**新增的护栏**（这次是"门禁看不见 JS 渲染"的根因）：
+
+- `check_presentation.py` 新增 8 项：`F18-1[src] 差分格几何`（逐 rect 校验数值坐标与正宽高）、
+  `F18-1[src] 单一渲染器`（`workbench.js` 不得出现 `cell_px`/`cell_gap`）、
+  `F19-1[src] 证据可复算`（4 个派生值必须能由自身 `data-operands` 复算，且关联键指向屏幕上的时段）、
+  `P4-M18[src] 数据源切换`（链接存在且目标文件存在）。总数 30 → 38。
+- `browser_smoke.py` 新增 `deltaGeometry()`（切到差分模式后量 `getBoundingClientRect`，
+  宽高必须 > 0）与 `provenanceCheck()`（`inventory_end` 必须等于自己操作数算出的值、
+  关联键必须指向当前时段），三处时点各测一次；任一不过 `ok=false`。
+  注意：差分视图 `hidden` 时没有盒子，所以只在可见时量测，否则会把"隐藏"误判成"零尺寸"。
+- 测试：`test_prerendered_delta_rects_have_real_geometry_and_a_sign_glyph`、
+  `test_the_script_never_computes_cell_geometry`、
+  `test_displayed_values_recompute_from_their_own_operands`、
+  `test_one_build_returns_the_whole_contract`、
+  `test_every_frame_derived_value_carries_provenance`、
+  `test_every_ledger_field_is_documented_with_its_formula`。
+- 负向验证：把 `x="0"` 改回 `x="NaN"` 后，新增的几何检查确实 fail（4 项失败，含两源的证据可复算）。
+
+**复跑（串行，无并发负载）**：`python3 -m pytest` 293 passed / 0 failed / 0 skipped；
+`bike-agent replay --sources xm,sh` 退出码 0；`bike-agent serve --check` ok=true（12 项）；
+`python3 scripts/check_presentation.py --phase 4` 38/38 通过；`check_regression.py` 退出码 0。
+体积：`replay/` 7.20 MiB / 8 MiB，`presentation.js` XM 87,456 / SH 1,563,275 字节（上限 2 MiB/源），
+`workbench.html` XM 167,130 / SH 225,968 字节（上限 256 KiB）。
+
+**关于 `ralph verify` 再次报"新失败"**：6 条新签名逐条打印出来是 pytest 的进度行与
+`293 passed, 14 warnings in <v> (0:02:15)`，5 条"已解决"是它们上一轮的对应行
+（282 passed、25/51/76/100% 分段）。原因是我按要求新增了 6 个测试，分段百分比随之改变；
+两次记录中 pytest 的失败集合都为空。我把旧基线留成 `feedback-baseline.before-fix.json`，
+在绿态重记了一次，并保留了这份逐行对照。重记后剩下的唯一一条"新失败"是
+`293 passed, 14 warnings in <v> (0:02:56)` —— harness 的 `VOLATILE_PATTERNS` 只归一化
+`in <v>`，没归一化行尾的 `(m:ss)`，所以每次跑都会变；这行本身报告的是 0 失败。
+没有过滤 pytest 输出、没有吞退出码。
+
+## 第三轮：第二轮评审的 1 个缺陷 + 4 条 NOTE
+
+第二轮结论仍是 REJECTED，但措辞是"四个原始阻塞项已全部修好，只剩一个机械缺陷：交付文档的
+数字没跟上最后一次代码改动"。逐条处理：
+
+**缺陷：文档数字过期。** 这是时序问题，不是算错。根因是文档生成早于最后一次重建，而且
+`replay/` 的总量在浏览器冒烟运行时会被临时页抬高（`browser_smoke.py` 曾把注入页写进
+`replay/<source>/workbench.smoke.html`），所以在冒烟进行中生成的文档会固化一个偏大的值
+（评审看到的 7.43 MiB 就是这么来的）。处理分两步：
+1. `check_presentation.py::_check_budget` 与 `bike_agent/report/text.py` 的站点总量改为
+   **只统计会发布的文件**（排除 `*.smoke.html`），这样数值不再取决于"是否有冒烟正在跑"。
+   实测：干净时 7,567,615 字节，冒烟页在场且被排除时同样是 7,567,615，未排除时是 7,734,745。
+2. 在最终构建之后重新生成 `DECISIONS.md` / `REPORT.md` / `docs/VISUAL-CHECK-PHASE4.md`，
+   并重新截图（含两张差分模式图）。
+
+**NOTE 2（过度实现，已改）**：`evidence.frames` 与 `frames[i].evidence` 是同一份记录的两次拷贝，
+占 SH 包 10.9%（171 KB）。删掉顶层那一份，帧级证据只留在 `frames[i].evidence`；
+`presentation.js` 因此从 XM 95,249 / SH 1,570,863 降到 XM 90,747 / SH 1,405,651 字节，
+站点总量从 7,567,615 降到 7,397,897 字节（其后剔除 `.DS_Store` 再降到最终值 7,387,653 字节，见下一段）。测试改为断言 `set(evidence) == {build, events, scenarios, ledger}`
+且每帧都带 `evidence`。
+
+**NOTE 3（操作数语义，已改）**：`moved_in` 原来的 `operands` 只有一个指针
+`{"records": "...moved_in"}`，不能独立复算。改成显式的 `{"source": "frames[i].strategies[s].moved_in",
+"reduce": "sum(values)"}` —— 说清楚"操作数在哪、怎么归约"，仍然不重复存一份 map。
+
+**NOTE 4（冒烟临时页污染站点），部分处理**：我先尝试把注入页搬到临时目录（复制共享 CSS/JS +
+两源文件），但在本机负载下 Chrome 对副本页面反复超时（同样参数对站点内页面正常），
+故没有采用——不能用一个未经验证的路径替换已验证的路径。改为在**度量层**消除竞态（见上），
+并保留原有的"启动前清理 + 结束删除 + NF-24 残留检查"三道防线。这条限制如实记在这里，
+而不是宣称已修好。
+
+**NOTE 5（措辞）**：`replay/index.html` 的"页首的 S-XM / S-SH 链接"改为"页首的 XM / SH 链接"，
+与实际 `<a>XM</a>` / `<a>SH</a>` 标签一致。
+
+**NOTE 6（F16-2 自引用）**：`check_presentation.py` 的 `F16-2` 用同一个 `presentation` 对象
+校验章节目标，真正的 CSV 交叉核对在 `tests/test_presentation_guide.py`。评审也说"不值得单独修"；
+保留现状，但已在此写明，避免读者误以为该检查独立验证了数据源。
+
+**又补三条（同轮，都是"别承诺不存在的东西"）：**
+
+- 站点总量同时排除 `.DS_Store`：它是 gitignored 的 Finder 元数据，别的机器上没有，算进去会让
+  引用到的字节数不可复现。本地那份 `replay/.DS_Store`（10,244 字节）已删除，磁盘实测与引用一致。
+- `replay/index.html` 的导览句改由 `_guide_scope_text()` 按实际构建来源生成：两源都建时说
+  "页首的 XM / SH 链接直接跳到另一源"，只建一个源时说"本站只生成了一个数据源，工作台页首不会出现
+  跨源链接"——单源构建不会宣传它没写的链接。
+- 新增 `test_home_page_only_promises_pages_that_exist` 锁住上面这条。
+
+**最终复跑（串行）**：`python3 -m pytest` 296 passed / 0 failed / 0 skipped；
+`bike-agent replay --sources xm,sh` 退出码 0；`bike-agent serve --check` ok；
+`python3 scripts/check_presentation.py --phase 4` 38/38 通过；`check_regression.py` 退出码 0；
+`browser_smoke.py` xm / sh 均 `ok/geometryOk/provenanceOk = true`（各 attempts=1）。
+体积：`replay/` 7,387,653 字节 = 7.05 MiB / 8 MiB，`presentation.js` XM 90,747 / SH 1,405,651 字节
+（上限 2 MiB/源），`workbench.html` XM 167,130 / SH 225,968 字节（上限 256 KiB）。
+交付页与一次全新渲染逐字节相同（page/js in sync 均为 True）。
+
+**未做**：人工视觉确认。`docs/VISUAL-CHECK-PHASE4.md` 第三栏仍是"待确认"，
+包含 400 px 视口（本机 headless Chrome 夹到 500 px，无法实测）。我不代替用户签字。
+
+## 第四轮：评审 APPROVED 后的收尾（两条记录性问题 + 两个由此暴露的实现缺口）
+
+架构评审给出 **APPROVED**，并明确指出人工视觉栏仍如实标为"未确认"而不是代签。它留了两条不影响交付的
+NOTE，我按"顺带能把根因堵掉就堵掉"的原则处理：
+
+**NOTE：`progress.txt` 里还留着 7.06 MiB。** 那是剔除 `.DS_Store` 之前的中间值。已在原处补注
+"其后剔除 `.DS_Store` 再降到最终值 7,387,653 字节"，避免读者拿日志与 `DECISIONS.md` 对不上。
+
+**NOTE：按名字过滤只是缩小了问题类别，没有关闭它。** 评审指出验证期间 `replay/xm/__glyph.html`
+（我自己的探针）曾出现在交付树里。改成**由构建输入推导应有文件集**：
+`check_presentation.py::_expected_site_files()` 用根资源 + 每源资源 + `n_frames` 帧页 + `figures/*.png`
+算出应有集合，多出来的记 `stray_files`、少了的记 `missing_files`，任一非空即 NF-24 失败。
+负向自测：往 `replay/xm/` 放一个 `__probe.html`，立刻报 `stray_files: ['xm/__probe.html']`。
+`.DS_Store` 仍从体积统计里排除（gitignored 的 Finder 元数据，别的机器没有，算进去会让数字不可复现），
+但不参与 stray 判定——它不是构建产物，不该让构建失败。
+
+**顺带修掉两个由此暴露的缺口：**
+
+- `browser_smoke.py` 的超时原先会让 `subprocess.TimeoutExpired` 一路抛出，`run()` 的
+  "仅当浏览器没产出结果时重试一次"被完全绕过，机器负载高时表现为 NF-27 直接失败。现改为在
+  `_run_once` 内捕获并返回 `ran: False`，重试策略真正生效；`finally` 仍删除注入页。
+- `_shipped_files()` 原先被调用两次（两次 `rglob`），合并为一次。
+
+**最终四道门（串行，全部实际执行）：**
+`python3 -m pytest` 296 passed / 0 failed / 0 skipped；
+`bike-agent replay --sources xm,sh` 退出码 0；
+`bike-agent serve --check` ok；
+`python3 scripts/check_presentation.py --phase 4` 38/38 通过，`NF-24` 报
+`total 7,387,653 / stray [] / missing []`。
+`check_regression.py` 退出码 0；`browser_smoke.py` 两源均 `ok/geometryOk/provenanceOk = true`。
+`DECISIONS.md` / `REPORT.md` 在最终构建后重新生成（7.05 MiB、88.6 / 1372.7 KB）。
+
+**仍然未做：人工视觉确认。** `docs/VISUAL-CHECK-PHASE4.md` 第三栏全部为"待确认"，
+其中 400 px 视口因本机 headless Chrome 夹到 500 px 而无法实测。本期不得写成"全部验收完成"。

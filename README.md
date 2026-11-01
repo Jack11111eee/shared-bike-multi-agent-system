@@ -2,7 +2,8 @@
 
 城市共享单车供需失衡预测与调度优先级分析。Phase 1 实现 `REQUIREMENTS.md` 的 F1–F7，
 Phase 2 实现 `REQUIREMENTS-PHASE2.md` 的 F8–F11（回放可视化、前后端与智能体层），
-Phase 3 实现 `REQUIREMENTS-PHASE3.md` 的 F12–F15（播放器、可视化扩展、总览页与服务化）：
+Phase 3 实现 `REQUIREMENTS-PHASE3.md` 的 F12–F15（播放器、可视化扩展、总览页与服务化），
+Phase 4 实现 `REQUIREMENTS-PHASE4.md` 的 F16–F20（演示导览、关键事件、差分地图、单格账本、场景切换）：
 
 - **F1** 两个数据源适配器（厦门 DS-XM、上海 DS-SH）→ 统一订单契约 + 完整性报告
 - **F2** 五条清洗规则 → 规则网格 × 1 小时聚合（含零值面板）
@@ -19,6 +20,11 @@ Phase 3 实现 `REQUIREMENTS-PHASE3.md` 的 F12–F15（播放器、可视化扩
 - **F13** 可视化扩展：固定色标、跨帧趋势图、帧内明细、两策略对照
 - **F14** 总览页 `replay/dashboard.html`，并在 `REPORT.md` 中嵌入图表
 - **F15** `serve` 静态托管站点 + `GET /api/replay/timeline` 时间轴接口
+- **F16** 演示导览：首页入口 + 五章推进（数据概貌 → 关键时段 → 策略差异 → 单格账本 → 参数实验）
+- **F17** 关键事件跳转：两源四类事件的清单与一键定位，跳转即暂停
+- **F18** 策略差分地图：逐格 `delta_unmet`，每源固定色域 ±M，与并排视图互切
+- **F19** 单格库存账本：两策略逐帧账本、调入/调出原始记录与全回放历史
+- **F20** 敏感性场景切换：七个已计算场景、双策略四指标、相对基准的变化
 
 ## 安装
 
@@ -76,6 +82,42 @@ bike-agent agent --source xm             # 智能体复盘（可选模块）
 两个数据源各有短板，界面上如实说明：**XM 有戏没帧**（服务率约 91%，但只有 4 个时间单元）、
 **SH 有帧没戏**（149 帧拖得动，但服务率约 99%，多数帧搬运量只有个位数）。
 
+## 复盘工作台与演示导览（Phase 4）
+
+入口：`replay/index.html` 的 **「演示导览 →」**，或直接打开
+`replay/xm/workbench.html` / `replay/sh/workbench.html`（离线可用，无需服务）。
+
+- **五章导览**：数据与需求概貌 → 关键时段 → 策略差异 → 单格账本 → 资源参数实验。
+  有开始 / 上一章 / 下一章 / 重新开始 / 退出导览；不自动翻章，切章与跳事件都会**先暂停播放**。
+  退出导览保留当前分析位置；重新开始回到首章。
+- **关键事件**：每源四类事件（S-RULE 未满足最大、S-RULE 搬运最多、S-OPT 改善最大、S-OPT 退步最大），
+  平手取最早时段，无符合项显示"无改善事件 / 无退步事件"。点击后联动时段、地图、KPI、账本。
+- **差分地图**：「并排对照 / 未满足请求差分」互切。逐格 `delta_unmet = unmet_optimized − unmet_rule`，
+  **负值 = S-OPT 更少未满足**；每源色域固定为 ±M（M = 全回放全部格子的最大绝对差，XM 102 / SH 3）。
+  `gain = unmet_rule − unmet_optimized` 与本指标互为相反数，两者标签不混用。
+- **单格账本**：期初、调入、调出、归还、接纳归还、溢出归还、借车请求、满足、未满足、期末，
+  加该格全回放历史；调入按 `to_cell`、调出按 `from_cell` 从搬运明细求和。
+  默认格子取累计 S-RULE 未满足最高者（平手按 `cell_id` 升序）。
+- **场景切换**：七个已计算场景（`baseline`、`initial_fill=0.3/0.7`、`budget=100/400`、
+  `capacity=0.5x/2x`），双策略四指标与相对同源同策略 baseline 的绝对变化。
+  **场景只更新汇总表，不生成空间回放**，地图始终是 baseline 回放。
+- 导览与事件是**选段**，允许显式跳转并标注"关键事件/选段"；完整播放器仍覆盖全部帧。
+- 数据源切换：每源一页，各自只加载自己的数据包；页首的 `XM` / `SH` 是**链接**，跳到另一源的工作台（两包同页会把站点推过 8 MiB 上限）。
+- 键盘：Tab 到控件即可操作；`←/→` 切帧、`Esc` 退出导览、格子用「选择格子」下拉框选择（格子 rect 不带 `tabindex`，169/255 个格子不做成 tab 停靠点）。
+
+验证命令：
+
+```bash
+python3 scripts/check_presentation.py --phase 4   # 确定性验收，写 outputs/presentation_validation.phase4.json
+python3 scripts/browser_smoke.py --source xm      # 可选：开发期真实浏览器联动冒烟（需要 Chrome）
+```
+
+`browser_smoke.py` 除了点完所有控件，还量测渲染结果：差分格必须有正的 `getBoundingClientRect()`
+宽高（只数元素个数会放过 `x="NaN"` 的零尺寸格子），账本的 `inventory_end` 必须能由它自己
+`data-operands` 里的操作数算回来、`data-join-key` 必须指向屏幕上那个时段。任一不过即判失败。
+
+两者都不参与站点运行；`browser_smoke.py` 找不到浏览器时返回 3 并如实报告"未验证"。
+
 回放服务把同一批产物暴露成 HTTP 接口，三工具接口直接复用 F7 契约：
 
 | 接口 | 能力 |
@@ -101,14 +143,18 @@ bike-agent agent --source xm             # 智能体复盘（可选模块）
 - `outputs/`：`forecast.parquet`、`priority_replenish.csv`、`priority_clear.csv`、
   `sim_rule.*`、`sim_optimized.*`、`replay.<strategy>.<source>.parquet`（逐格逐时间单元状态）、
   `key_numbers.json`、`summary.<source>.json`、`agent_run.<source>.{json,md}`
+- `outputs/`（Phase 4 新增）：`presentation_validation.phase4.json`（`check_presentation.py` 的验收报告）
 - `replay/`：离线回放站点（`index.html` + `dashboard.html` + 播放器 + 每帧一页 +
-  `style.css` / `app.js` / `player.css` / `player.js` / `replay-data.js`）
+  复盘工作台 `workbench.html` + `style.css` / `app.js` / `player.css` / `player.js` /
+  `workbench.css` / `workbench.js` / `workbench-core.js` / `replay-data.js` / `presentation.js`）
 - 根目录：`REPORT.md`、`DECISIONS.md`
 
 ## 测试
 
 ```bash
-pytest
+pytest                                                   # 含 Phase 4 的 F16–F20 自动项
+python3 scripts/check_presentation.py --phase 4          # 确定性验收（失败返回非零）
+python3 scripts/browser_smoke.py --source xm --json      # 可选：真实浏览器冒烟
 ```
 
 ## 工具契约

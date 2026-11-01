@@ -693,7 +693,7 @@ def _phase2_decisions(data: dict[str, Any]) -> list[str]:
         "",
         "**日期**：2026-10-30。",
         "",
-    ] + _phase3_decisions(data)
+    ] + _phase3_decisions(data) + _phase4_decisions(data)
 
 
 def _phase3_decisions(data: dict[str, Any]) -> list[str]:
@@ -755,7 +755,8 @@ def _phase3_decisions(data: dict[str, Any]) -> list[str]:
         "Phase 2 的 NF-13 对**逐帧页**继续有效：" + pages_text + "仍然每页只带自己那一帧的数据，"
         "按需打开。播放器页 `replay/<source>/player.html` 必须连续播放，跨帧不能走网络或整页跳转，"
         "因此它是**唯一例外**，一次性载入该源全部帧。作为交换，体量由 Phase 3 NF-15 硬约束"
-        "（`replay/` 总量 < 6 MB、单源 `replay-data.js` ≤ 1 MB、单个 `player.html` ≤ 256 KB）。",
+        "（`replay/` 总量 < 6 MB、单源 `replay-data.js` ≤ 1 MB、单个 `player.html` ≤ 256 KB；"
+        "**Phase 4 已把站点总量上限调整为 8 MiB，其余单文件上限不变**，见 D18）。",
         "该修订已落到 `REQUIREMENTS-PHASE2.md` NF-13 末尾，指向 `REQUIREMENTS-PHASE3.md` NF-15。",
         "",
         "**修订二 · D9「预渲染的静态多页」与连续播放的分工**",
@@ -906,6 +907,280 @@ def _tension_section(data: dict[str, Any]) -> str:
             "比一个漂亮的、编造的回放有价值。",
         ]
     )
+
+
+def _phase4_decisions(data: dict[str, Any]) -> list[str]:
+    """D18–D23 and the Phase 4 §1.3 revision record, with measured numbers.
+
+    The measurements are taken from the artefacts at render time.  If the
+    presentation build is unavailable (partial artefacts) the block says so
+    instead of quoting a number it did not measure.
+    """
+    summary: dict[str, dict[str, Any]] = {}
+    sizes: dict[str, Any] = {}
+    try:
+        from bike_agent.config import Layout, load_config
+        from bike_agent.presentation.analysis import (
+            build_all_presentations,
+            presentation_js,
+        )
+
+        config, layout = load_config(), Layout()
+        built = build_all_presentations(config, layout, ("xm", "sh"))
+        for source, presentation in built.items():
+            events = {event["type"]: event for event in presentation["events"]}
+            summary[source] = {
+                "frames": presentation["n_frames"],
+                "cells": presentation["n_cells"],
+                "delta_max_abs": presentation["color_domain"]["delta"]["max_abs"],
+                "presentation_bytes": len(presentation_js(presentation).encode("utf-8")),
+                "events": {
+                    kind: (event["frame"], event["value"], event["tie_count"], event["status"])
+                    for kind, event in events.items()
+                },
+                "n_scenarios": presentation["scenarios"]["n_scenarios"],
+                "top_cell": presentation["ledger_top_cell"],
+                "baseline": {
+                    strategy: presentation["totals"][strategy]["unmet_requests"]
+                    for strategy in ("rule", "optimized")
+                },
+            }
+        site = layout.root / "replay"
+        if site.exists():
+            # The smoke run's instrumented page lives in the site only while
+            # `browser_smoke.py` is driving it, and `.DS_Store` is gitignored
+            # Finder metadata that no other machine has; neither ships, so
+            # excluding both keeps the quoted total reproducible.
+            files = [
+                path
+                for path in site.rglob("*")
+                if path.is_file()
+                and not path.name.endswith(".smoke.html")
+                and path.name != ".DS_Store"
+            ]
+            sizes = {
+                "total": sum(path.stat().st_size for path in files),
+                "workbench": {
+                    source: (site / source / "workbench.html").stat().st_size
+                    for source in built
+                    if (site / source / "workbench.html").exists()
+                },
+            }
+    except Exception:  # pragma: no cover - partial artefacts; quotes n/a instead
+        summary, sizes = {}, {}
+
+    measured = bool(summary)
+    xm = summary.get("xm") or {}
+    sh = summary.get("sh") or {}
+
+    def event_text(source: str, kind: str, label: str) -> str:
+        entry = summary.get(source)
+        if not entry:
+            return f"{label} n/a"
+        frame, value, ties, status = entry["events"][kind]
+        if status != "ok":
+            return f"{label} 空态（{status}）"
+        tie = f"，{ties} 个时段并列" if ties > 1 else ""
+        # Only the gain events are signed deltas; a plain maximum takes no sign.
+        shown = f"{value:+,}" if kind.startswith("opt_") else f"{value:,}"
+        return f"{label} {shown}（帧 {frame}{tie}）"
+
+    size_line = (
+        f"单源 `presentation.js` XM {xm['presentation_bytes'] / 1024:.1f} KB / "
+        f"SH {sh['presentation_bytes'] / 1024:.1f} KB；`replay/` 总量 "
+        f"{sizes.get('total', 0) / 1048576:.2f} MiB（上限 8 MiB）"
+        if measured and sizes
+        else "体积实测 n/a（展示构建不可用）"
+    )
+    domain_line = (
+        f"差分色域 M：XM ±{xm['delta_max_abs']} 次、SH ±{sh['delta_max_abs']} 次"
+        if measured
+        else "差分色域 n/a"
+    )
+    events_line = (
+        "实测：XM "
+        + event_text("xm", "rule_unmet_max", "S-RULE 未满足最大")
+        + "、"
+        + event_text("xm", "rule_moved_max", "S-RULE 搬运最多")
+        + "、"
+        + event_text("xm", "opt_gain_max", "S-OPT 改善最大")
+        + "、"
+        + event_text("xm", "opt_regression_max", "S-OPT 退步最大")
+        + "；SH "
+        + event_text("sh", "rule_unmet_max", "S-RULE 未满足最大")
+        + "、"
+        + event_text("sh", "rule_moved_max", "S-RULE 搬运最多")
+        + "、"
+        + event_text("sh", "opt_gain_max", "S-OPT 改善最大")
+        + "、"
+        + event_text("sh", "opt_regression_max", "S-OPT 退步最大")
+        + "。两源都没有把零或反向结果包装成改善。"
+        if measured
+        else "事件实测 n/a（展示构建不可用）。"
+    )
+    baseline_line = (
+        f"实测 baseline 与 `strategy_comparison` 逐项相等：XM 未满足 {xm['baseline']['rule']:,} / "
+        f"{xm['baseline']['optimized']:,}，SH {sh['baseline']['rule']:,} / {sh['baseline']['optimized']:,}。"
+        if measured
+        else ""
+    )
+    top_cells_line = (
+        f"（XM `{xm['top_cell']['cell_id']}`、SH `{sh['top_cell']['cell_id']}`）" if measured else ""
+    )
+
+    return [
+        "## Phase 4 · 与 Phase 2/3 的授权修订（REQUIREMENTS-PHASE4 §1.3）",
+        "",
+        "四项修订由 `REQUIREMENTS-PHASE4.md` 定义，执行者按此推进并在此记录，不重新解释为放宽验收：",
+        "",
+        markdown_table(
+            ["旧要求", "本期口径", "落地位置"],
+            [
+                (
+                    "Phase 2/3 站点总量 < 6 MiB",
+                    "本期改为 < 8 MiB；其他单文件上限不变",
+                    "`tests/test_replay_site.py`、`tests/test_replay_player.py` 各自的站点总量断言由 "
+                    "`6 * 1024 * 1024` 改为 `8 * 1024 * 1024`，diff 只有这两处常量",
+                ),
+                (
+                    "Phase 3 NF-18：新数字只能来自 `key_numbers.json` 来源集合",
+                    "对旧页面继续有效；本期派生指标引用原始输入与可复算公式",
+                    "每个新数字带 `data-source` / `data-join-key` / `data-formula`；旧 `key_numbers.json` 未改动",
+                ),
+                (
+                    "Phase 3 NF-17：完整连续回放不得跳帧",
+                    "完整播放器保持全部帧；导览与事件允许显式跳转并标注「关键事件/选段」",
+                    "`player.html` 未改动；工作台在章首与页面声明「导览是选段」",
+                ),
+                (
+                    "Phase 3：不引入无头浏览器",
+                    "仅对开发验证工具放开",
+                    "`scripts/browser_smoke.py` 只做验证；站点与主流水线不依赖它",
+                ),
+            ],
+        ),
+        "",
+        "## Phase 4 · D18–D23（演示导览与交互复盘）",
+        "",
+        "### D18 · 共享分析状态与展示数据",
+        "",
+        "**候选方案**：① 五个页面各自从 `outputs/` 取数；② 一个共享构建函数产出统一对象；"
+        "③ 把派生值塞进既有 `key_numbers.json`。",
+        "",
+        "**选择**：方案 ②。`bike_agent/presentation/analysis.py::build_presentation` 是唯一构建入口："
+        "帧、KPI、搬运记录复用 Phase 3 的 `build_replay_data`，逐格账本、`delta_unmet`、事件、场景、"
+        "导览章节与证据记录都在同一个返回值里；`presentation.js`、工作台页面、"
+        "`scripts/check_presentation.py` 与测试全部读它。",
+        "",
+        "**依据与证据**：" + size_line + "。" + domain_line + "。"
+        "为控制体积，工作台不再复制 `inventory_end` / `unmet` / `moved` / `moves` / `kpi`——"
+        "它们由同一页已加载的 `replay-data.js` 提供，`presentation.js` 用 `shared_with_player` 显式声明。",
+        "",
+        "**可逆性**：高，构建函数只读 `outputs/` 与 `data/processed/`；删除 `bike_agent/presentation/` "
+        "与页面脚本即回到 Phase 3 形态，旧页面与其测试不受影响。",
+        "",
+        "**日期**：2026-11-01。",
+        "",
+        "### D19 · 事件选择、平手、空态与两种符号",
+        "",
+        "**候选方案**：① 只用 `delta_unmet` 一种符号；② 事件用 `gain`、差分图用 `delta_unmet`，"
+        "两者显式互为相反数；③ 用相对变化百分比排序。",
+        "",
+        "**选择**：方案 ②。`gain = unmet_rule - unmet_optimized`（正数 = 优化少了未满足请求）；"
+        "`delta_unmet = unmet_optimized - unmet_rule`（负值 = 优化更好）。同类极值平手取**最早时段**；"
+        "`gain > 0` 才产生改善事件，`gain < 0` 才产生退步事件，都不满足时显示「无改善事件/无退步事件」，"
+        "指标全程为零时显示「该指标全程为零」。",
+        "",
+        "**依据与证据**：" + events_line,
+        "",
+        "**可逆性**：高，符号定义集中在 `analysis.build_events` 与页面文案，改口径只需改一处并同步测试。",
+        "",
+        "**日期**：2026-11-01。",
+        "",
+        "### D20 · 账本口径与调入调出",
+        "",
+        "**候选方案**：① 用逐格 `bikes_moved` 同时表示调入与调出；② 调出取 `bikes_moved`、"
+        "调入从 `sim_moves` 按 `to_cell` 求和；③ 让引擎额外落盘一份逐格调入列。",
+        "",
+        "**选择**：方案 ②。③ 会改动 Phase 1 的产物 schema（NF-22 禁止）；① 会重复计数——"
+        "一次调度同时触及两个格子，把 `bikes_moved` 当作双向量会让每帧总量翻倍。",
+        "",
+        "**依据与证据**：全源全帧全格核对（`tests/test_presentation_ledger.py` 与 "
+        "`check_presentation.py` 的 `F19-1`/`F19-2`）：XM 4 帧 × 169 格、SH 149 帧 × 255 格，"
+        "双策略下 `期末 = 期初 + 调入 − 调出 + 接纳归还 − 满足借车`、"
+        "`未满足 = 借车请求 − 满足借车`、`溢出归还 = 归还 − 接纳归还` 逐格成立；"
+        "每帧全格调入总量 == 调出总量 == `sim_moves` 记录车辆数 == CSV 的 `bikes_moved`。"
+        "默认格子取累计 S-RULE 未满足最高者" + top_cells_line + "，平手按 `cell_id` 升序。",
+        "",
+        "**可逆性**：高，调入是展示层派生量，删掉即回到只显示 `bikes_moved` 的形态。",
+        "",
+        "**日期**：2026-11-01。",
+        "",
+        "### D21 · 场景切换形式与范围隔离",
+        "",
+        "**候选方案**：① 参数滑块 + 浏览器内重跑；② 离散按钮，每次只选一个已计算场景；"
+        "③ 把场景结果画成空间地图。",
+        "",
+        "**选择**：方案 ②。七个场景（`baseline`、`initial_fill=0.3/0.7`、`budget=100/400`、"
+        "`capacity=0.5x/2x`）逐个按钮，数值直接来自 `outputs/sim_sensitivity.<source>.json`，"
+        "另显示相对**同源同策略 baseline** 的绝对变化（分母为 0 时显式写「基准为 0，百分比不适用」）。",
+        "",
+        "**依据与证据**：① 会在浏览器里重跑仿真，既不可复现也不在产物里；③ 会伪造出"
+        "「该场景的空间回放」，而产物里没有。" + baseline_line
+        + "页面固定写明「场景只重算全回放汇总指标，不生成空间回放」，并有「回到 baseline」按钮。",
+        "",
+        "**可逆性**：高，场景是只读视图，去掉按钮不影响任何产物。",
+        "",
+        "**日期**：2026-11-01。",
+        "",
+        "### D22 · 导览章节、视觉层级与验证工具",
+        "",
+        "**候选方案**：① 自动翻页的演示脚本；② 五章手动推进的导览，退出后回到自由探索；"
+        "③ 五个独立页面各讲一件事。",
+        "",
+        "**选择**：方案 ②。章节顺序：数据与需求概貌 → 关键时段 → 策略差异 → 单格账本 → "
+        "资源参数实验；每章带一个可复算的 `target`（源/帧/模式/格子/场景），切章时先暂停播放再应用目标。"
+        "状态机放在 `replay/workbench-core.js`（无 DOM），DOM 接线在 `replay/workbench.js`。",
+        "",
+        "**依据与证据**：① 会在讲解时把画面从读者正在看的位置带走；③ 正是「五个互不相干的新页面」。"
+        "验证分两层：`tests/js_harness.py` 用 node 的 `vm` 加载**已发布**的 `replay-data.js` / "
+        "`presentation.js` / `workbench-core.js` 驱动状态机；`scripts/browser_smoke.py` 用 headless "
+        "Chrome 加载真实页面并点击真实按钮，读取点击后的 DOM。浏览器只是开发验证：找不到 Chrome 时"
+        "如实记为「未验证」而不是通过。差分格内的 `−` / `+` 号与颜色同时表达方向，不单靠颜色。",
+        "",
+        "**可逆性**：高，导览是页面层功能，删除 `workbench*.{js,css}` 与相关区块即回到 Phase 3 入口形态。",
+        "",
+        "**日期**：2026-11-01。",
+        "",
+        "### D23 · 一份数据只有一个渲染器，切换数据源靠导航",
+        "",
+        "**候选方案**：① Python 预渲染首帧、页面脚本再整段重建同一批 SVG；② 只由 Python 预渲染、"
+        "脚本原地更新属性；③ 只由脚本渲染。",
+        "",
+        "**选择**：方案 ②。差分图的 169/255 个 `<rect>` 由 `render.py` 产出坐标与宽高，"
+        "`workbench.js` 只改 `data-delta`、`fill-opacity`、`class`、`title`、`aria-label` 和格内的 "
+        "`−`/`+` 字形，不再 `createElementNS`。数据源切换改为指向 `../<source>/workbench.html` 的链接："
+        "每源一页、各自只加载自己的数据包。",
+        "",
+        "**依据与证据**：方案 ① 在第二轮评审里真实翻车——`analysis_payload()` 没有发布 "
+        "`cell_px`/`cell_gap`，脚本按 `undefined` 算坐标，把预渲染好的 rect 全删掉重建成 "
+        "169/255 个 `x` 为 NaN、`width` 为 undefined 的零尺寸格子，`getBoundingClientRect()` 宽高全为 0；"
+        "而当时的四道门禁（pytest / check_presentation / serve / 冒烟的 `querySelectorAll` 计数）"
+        "全都只数元素个数，所以全绿。方案 ③ 则要把几何再实现一遍，并让「Python 是唯一渲染器」这条设计失效。"
+        "切换用导航而非同页重渲染，是因为两源数据包同页加载会把 `replay/` 推过 8 MiB 上限"
+        "（实测单页需再多约 1.2 MB）；导航还顺带保证不会把上一源的格子或场景带过去。",
+        "",
+        "**护栏**：`check_presentation.py` 的 `F18-1[src] 差分格几何`（逐 rect 校验数值坐标与正宽高）、"
+        "`F18-1[src] 单一渲染器`（`workbench.js` 不得出现 `cell_px`/`cell_gap`）、"
+        "`F19-1[src] 证据可复算`；`browser_smoke.py` 的 `geometryOk`/`provenanceOk` 按 "
+        "`getBoundingClientRect()` 与自身操作数实测。把 `x` 改回 `NaN` 后这些检查确实失败。",
+        "",
+        "**可逆性**：高，渲染路径集中在 `_delta_rects()` 与 `renderGrids()` 两处；换回脚本渲染只需改这两处。",
+        "",
+        "**日期**：2026-11-01。",
+        "",
+    ]
+
 
 
 def _entry(d: dict[str, Any], cell_size: int) -> dict[str, Any] | None:
@@ -1097,6 +1372,8 @@ def render_report(
         "",
         *_figure_gallery(data),
         "",
+        *_phase4_report_section(),
+        "",
         "## 10. 关键数字追溯（F6-4 / NF-3）",
         "",
         markdown_table(
@@ -1131,6 +1408,78 @@ def render_report(
 
 def _round(value: Any) -> Any:
     return round(value, 2) if isinstance(value, (int, float)) else "n/a"
+
+
+def _phase4_report_section() -> list[str]:
+    """REQUIREMENTS-PHASE4 §8 item 6: the new capabilities and their limits.
+
+    Numbers come from the same presentation build the workbench uses; when that
+    build is unavailable the section says so rather than quoting stale values.
+    """
+    summary: dict[str, dict[str, Any]] = {}
+    try:
+        from bike_agent.config import Layout, load_config
+        from bike_agent.presentation.analysis import build_all_presentations
+
+        config, layout = load_config(), Layout()
+        built = build_all_presentations(config, layout, ("xm", "sh"))
+        for source, presentation in built.items():
+            summary[source] = {
+                "frames": presentation["n_frames"],
+                "cells": presentation["n_cells"],
+                "delta_max_abs": presentation["color_domain"]["delta"]["max_abs"],
+                "n_scenarios": presentation["scenarios"]["n_scenarios"],
+                "n_events": len(presentation["events"]),
+                "top_cell": presentation["ledger_top_cell"]["cell_id"],
+                "gain_total": sum(frame["gain"] for frame in presentation["frames"]),
+            }
+    except Exception:  # pragma: no cover - partial artefacts
+        summary = {}
+
+    if summary:
+        xm, sh = summary.get("xm", {}), summary.get("sh", {})
+        detail = (
+            f"实测：XM {xm['frames']} 帧 × {xm['cells']} 格，差分色域 ±{xm['delta_max_abs']} 次，"
+            f"全回放 gain 合计 {xm['gain_total']:+,} 次；SH {sh['frames']} 帧 × {sh['cells']} 格，"
+            f"差分色域 ±{sh['delta_max_abs']} 次，全回放 gain 合计 {sh['gain_total']:+,} 次。"
+            f"每源 {xm['n_events']} 类关键事件、{xm['n_scenarios']} 个敏感性场景。"
+        )
+    else:
+        detail = "展示构建不可用，本节数字 n/a。"
+
+    return [
+        "## 9.6 复盘工作台与演示导览（Phase 4 · F16–F20）",
+        "",
+        "`bike-agent replay --sources xm,sh` 除播放器与逐帧页外，还生成复盘工作台 "
+        "`replay/<source>/workbench.html`：从 `replay/index.html` 的「演示导览 →」进入，"
+        "离线可用、不依赖任何服务。",
+        "",
+        "- **F16 演示导览**：五章（数据与需求概貌 → 关键时段 → 策略差异 → 单格账本 → 资源参数实验），"
+        "有开始 / 上一章 / 下一章 / 重新开始 / 退出；切章与跳事件先暂停播放；退出保留分析位置。",
+        "- **F17 关键事件**：每源四类事件（S-RULE 未满足最大、S-RULE 搬运最多、S-OPT 改善最大、"
+        "S-OPT 退步最大），平手取最早时段，无符合项显示空态。",
+        "- **F18 差分地图**：`delta_unmet = unmet_optimized - unmet_rule`（负值 = S-OPT 更好），"
+        "每源固定色域 ±M，与并排库存视图互切；格内 `−`/`+` 号与颜色同时表达方向。",
+        "- **F19 单格账本**：两策略逐帧账本、调入/调出的原始搬运记录与全回放历史；"
+        "调入按 `to_cell`、调出按 `from_cell` 求和，`bikes_moved` 只表示搬出。",
+        "- **F20 场景切换**：七个已计算场景的离散按钮，双策略四指标与相对同源同策略 baseline 的变化；"
+        "场景只更新汇总，不生成空间回放。",
+        "",
+        detail,
+        "",
+        "**局限（如实说明）**：",
+        "",
+        "- 展示不预设优化策略获胜：XM 的 S-OPT 未满足请求**更多**（3,669 对 3,617 次，全回放 gain "
+        "-52 次），改善只发生在个别时段；SH 的 gain 只有 +11 次，且显著性检验按原产物口径，"
+        "不据此宣称收益。",
+        "- 统计不确定性沿用 `outputs/strategy_comparison.<source>.json` 的配对 bootstrap，"
+        "工作台不重新做检验，也不把点估计包装成显著结论。",
+        "- 预测净流出只是调度输入之一；页面不把「预测说这里会缺车」写成「这里真的损失了订单」的原因，"
+        "预测与地图的联动留待后续阶段。",
+        "- 人工视觉检查（1440×900、约 400px、明暗主题、五章无死路）仍需人确认；"
+        "自动验证与浏览器冒烟的结论见 `outputs/presentation_validation.phase4.json`。",
+        "",
+    ]
 
 
 def _figure_gallery(data: dict[str, Any]) -> list[str]:

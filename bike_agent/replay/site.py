@@ -291,7 +291,14 @@ def build_site(config: dict[str, Any], layout: Layout, sources: list[str] | None
     """Write ``<root>/replay/`` from the persisted artefacts; returns a summary."""
     # Imported here, not at module scope: player.py reuses this module's
     # formatting helpers, and a top-level mutual import would be circular.
-    from bike_agent.replay.player import PLAYER_CSS, PLAYER_JS, build_dashboard, write_player
+    from bike_agent.presentation.analysis import build_all_presentations
+    from bike_agent.presentation.render import build_workbench
+    from bike_agent.replay.player import (
+        PLAYER_CSS,
+        PLAYER_JS,
+        build_dashboard,
+        write_player,
+    )
 
     sources = sources or list(config.get("sources", {}).keys())
     site_dir = layout.root / "replay"
@@ -373,6 +380,13 @@ def build_site(config: dict[str, Any], layout: Layout, sources: list[str] | None
             "player": write_player(config, layout, source),
         }
 
+    # Phase 4: one analysis build per source feeds the guide, the delta map,
+    # the event list, the ledger and the scenario table (REQUIREMENTS-PHASE4 §2.3).
+    presentations = build_all_presentations(config, layout, sources)
+    workbench = build_workbench(config, layout, presentations)
+    for source, info in workbench.items():
+        built[source]["workbench"] = info
+
     build_dashboard(config, layout)
     (site_dir / "index.html").write_text(_render_index(built), encoding="utf-8")
     return {"site": str(site_dir), "sources": built}
@@ -380,6 +394,9 @@ def build_site(config: dict[str, Any], layout: Layout, sources: list[str] | None
 
 def _render_index(built: dict[str, Any]) -> str:
     cards, timeline = [], []
+    # The guide is per source; link the first one actually built so a
+    # single-source site never points at a page that does not exist.
+    guide_href = f"{next(iter(built))}/workbench.html" if built else "dashboard.html"
     for source, info in built.items():
         src_attr = html.escape(source)
         rate_lines = "".join(
@@ -396,7 +413,8 @@ def _render_index(built: dict[str, Any]) -> str:
             f'data-value="{info["n_frames"]}">{info["n_frames"]}</b> · '
             f'<span>{html.escape(info["first_bucket"])} → {html.escape(info["last_bucket"])}</span></p>'
             f"<ul>{rate_lines}</ul>"
-            f'<p><a class="start" href="{src_attr}/player.html">播放 →</a> '
+            f'<p><a class="start" href="{src_attr}/workbench.html">演示导览 →</a> '
+            f'<a href="{src_attr}/player.html">播放 →</a> '
             f'<a href="{src_attr}/frame-0000.html">逐帧查看 →</a></p></section>'
         )
         links = "".join(
@@ -421,6 +439,9 @@ def _render_index(built: dict[str, Any]) -> str:
 <p class="notice">逐帧重演 Phase 1 的仿真产物：S-RULE 与 S-OPT 并排，同一时间单元下各自展示。
 所有数字均为<strong>模拟值</strong>；帧数等于产物时间单元数，没有插值、补帧或合成数据。</p>
 <p class="notice">两个数据源的短板不同，如实说明：{_tension_text(built)}</p>
+<p class="notice"><strong>演示导览</strong>：从
+<a href="{guide_href}">复盘工作台</a>进入，按五章推进（数据概貌 → 关键时段 → 策略差异 →
+单格账本 → 参数实验），退出后可自由探索；{_guide_scope_text(built)}</p>
 <p class="notice">播放器会自动逐帧播放，可暂停、拖动与跳帧；全部图表与关键数字见
 <a href="dashboard.html">总览页</a>。逐帧页仍然保留，供深链与无脚本回退使用。</p>
 </header>
@@ -431,6 +452,19 @@ def _render_index(built: dict[str, Any]) -> str:
 </body>
 </html>
 """
+
+
+def _guide_scope_text(built: dict[str, Any]) -> str:
+    """Describe the pages that really exist, not the ones the full site has.
+
+    A single-source build writes one workbench page; promising a cross-source
+    link there would be the same kind of dead reference the source switch used
+    to be.
+    """
+    if len(built) > 1:
+        names = " / ".join(source.upper() for source in built)
+        return f"每个数据源各有独立的工作台页，页首的 {names} 链接直接跳到另一源的工作台。"
+    return "本站只生成了一个数据源，工作台页首不会出现跨源链接。"
 
 
 def _tension_text(built: dict[str, Any]) -> str:
