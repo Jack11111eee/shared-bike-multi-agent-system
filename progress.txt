@@ -614,5 +614,7 @@ NOTE，我按"顺带能把根因堵掉就堵掉"的原则处理：
 `check_regression.py` 退出码 0；`browser_smoke.py` 两源均 `ok/geometryOk/provenanceOk = true`。
 `DECISIONS.md` / `REPORT.md` 在最终构建后重新生成（7.05 MiB、88.6 / 1372.7 KB）。
 
-**仍然未做：人工视觉确认。** `docs/VISUAL-CHECK-PHASE4.md` 第三栏全部为"待确认"，
-其中 400 px 视口因本机 headless Chrome 夹到 500 px 而无法实测。本期不得写成"全部验收完成"。
+**人工视觉确认：已由项目所有者本人完成（2026-11-01）。** 在 `http://127.0.0.1:8000`
+查看 `xm` / `sh` 两个工作台后确认通过，`docs/VISUAL-CHECK-PHASE4.md` 第三栏七项
+全部改为「已确认」。其中 400 px 视口一档仍无机器实测证据（本机 headless Chrome
+把视口夹到 500 px），该行已注明「人眼判断，未量测」，不冒充量测结果。
