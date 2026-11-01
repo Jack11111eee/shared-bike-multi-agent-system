@@ -327,7 +327,7 @@ def test_site_stays_small_and_frames_are_per_page():
     pages = _pages()
     total = sum(p.stat().st_size for p in SITE.rglob("*") if p.is_file())
     largest = max(pages, key=lambda p: p.stat().st_size)
-    assert total < 6 * 1024 * 1024, f"replay/ is {total / 1024 / 1024:.2f} MB"
+    assert total < 8 * 1024 * 1024, f"replay/ is {total / 1024 / 1024:.2f} MB"
     assert largest.stat().st_size < 96 * 1024, f"{largest.name} is {largest.stat().st_size / 1024:.0f} KB"
     # Each page carries exactly one frame's data.
     for path in pages:

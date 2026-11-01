@@ -311,6 +311,19 @@ JSON 至少包含：
 | NF-20 | **可达性** | 键盘可完成播放/暂停/单帧/首尾跳转；帧标签使用 `aria-live`；`prefers-reduced-motion` 时不自动播放、不启用任何过渡 |
 | NF-21 | **性能** | 4× 播放时帧切换无明显卡顿；帧切换不得触发整页重载（人工，见 §6.2） |
 
+> **Phase 4 对上述三条的修订**（`REQUIREMENTS-PHASE4.md` §1.3，记录见 `DECISIONS.md`）：
+>
+> - **NF-15**：站点总量上限由 6 MB 调整为 **8 MiB**（1 MiB = 1,048,576 字节）；`replay-data.js` ≤ 1 MiB/源、
+>   `player.html` ≤ 256 KiB、`dashboard.html` ≤ 512 KiB、逐帧页 < 96 KiB **全部不变**，并新增
+>   「工作台页面 ≤ 256 KiB、单源展示数据 ≤ 2 MiB」。`tests/test_replay_site.py` 与
+>   `tests/test_replay_player.py` 只改了各自的站点总量常量，其余断言未动。
+> - **NF-17**：完整播放器仍保留全部帧；**导览与事件导航**允许显式跳转，并在页面上标明"关键事件/选段"，
+>   不冒充完整回放。
+> - **NF-18**：对旧页面继续有效；Phase 4 新增的派生指标（`delta_unmet`、`gain`、逐格调入、场景相对变化）
+>   按 `REQUIREMENTS-PHASE4.md` §2.3 追溯——引用原始输入文件并给出可复算公式，不修改旧 `key_numbers.json`。
+> - Phase 3「不能引入无头浏览器」只对**开发验证工具**放开（`scripts/browser_smoke.py`）；
+>   站点、主流水线与测试仍不依赖它。
+
 ---
 
 ## 6. 决策确认记录

@@ -427,7 +427,7 @@ def test_trend_series_have_units_and_known_sources(source):
 # -- NF-15 / NF-18 / NF-19 --------------------------------------------------
 def test_new_pages_stay_within_the_size_budget():
     total = sum(path.stat().st_size for path in SITE.rglob("*") if path.is_file())
-    assert total < 6 * 1024 * 1024, f"replay/ is {total / 1024 / 1024:.2f} MB"
+    assert total < 8 * 1024 * 1024, f"replay/ is {total / 1024 / 1024:.2f} MB"
     for source in EXPECTED_FRAMES:
         assert (SITE / source / "replay-data.js").stat().st_size <= 1024 * 1024
         assert (SITE / source / "player.html").stat().st_size <= 256 * 1024

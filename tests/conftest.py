@@ -141,3 +141,31 @@ def sh_raw(tiny_layout: Layout) -> Layout:
 @pytest.fixture
 def panel_factory():
     return make_panel
+
+
+# -- Phase 4: one analysis build for the whole session ----------------------
+@pytest.fixture(scope="session")
+def presentations() -> dict:
+    """The single Phase 4 analysis object per source, built once.
+
+    Every Phase 4 test module reads this instead of rebuilding, so a wrong
+    number cannot pass in one module and fail in another for a different reason:
+    they all see the same derivation.
+    """
+    from bike_agent.presentation.analysis import build_all_presentations
+
+    layout = Layout()
+    config = load_config()
+    required = [
+        layout.outputs / f"sim_sensitivity.{source}.json"
+        for source in ("xm", "sh")
+    ]
+    if not all(path.exists() for path in required):
+        pytest.skip("Phase 4 artefacts missing; run `bike-agent replay --sources xm,sh` first")
+    built = build_all_presentations(config, layout, ("xm", "sh"))
+    return built
+
+
+@pytest.fixture(scope="session")
+def site_root() -> Path:
+    return Layout().root / "replay"

@@ -1,0 +1,904 @@
+{
+  "phase": 4,
+  "requirement": "REQUIREMENTS-PHASE4.md",
+  "generated_by": "scripts/check_presentation.py --phase 4",
+  "note": "本报告是确定性验收证据，不替代 `python3 -m pytest` 与浏览器实测；人工视觉检查（§6.2）仍需人确认。",
+  "ok": true,
+  "n_checks": 38,
+  "n_failed": 0,
+  "sources": {
+    "xm": {
+      "n_frames": 4,
+      "n_cells": 169,
+      "delta_max_abs": 102,
+      "n_events": 4,
+      "n_scenarios": 7,
+      "n_chapters": 5
+    },
+    "sh": {
+      "n_frames": 149,
+      "n_cells": 255,
+      "delta_max_abs": 3,
+      "n_events": 4,
+      "n_scenarios": 7,
+      "n_chapters": 5
+    }
+  },
+  "inputs": {
+    "outputs/replay.rule.xm.parquet": {
+      "bytes": 18630,
+      "sha256_16": "3685572bb273a791"
+    },
+    "outputs/replay.optimized.xm.parquet": {
+      "bytes": 18599,
+      "sha256_16": "c32ddbc58bc8f7d0"
+    },
+    "outputs/sim_rule.xm.csv": {
+      "bytes": 494,
+      "sha256_16": "55e04c8a641f618b"
+    },
+    "outputs/sim_optimized.xm.csv": {
+      "bytes": 494,
+      "sha256_16": "ef7ae71fa3597123"
+    },
+    "outputs/sim_moves.rule.xm.json": {
+      "bytes": 3528,
+      "sha256_16": "ebe978be1b44e415"
+    },
+    "outputs/sim_moves.optimized.xm.json": {
+      "bytes": 2701,
+      "sha256_16": "69d076dfc6260626"
+    },
+    "outputs/sim_sensitivity.xm.json": {
+      "bytes": 2846,
+      "sha256_16": "9cc4c4a0d0627f72"
+    },
+    "outputs/strategy_comparison.xm.json": {
+      "bytes": 2524,
+      "sha256_16": "949d821bc8f6f657"
+    },
+    "outputs/replay.rule.sh.parquet": {
+      "bytes": 129625,
+      "sha256_16": "f4b66ee41edcdcc7"
+    },
+    "outputs/replay.optimized.sh.parquet": {
+      "bytes": 129562,
+      "sha256_16": "8cf31eaaed6b877c"
+    },
+    "outputs/sim_rule.sh.csv": {
+      "bytes": 9930,
+      "sha256_16": "95d55a31e105e76b"
+    },
+    "outputs/sim_optimized.sh.csv": {
+      "bytes": 9928,
+      "sha256_16": "17cc5a6e7bbd8e09"
+    },
+    "outputs/sim_moves.rule.sh.json": {
+      "bytes": 291226,
+      "sha256_16": "7f4ff54759547486"
+    },
+    "outputs/sim_moves.optimized.sh.json": {
+      "bytes": 292248,
+      "sha256_16": "1187ba27e7fce66b"
+    },
+    "outputs/sim_sensitivity.sh.json": {
+      "bytes": 2832,
+      "sha256_16": "8e6d141bcc376d5b"
+    },
+    "outputs/strategy_comparison.sh.json": {
+      "bytes": 2538,
+      "sha256_16": "0757ede9b1af56d2"
+    }
+  },
+  "checks": [
+    {
+      "id": "F18-1[xm]",
+      "requirement": "逐格逐帧 delta_unmet = unmet_optimized - unmet_rule，且格级之和等于 CSV 汇总差",
+      "result": "pass",
+      "expected": "4×169 格全部相等，4 帧求和全部相等",
+      "actual": {
+        "cells_equal": true,
+        "frame_sums_equal": true
+      },
+      "inputs": [
+        "outputs/replay.rule.xm.parquet",
+        "outputs/replay.optimized.xm.parquet",
+        "outputs/sim_rule.xm.csv",
+        "outputs/sim_optimized.xm.csv"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F18-2[xm]",
+      "requirement": "色域固定为 [-M, M]，M = 全回放全部格子 max(abs(delta_unmet))",
+      "result": "pass",
+      "expected": {
+        "min": -102,
+        "max": 102
+      },
+      "actual": {
+        "min": -102,
+        "max": 102,
+        "max_abs": 102
+      },
+      "inputs": [
+        "outputs/replay.optimized.xm.parquet"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F18-2b[xm]",
+      "requirement": "页面上的差分色标与数据域一致；M=0 时明确显示全程无差异",
+      "result": "pass",
+      "expected": {
+        "min": -102,
+        "max": 102,
+        "zero_message": false
+      },
+      "actual": {
+        "min": -102,
+        "max": 102,
+        "zero_message": false
+      },
+      "inputs": [
+        "replay/xm/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F17-1[xm]",
+      "requirement": "四类事件从原 CSV 对全帧复算，与打包记录相等（平手取最早时段）",
+      "result": "pass",
+      "expected": {
+        "rule_unmet_max": {
+          "frame": 2,
+          "value": 2541
+        },
+        "rule_moved_max": {
+          "frame": 0,
+          "value": 200
+        },
+        "opt_gain_max": {
+          "frame": 2,
+          "value": 85
+        },
+        "opt_regression_max": {
+          "frame": 1,
+          "value": -125
+        }
+      },
+      "actual": {
+        "rule_unmet_max": {
+          "frame": 2,
+          "value": 2541,
+          "ok": true
+        },
+        "rule_moved_max": {
+          "frame": 0,
+          "value": 200,
+          "ok": true
+        },
+        "opt_gain_max": {
+          "frame": 2,
+          "value": 85,
+          "ok": true
+        },
+        "opt_regression_max": {
+          "frame": 1,
+          "value": -125,
+          "ok": true
+        }
+      },
+      "inputs": [
+        "outputs/sim_rule.xm.csv",
+        "outputs/sim_optimized.xm.csv"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F17-sign[xm]",
+      "requirement": "改善事件只取 gain>0，退步事件只取 gain<0；无符合项显示空态",
+      "result": "pass",
+      "expected": "改善>0 / 退步<0 / 否则空态",
+      "actual": {
+        "gain": {
+          "status": "ok",
+          "value": 85
+        },
+        "regression": {
+          "status": "ok",
+          "value": -125
+        }
+      },
+      "inputs": [
+        "outputs/sim_rule.xm.csv",
+        "outputs/sim_optimized.xm.csv"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F19-1[xm]",
+      "requirement": "全源全帧全格双策略：账本原始字段与四条等式",
+      "result": "pass",
+      "expected": "字段逐格相等；期末=期初+调入-调出+接纳归还-满足；未满足=请求-满足；溢出=归还-接纳",
+      "actual": {
+        "rule": {
+          "fields_equal": true,
+          "in_equals_out_equals_records": true
+        },
+        "optimized": {
+          "fields_equal": true,
+          "in_equals_out_equals_records": true
+        }
+      },
+      "inputs": [
+        "outputs/replay.rule.xm.parquet",
+        "outputs/replay.optimized.xm.parquet"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F19-2[xm]",
+      "requirement": "每帧全格调入总量 == 调出总量 == 原始搬运车辆数；逐格调出 == bikes_moved",
+      "result": "pass",
+      "expected": "4 帧全部守恒",
+      "actual": {
+        "rule": {
+          "fields_equal": true,
+          "in_equals_out_equals_records": true
+        },
+        "optimized": {
+          "fields_equal": true,
+          "in_equals_out_equals_records": true
+        }
+      },
+      "inputs": [
+        "outputs/sim_moves.rule.xm.json",
+        "outputs/sim_moves.optimized.xm.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F19-3[xm]",
+      "requirement": "首次选格 = 累计 S-RULE 未满足最高（平手按 cell_id 升序），且页面暴露选择规则",
+      "result": "pass",
+      "expected": "C0007_0010",
+      "actual": {
+        "cell_id": "C0007_0010",
+        "cumulative_unmet_rule": 655,
+        "frame": 2,
+        "rule": "累计 S-RULE 未满足请求最高；平手按 cell_id 升序"
+      },
+      "inputs": [
+        "outputs/replay.rule.xm.parquet"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F20-1[xm]",
+      "requirement": "场景集合与每项双策略四指标等于输入；baseline 与 strategy_comparison 一致",
+      "result": "pass",
+      "expected": {
+        "scenarios": [
+          "baseline",
+          "budget=100",
+          "budget=400",
+          "capacity=0.5x",
+          "capacity=2x",
+          "initial_fill=0.3",
+          "initial_fill=0.7"
+        ],
+        "baseline_equals_comparison": true
+      },
+      "actual": {
+        "scenarios": [
+          "baseline",
+          "budget=100",
+          "budget=400",
+          "capacity=0.5x",
+          "capacity=2x",
+          "initial_fill=0.3",
+          "initial_fill=0.7"
+        ],
+        "values_equal": true,
+        "baseline_equal": true
+      },
+      "inputs": [
+        "outputs/sim_sensitivity.xm.json",
+        "outputs/strategy_comparison.xm.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F20-2[xm]",
+      "requirement": "相对基准变化可复算（含无变化、负向、零分母）",
+      "result": "pass",
+      "expected": "absolute 与 percent 均可从输入复算；零分母标记为 zero_denominator",
+      "actual": {
+        "deltas_equal": true
+      },
+      "inputs": [
+        "outputs/sim_sensitivity.xm.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F20-3[xm]",
+      "requirement": "每源每个已计算场景都有离散按钮，且可回到 baseline；场景不改写基准地图",
+      "result": "pass",
+      "expected": [
+        "baseline",
+        "budget=100",
+        "budget=400",
+        "capacity=0.5x",
+        "capacity=2x",
+        "initial_fill=0.3",
+        "initial_fill=0.7"
+      ],
+      "actual": [
+        "baseline",
+        "budget=100",
+        "budget=400",
+        "capacity=0.5x",
+        "capacity=2x",
+        "initial_fill=0.3",
+        "initial_fill=0.7"
+      ],
+      "inputs": [
+        "replay/xm/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F18-1[sh]",
+      "requirement": "逐格逐帧 delta_unmet = unmet_optimized - unmet_rule，且格级之和等于 CSV 汇总差",
+      "result": "pass",
+      "expected": "149×255 格全部相等，149 帧求和全部相等",
+      "actual": {
+        "cells_equal": true,
+        "frame_sums_equal": true
+      },
+      "inputs": [
+        "outputs/replay.rule.sh.parquet",
+        "outputs/replay.optimized.sh.parquet",
+        "outputs/sim_rule.sh.csv",
+        "outputs/sim_optimized.sh.csv"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F18-2[sh]",
+      "requirement": "色域固定为 [-M, M]，M = 全回放全部格子 max(abs(delta_unmet))",
+      "result": "pass",
+      "expected": {
+        "min": -3,
+        "max": 3
+      },
+      "actual": {
+        "min": -3,
+        "max": 3,
+        "max_abs": 3
+      },
+      "inputs": [
+        "outputs/replay.optimized.sh.parquet"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F18-2b[sh]",
+      "requirement": "页面上的差分色标与数据域一致；M=0 时明确显示全程无差异",
+      "result": "pass",
+      "expected": {
+        "min": -3,
+        "max": 3,
+        "zero_message": false
+      },
+      "actual": {
+        "min": -3,
+        "max": 3,
+        "zero_message": false
+      },
+      "inputs": [
+        "replay/sh/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F17-1[sh]",
+      "requirement": "四类事件从原 CSV 对全帧复算，与打包记录相等（平手取最早时段）",
+      "result": "pass",
+      "expected": {
+        "rule_unmet_max": {
+          "frame": 121,
+          "value": 8
+        },
+        "rule_moved_max": {
+          "frame": 93,
+          "value": 69
+        },
+        "opt_gain_max": {
+          "frame": 122,
+          "value": 3
+        },
+        "opt_regression_max": {
+          "frame": 143,
+          "value": -3
+        }
+      },
+      "actual": {
+        "rule_unmet_max": {
+          "frame": 121,
+          "value": 8,
+          "ok": true
+        },
+        "rule_moved_max": {
+          "frame": 93,
+          "value": 69,
+          "ok": true
+        },
+        "opt_gain_max": {
+          "frame": 122,
+          "value": 3,
+          "ok": true
+        },
+        "opt_regression_max": {
+          "frame": 143,
+          "value": -3,
+          "ok": true
+        }
+      },
+      "inputs": [
+        "outputs/sim_rule.sh.csv",
+        "outputs/sim_optimized.sh.csv"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F17-sign[sh]",
+      "requirement": "改善事件只取 gain>0，退步事件只取 gain<0；无符合项显示空态",
+      "result": "pass",
+      "expected": "改善>0 / 退步<0 / 否则空态",
+      "actual": {
+        "gain": {
+          "status": "ok",
+          "value": 3
+        },
+        "regression": {
+          "status": "ok",
+          "value": -3
+        }
+      },
+      "inputs": [
+        "outputs/sim_rule.sh.csv",
+        "outputs/sim_optimized.sh.csv"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F19-1[sh]",
+      "requirement": "全源全帧全格双策略：账本原始字段与四条等式",
+      "result": "pass",
+      "expected": "字段逐格相等；期末=期初+调入-调出+接纳归还-满足；未满足=请求-满足；溢出=归还-接纳",
+      "actual": {
+        "rule": {
+          "fields_equal": true,
+          "in_equals_out_equals_records": true
+        },
+        "optimized": {
+          "fields_equal": true,
+          "in_equals_out_equals_records": true
+        }
+      },
+      "inputs": [
+        "outputs/replay.rule.sh.parquet",
+        "outputs/replay.optimized.sh.parquet"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F19-2[sh]",
+      "requirement": "每帧全格调入总量 == 调出总量 == 原始搬运车辆数；逐格调出 == bikes_moved",
+      "result": "pass",
+      "expected": "149 帧全部守恒",
+      "actual": {
+        "rule": {
+          "fields_equal": true,
+          "in_equals_out_equals_records": true
+        },
+        "optimized": {
+          "fields_equal": true,
+          "in_equals_out_equals_records": true
+        }
+      },
+      "inputs": [
+        "outputs/sim_moves.rule.sh.json",
+        "outputs/sim_moves.optimized.sh.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F19-3[sh]",
+      "requirement": "首次选格 = 累计 S-RULE 未满足最高（平手按 cell_id 升序），且页面暴露选择规则",
+      "result": "pass",
+      "expected": "C0007_0006",
+      "actual": {
+        "cell_id": "C0007_0006",
+        "cumulative_unmet_rule": 24,
+        "frame": 121,
+        "rule": "累计 S-RULE 未满足请求最高；平手按 cell_id 升序"
+      },
+      "inputs": [
+        "outputs/replay.rule.sh.parquet"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F20-1[sh]",
+      "requirement": "场景集合与每项双策略四指标等于输入；baseline 与 strategy_comparison 一致",
+      "result": "pass",
+      "expected": {
+        "scenarios": [
+          "baseline",
+          "budget=100",
+          "budget=400",
+          "capacity=0.5x",
+          "capacity=2x",
+          "initial_fill=0.3",
+          "initial_fill=0.7"
+        ],
+        "baseline_equals_comparison": true
+      },
+      "actual": {
+        "scenarios": [
+          "baseline",
+          "budget=100",
+          "budget=400",
+          "capacity=0.5x",
+          "capacity=2x",
+          "initial_fill=0.3",
+          "initial_fill=0.7"
+        ],
+        "values_equal": true,
+        "baseline_equal": true
+      },
+      "inputs": [
+        "outputs/sim_sensitivity.sh.json",
+        "outputs/strategy_comparison.sh.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F20-2[sh]",
+      "requirement": "相对基准变化可复算（含无变化、负向、零分母）",
+      "result": "pass",
+      "expected": "absolute 与 percent 均可从输入复算；零分母标记为 zero_denominator",
+      "actual": {
+        "deltas_equal": true
+      },
+      "inputs": [
+        "outputs/sim_sensitivity.sh.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F20-3[sh]",
+      "requirement": "每源每个已计算场景都有离散按钮，且可回到 baseline；场景不改写基准地图",
+      "result": "pass",
+      "expected": [
+        "baseline",
+        "budget=100",
+        "budget=400",
+        "capacity=0.5x",
+        "capacity=2x",
+        "initial_fill=0.3",
+        "initial_fill=0.7"
+      ],
+      "actual": [
+        "baseline",
+        "budget=100",
+        "budget=400",
+        "capacity=0.5x",
+        "capacity=2x",
+        "initial_fill=0.3",
+        "initial_fill=0.7"
+      ],
+      "inputs": [
+        "replay/sh/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F16-1a",
+      "requirement": "首页有演示导览入口，链接目标存在",
+      "result": "pass",
+      "expected": "首页入口 + 目标页面存在",
+      "actual": {
+        "links": [
+          "xm/workbench.html",
+          "xm/workbench.html",
+          "sh/workbench.html"
+        ],
+        "exist": [
+          "True",
+          "True",
+          "True"
+        ]
+      },
+      "inputs": [
+        "replay/index.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F16-1b",
+      "requirement": "导览记录有五个有序章节与全部导航动作",
+      "result": "pass",
+      "expected": {
+        "chapters": 5,
+        "actions": [
+          "start",
+          "prev",
+          "next",
+          "restart",
+          "exit"
+        ]
+      },
+      "actual": {
+        "xm": {
+          "chapters": 5,
+          "titles": [
+            "数据与需求概貌",
+            "关键时段",
+            "策略差异",
+            "单格账本",
+            "资源参数实验"
+          ],
+          "actions": [
+            "start",
+            "prev",
+            "next",
+            "restart",
+            "exit"
+          ]
+        },
+        "sh": {
+          "chapters": 5,
+          "titles": [
+            "数据与需求概貌",
+            "关键时段",
+            "策略差异",
+            "单格账本",
+            "资源参数实验"
+          ],
+          "actions": [
+            "start",
+            "prev",
+            "next",
+            "restart",
+            "exit"
+          ]
+        }
+      },
+      "inputs": [
+        "replay/xm/workbench.html",
+        "replay/sh/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F16-2",
+      "requirement": "每章目标源/时段/格子/场景均能在权威输入中找到",
+      "result": "pass",
+      "expected": "五个章节的目标全部存在",
+      "actual": {
+        "targets_valid": true
+      },
+      "inputs": [
+        "outputs/replay.rule.xm.parquet",
+        "outputs/sim_sensitivity.xm.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F16-4",
+      "requirement": "保留旧入口与完整帧集；禁用 JS 时有可读介绍与既有回放链接",
+      "result": "pass",
+      "expected": "player/dashboard/全部逐帧页入口存在，noscript 有介绍与链接",
+      "actual": {
+        "ok": true
+      },
+      "inputs": [
+        "replay/xm",
+        "replay/sh"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F18-1[xm] 差分格几何",
+      "requirement": "F18-1 差分地图每个格子可见且可点击",
+      "result": "pass",
+      "expected": "169 个 rect 带数值坐标与正宽高",
+      "actual": {
+        "rects": 169,
+        "bad": 0,
+        "sample": []
+      },
+      "inputs": [
+        "replay/xm/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F18-1[xm] 单一渲染器",
+      "requirement": "§2.3 同一数字只有一份推导：几何由 Python 预渲染，脚本不再计算",
+      "result": "pass",
+      "expected": "workbench.js 不引用 cell_px / cell_gap",
+      "actual": {
+        "cell_px": false,
+        "cell_gap": false
+      },
+      "inputs": [
+        "replay/workbench.js"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F19-1[xm] 证据可复算",
+      "requirement": "§2.3 派生值自带公式与操作数，且能复算出屏幕上的数",
+      "result": "pass",
+      "expected": "4 个派生值均可由自身 data-operands 复算，关联键指向 2020-12-25 06:00:00",
+      "actual": [],
+      "inputs": [
+        "replay/xm/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "P4-M18[xm] 数据源切换",
+      "requirement": "F16 工作台切换数据源可用",
+      "result": "pass",
+      "expected": "指向 ../sh/workbench.html 的链接存在",
+      "actual": "../sh/workbench.html",
+      "inputs": [
+        "replay/xm/workbench.html"
+      ],
+      "note": "每源一页、各自加载自己的数据包，切换即导航（同时加载两包会超出站点体积上限）"
+    },
+    {
+      "id": "F18-1[sh] 差分格几何",
+      "requirement": "F18-1 差分地图每个格子可见且可点击",
+      "result": "pass",
+      "expected": "255 个 rect 带数值坐标与正宽高",
+      "actual": {
+        "rects": 255,
+        "bad": 0,
+        "sample": []
+      },
+      "inputs": [
+        "replay/sh/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F18-1[sh] 单一渲染器",
+      "requirement": "§2.3 同一数字只有一份推导：几何由 Python 预渲染，脚本不再计算",
+      "result": "pass",
+      "expected": "workbench.js 不引用 cell_px / cell_gap",
+      "actual": {
+        "cell_px": false,
+        "cell_gap": false
+      },
+      "inputs": [
+        "replay/workbench.js"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F19-1[sh] 证据可复算",
+      "requirement": "§2.3 派生值自带公式与操作数，且能复算出屏幕上的数",
+      "result": "pass",
+      "expected": "4 个派生值均可由自身 data-operands 复算，关联键指向 2016-08-25 20:00:00",
+      "actual": [],
+      "inputs": [
+        "replay/sh/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "P4-M18[sh] 数据源切换",
+      "requirement": "F16 工作台切换数据源可用",
+      "result": "pass",
+      "expected": "指向 ../xm/workbench.html 的链接存在",
+      "actual": "../xm/workbench.html",
+      "inputs": [
+        "replay/sh/workbench.html"
+      ],
+      "note": "每源一页、各自加载自己的数据包，切换即导航（同时加载两包会超出站点体积上限）"
+    },
+    {
+      "id": "NF-24",
+      "requirement": "replay/ < 8 MiB；presentation ≤ 2 MiB/源；workbench ≤ 256 KiB；旧单文件上限不变",
+      "result": "pass",
+      "expected": {
+        "total_lt": 8388608,
+        "presentation_le": 2097152
+      },
+      "actual": {
+        "total_bytes": 7387653,
+        "cap_bytes": 8388608,
+        "presentation": {
+          "xm": 90747,
+          "sh": 1405651
+        },
+        "workbench": {
+          "xm": 167130,
+          "sh": 225968
+        },
+        "replay_data": {
+          "xm": 18752,
+          "sh": 893600
+        },
+        "player": {
+          "xm": 112030,
+          "sh": 244791
+        },
+        "dashboard": 32345,
+        "largest_frame": 44207,
+        "stray_files": [],
+        "missing_files": []
+      },
+      "inputs": [
+        "replay/"
+      ],
+      "note": ""
+    },
+    {
+      "id": "NF-22",
+      "requirement": "业务不回归：冻结既有 forecast/risk/simulation/sensitivity 数值与 schema",
+      "result": "pass",
+      "expected": "check_regression.py 退出码 0",
+      "actual": 0,
+      "inputs": [
+        "scripts/phase1-snapshot.json",
+        "outputs/key_numbers.json"
+      ],
+      "note": "run.sh.md\n   + outputs/agent_run.xm.json\n   + outputs/agent_run.xm.md\n   + outputs/presentation_validation.phase4.json\n   + outputs/replay.optimized.sh.parquet\n   + outputs/replay.optimized.xm.parquet\n   + outputs/replay.rule.sh.parquet\n   + outputs/replay.rule.xm.parquet\n\nOK: every pre-existing value is preserved; changes are purely additive.\n    (narrative files updated: DECISIONS.md, REPORT.md)"
+    },
+    {
+      "id": "NF-23",
+      "requirement": "可离线：站点无外部运行时请求，file:// 与 serve 均可用",
+      "result": "pass",
+      "expected": "没有任何外部 URL 引用",
+      "actual": [],
+      "inputs": [
+        "replay/"
+      ],
+      "note": ""
+    },
+    {
+      "id": "NF-27",
+      "requirement": "真实浏览器联动冒烟（导览/事件/模式/选格/场景）",
+      "result": "pass",
+      "expected": "两源全部步骤通过",
+      "actual": {
+        "xm": {
+          "ok": true,
+          "steps": 14,
+          "errors": [],
+          "reason": null
+        },
+        "sh": {
+          "ok": true,
+          "steps": 14,
+          "errors": [],
+          "reason": null
+        }
+      },
+      "inputs": [
+        "replay/xm/workbench.html",
+        "replay/sh/workbench.html"
+      ],
+      "note": ""
+    }
+  ]
+}
