@@ -1,0 +1,77 @@
+{
+  "run_id": "20261102T152230044850Z-xm-llm-a4feea",
+  "checked_at": "2026-11-02T15:41:44.123Z",
+  "observations": [
+    {
+      "check": "older_run_same_candidate_id",
+      "run": "20261102T151237841780Z-xm-llm-372522",
+      "candidate": "cand-r1-2",
+      "result": "res-13337c397d64aef89475c070",
+      "label": "cand-r1-2 · 约束优化策略 · 200 辆 / 小时\n本时段未满足 65 次 · 相对基准减少 0 次\n结果 res-13337c397d64aef89475c070\n相对基准改善\n未满足请求\n期末库存\n搬运关系"
+    },
+    {
+      "check": "newer_run_same_candidate_id",
+      "run": "20261102T152230044850Z-xm-llm-a4feea",
+      "candidate": "cand-r1-2",
+      "result": "res-9fedbf6a60f786d8c9d42b5c",
+      "label": "cand-r1-2 · 约束优化策略 · 400 辆 / 小时\n本时段未满足 65 次 · 相对基准减少 0 次\n结果 res-9fedbf6a60f786d8c9d42b5c\n相对基准改善\n未满足请求\n期末库存\n搬运关系"
+    },
+    {
+      "check": "no_future_result_at_start",
+      "futureMetricVisible": false,
+      "candidateRows": 1
+    },
+    {
+      "check": "step_navigation",
+      "eventCursor": "1"
+    },
+    {
+      "check": "responsive_1440",
+      "measurement": {
+        "documentWidth": 1440,
+        "viewport": 1440
+      }
+    },
+    {
+      "check": "responsive_1366",
+      "measurement": {
+        "documentWidth": 1366,
+        "viewport": 1366
+      }
+    },
+    {
+      "check": "responsive_500",
+      "measurement": {
+        "documentWidth": 500,
+        "viewport": 500
+      }
+    },
+    {
+      "check": "offline_spatial",
+      "resultId": "res-73067bc621be6b6bb5b7eabd",
+      "source": "离线地理底图",
+      "selectedCell": "C0006_0006"
+    },
+    {
+      "check": "online_osm_spatial",
+      "resultId": "res-73067bc621be6b6bb5b7eabd",
+      "source": "OpenStreetMap · 在线底图"
+    },
+    {
+      "check": "standalone_file_protocol",
+      "status": "not_verified",
+      "reason": "内置浏览器仅允许 HTTP/HTTPS，未尝试绕过。"
+    },
+    {
+      "check": "own_script_runtime_errors",
+      "count": 0
+    },
+    {
+      "check": "ledger_evidence",
+      "cell": "C0006_0006",
+      "frame": "2020-12-25 08:00:00",
+      "mapControls": "第 3 轮 · 方案 1 · 规则策略 · 400 辆 / 小时\n本时段未满足 2,313 次 · 相对基准减少 +228 次\n结果 res-73067bc621be6b6bb5b7eabd\n相对基准改善\n未满足请求\n期末库存\n搬运关系",
+      "ledger": "期初库存\n94 辆\n模拟借车请求\n480 次\n调入 / 调出\n0 / 0 辆\n接纳归还\n286 辆\n满足 / 未满足\n380 / 100 次\n期末库存\n0 辆\n相比基准，未满足减少\n65 次"
+    }
+  ]
+}

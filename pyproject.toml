@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
+llm = ["httpx>=0.27"]
 # Verification of the Phase 5 media: Pillow decodes the PNGs and the gate checks
 # they are real 1600×900 frames.  `bike-agent replay`, the pipeline and the rest
 # of the test suite do not need it.
@@ -37,7 +38,7 @@ bike-agent = "bike_agent.cli:main"
 include = ["bike_agent*"]
 
 [tool.setuptools.package-data]
-bike_agent = ["config/*.yaml"]
+bike_agent = ["config/*.yaml", "multi_agent/prompts/*.md", "presentation/assets/*", "presentation/assets/vendor/leaflet/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

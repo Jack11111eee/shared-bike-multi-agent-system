@@ -67,7 +67,7 @@ def discover_runs(outputs: Path) -> list[dict[str, Any]]:
         return runs
     for run_dir in sorted(path for path in root.iterdir() if path.is_dir()):
         decision = _read_json(run_dir / "decision.json")
-        if not isinstance(decision, dict):
+        if not isinstance(decision, dict) or decision.get("schema_version") == "2.0":
             continue
         index = _read_json(run_dir / "run.json", {}) or {}
         runs.append(

@@ -443,17 +443,26 @@ class MultiAgentGateway:
         else:
             payload = {key: value for key, value in params.items() if value is not None}
             function = lambda: self._old_tool(tool, payload, self.config, self.layout)
+        # Include submission/scheduling time: the caller may be descheduled
+        # until after a slow future has already completed.
+        execution_started = time.monotonic()
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(function)
         try:
-            result = future.result(timeout=self.tool_timeout_s)
-        except FutureTimeout as exc:
+            remaining = max(0.0, self.tool_timeout_s - (time.monotonic() - execution_started))
+            try:
+                result = future.result(timeout=remaining)
+            except Exception as exc:
+                if isinstance(exc, FutureTimeout) or time.monotonic() - execution_started >= self.tool_timeout_s:
+                    raise ToolTimeout(
+                        f"{tool} exceeded the {self.tool_timeout_s:g}s per-tool timeout"
+                    ) from exc
+                raise
+            if time.monotonic() - execution_started >= self.tool_timeout_s:
+                raise ToolTimeout(f"{tool} exceeded the {self.tool_timeout_s:g}s per-tool timeout")
+            return result
+        finally:
             executor.shutdown(wait=False, cancel_futures=True)
-            raise ToolTimeout(
-                f"{tool} exceeded the {self.tool_timeout_s:.0f}s per-tool timeout"
-            ) from exc
-        executor.shutdown(wait=True)
-        return result
 
     def _record(
         self,

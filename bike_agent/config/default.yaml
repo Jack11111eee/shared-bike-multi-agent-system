@@ -62,3 +62,8 @@ simulation:
   distance_cost_per_bike_km: 0.2
   max_candidate_surplus_per_deficit: 20
   strategies: [rule, optimized]
+
+# Used only by the explicit --mode llm command.
+llm:
+  request_timeout_s: 60
+  max_model_calls: 24

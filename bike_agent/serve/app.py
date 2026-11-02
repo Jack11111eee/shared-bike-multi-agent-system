@@ -382,13 +382,16 @@ class _Handler(BaseHTTPRequestHandler):
         else:
             self._send(HTTPStatus.OK, payload)
 
-    def _send_static(self, target: Path) -> None:
+    def _send_static(self, target: Path, *, content_type: str | None = None,
+                     html_base: str | None = None) -> None:
         if not target.is_file():
             raise ServiceError(f"not found: {target.name}", HTTPStatus.NOT_FOUND)
-        content_type = STATIC_TYPES.get(target.suffix.lower())
+        content_type = content_type or STATIC_TYPES.get(target.suffix.lower())
         if content_type is None:
             raise ServiceError(f"refusing to serve {target.suffix!r}", HTTPStatus.NOT_FOUND)
         body = target.read_bytes()
+        if html_base is not None:
+            body = body.replace(b"<head>", ('<head><base href="' + html_base + '">').encode(), 1)
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -397,6 +400,42 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _run_static(self, path: str) -> None:
         try:
+            if path == "/console" or path.startswith("/console/"):
+                from bike_agent.presentation.run_view import resolve_run
+                import re
+                base = (self.layout.root / "console").resolve()
+                relative = unquote(path[len("/console"):]).lstrip("/")
+                if relative == "map-config.js":
+                    from bike_agent.llm.provider import load_local_environment
+                    import os
+                    load_local_environment(self.layout.root)
+                    payload = {"amapKey": os.environ.get("AMAP_KEY", ""),
+                               "securityJsCode": os.environ.get("AMAP_SECURITY_CODE", "")}
+                    body = ("window.BIKE_MAP_CONFIG=" + json.dumps(payload) + ";").encode()
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header("Content-Type", "application/javascript")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                if re.fullmatch(r"run/[A-Za-z0-9_-]+(?:/report)?", relative):
+                    if relative.endswith("/report"):
+                        rid = relative.split("/")[1]
+                        target = resolve_run(self.layout, rid) / "presentation" / "decision-report.html"
+                    else:
+                        resolve_run(self.layout, relative.split("/")[1])
+                        target = base / "index.html"
+                        self._send_static(target, html_base="/console/")
+                        return
+                else:
+                    target = (base / (relative or "index.html")).resolve()
+                    if not target.is_relative_to(base):
+                        raise ServiceError("console path traversal", HTTPStatus.FORBIDDEN)
+                extra_type = {".md": "text/markdown; charset=utf-8",
+                              ".csv": "text/csv; charset=utf-8"}.get(target.suffix.lower())
+                self._send_static(target, content_type=extra_type)
+                return
             target = resolve_static(self.layout, path)
             self._send_static(target)
         except ServiceError as exc:
@@ -409,6 +448,33 @@ class _Handler(BaseHTTPRequestHandler):
         return path.startswith(("/api/", "/tools/")) or path in LEGACY_API_PATHS
 
     def _route_get(self, path: str, params: dict[str, str]) -> dict[str, Any]:
+        if path.startswith("/api/v2/"):
+            from bike_agent.presentation.run_view import list_runs, build_run_view
+            parts = path.strip("/").split("/")
+            try:
+                if parts == ["api", "v2", "runs"]:
+                    return {"runs": list_runs(self.layout)}
+                if len(parts) >= 4 and parts[:3] == ["api", "v2", "runs"]:
+                    view = build_run_view(self.config, self.layout, parts[3])
+                    suffix = parts[4:]
+                    if not suffix:
+                        return view
+                    if suffix == ["events"]:
+                        after = int(params.get("after_seq", "0"))
+                        return {"events": [e for e in view["events"] if e["sequence"] > after]}
+                    if len(suffix) == 2 and suffix[0] == "candidates":
+                        candidate = next((c for c in view["candidates"] if c["candidate_id"] == suffix[1]), None)
+                        if candidate is not None:
+                            return candidate
+                    if len(suffix) == 3 and suffix[0] == "results" and suffix[2] == "spatial":
+                        spatial = next((s for s in view["spatial"].values() if s["result_id"] == suffix[1]), None)
+                        if spatial is not None:
+                            return spatial
+            except ValueError as exc:
+                raise ServiceError(str(exc), HTTPStatus.BAD_REQUEST) from exc
+            except FileNotFoundError as exc:
+                raise ServiceError(str(exc), HTTPStatus.NOT_FOUND) from exc
+            raise ServiceError("unknown run resource", HTTPStatus.NOT_FOUND)
         if path in ("/api/sources", "/sources"):
             return list_sources(self.config, self.layout)
         if path in ("/api/replay/index", "/replay/index"):
@@ -464,6 +530,25 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
         path = urlparse(self.path).path
         params = self._query()
+        if path.startswith("/api/v2/runs/"):
+            import re
+            match = re.fullmatch(r"/api/v2/runs/([A-Za-z0-9_-]+)/(report|exports/([A-Za-z0-9_.-]+))", path)
+            if match:
+                from bike_agent.presentation.run_view import resolve_run
+                try:
+                    name = match[3] or "decision-report.html"
+                    types = {"decision-report.html": "text/html; charset=utf-8",
+                             "decision-report.md": "text/markdown; charset=utf-8",
+                             "dispatch-moves.csv": "text/csv; charset=utf-8"}
+                    if name not in types:
+                        raise ServiceError("export not allowed", HTTPStatus.NOT_FOUND)
+                    target = resolve_run(self.layout, match[1]) / "presentation" / name
+                    self._send_static(target, content_type=types[name])
+                except (FileNotFoundError, ValueError):
+                    self._send(HTTPStatus.NOT_FOUND, {"error": "run not found"})
+                except ServiceError as exc:
+                    self._send(exc.status, {"error": str(exc)})
+                return
         if not self._is_api(path):
             self._run_static(path)
             return

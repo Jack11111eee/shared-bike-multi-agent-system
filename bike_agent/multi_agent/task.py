@@ -108,8 +108,12 @@ class TaskSpec:
 
     def validate(self) -> None:
         """Schema plus the semantic rules the schema cannot express."""
-        Draft202012Validator.check_schema(TASK_SCHEMA)
-        errors = sorted(Draft202012Validator(TASK_SCHEMA).iter_errors(self.to_dict()), key=str)
+        schema = TASK_SCHEMA
+        if self.mode == "llm":
+            from bike_agent.multi_agent.contracts_v2 import TASK_SCHEMA_V2
+            schema = TASK_SCHEMA_V2
+        Draft202012Validator.check_schema(schema)
+        errors = sorted(Draft202012Validator(schema).iter_errors(self.to_dict()), key=str)
         if errors:
             raise TaskError("; ".join(error.message for error in errors))
         if self.source not in ("xm", "sh"):

@@ -1571,7 +1571,9 @@ def _phase6_report_section() -> list[str]:
     if root.exists():
         for path in sorted(root.glob("*/decision.json"), reverse=True):
             try:
-                records.append(json.loads(path.read_text(encoding="utf-8")))
+                record = json.loads(path.read_text(encoding="utf-8"))
+                if record.get("schema_version") != "2.0":
+                    records.append(record)
             except (OSError, ValueError):
                 continue
 

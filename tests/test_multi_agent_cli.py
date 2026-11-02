@@ -86,14 +86,22 @@ def test_repro_does_not_reference_the_multi_agent_package():
     source = inspect.getsource(cli.cmd_repro)
     assert "multi_agent" not in source
     module_source = (Path(cli.__file__)).read_text(encoding="utf-8")
-    # The only import is lazy, inside cmd_multi_agent.
-    assert "from bike_agent.multi_agent" in module_source
-    assert module_source.count("from bike_agent.multi_agent") == 2
+    # Model and legacy runtimes are lazy; repro must not import either runtime.
+    import ast
+    tree = ast.parse(module_source)
+    assert not any(isinstance(node, ast.ImportFrom) and
+                   (node.module or "").startswith(("bike_agent.multi_agent", "bike_agent.llm"))
+                   for node in tree.body)
 
 def test_unknown_mode_is_rejected_by_argparse():
     with pytest.raises(SystemExit) as error:
-        cli.build_parser().parse_args(["multi-agent", "--source", "xm", "--mode", "llm"])
+        cli.build_parser().parse_args(["multi-agent", "--source", "xm", "--mode", "unknown-mode"])
     assert error.value.code == 2
+
+
+def test_llm_mode_is_explicitly_supported():
+    args = cli.build_parser().parse_args(["multi-agent", "--source", "xm", "--mode", "llm"])
+    assert args.mode == "llm"
 
 def test_repro_site_import_does_not_load_the_agent_runtime(tmp_path):
     """NF-34: building the site may read the contracts, never run a role.

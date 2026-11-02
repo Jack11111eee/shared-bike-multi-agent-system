@@ -80,6 +80,21 @@ def _load_inputs(config: dict[str, Any], layout: Layout, source: str) -> dict[st
     }
 
 
+def simulation_bundle(
+    config: dict[str, Any], layout: Layout, source: str, strategy: str,
+    budget: int | None = None,
+):
+    """Internal complete result; never writes or overwrites legacy artefacts."""
+    inputs = _load_inputs(config, layout, source)
+    result = simulate(
+        panel=inputs["panel"], forecast=inputs["forecast"], cells=inputs["cells"],
+        capacities=inputs["capacities"], config=config, strategy=strategy, budget=budget,
+    )
+    result.summary["source"] = source
+    result.summary["capacity_mode"] = inputs["capacity_mode"]
+    return result
+
+
 def run_simulation(
     config: dict[str, Any],
     layout: Layout,
@@ -88,19 +103,9 @@ def run_simulation(
     budget: int | None = None,
     write: bool = True,
 ) -> dict[str, Any]:
-    inputs = _load_inputs(config, layout, source)
-    result = simulate(
-        panel=inputs["panel"],
-        forecast=inputs["forecast"],
-        cells=inputs["cells"],
-        capacities=inputs["capacities"],
-        config=config,
-        strategy=strategy,
-        budget=budget,
-    )
+    result = simulation_bundle(config, layout, source, strategy, budget)
     summary = dict(result.summary)
     summary["source"] = source
-    summary["capacity_mode"] = inputs["capacity_mode"]
 
     if write:
         layout.ensure()

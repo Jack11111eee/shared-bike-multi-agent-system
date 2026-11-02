@@ -1,0 +1,4 @@
+{"role": "coordinator", "ok": false, "error": "一般分派的 candidate_id 必须为 null", "model_call_id": "model-0001"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0001"}
+{"role": "evaluation", "ok": false, "error": "证据 ID不存在或不属于本次运行", "model_call_id": "model-0004"}
+{"role": "evaluation", "ok": false, "error": "证据 ID不存在或不属于本次运行", "model_call_id": "model-0005"}

@@ -1,0 +1,14 @@
+{"ok": true, "role": "coordinator", "message_id": "msg-0001"}
+{"ok": true, "role": "evaluation", "message_id": "msg-0002"}
+{"role": "coordinator", "ok": false, "error": "当前状态不允许该动作或接收角色", "model_call_id": "model-0004"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0003"}
+{"ok": true, "role": "diagnosis", "message_id": "msg-0004"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0005"}
+{"ok": true, "role": "dispatch", "message_id": "msg-0006"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0007"}
+{"ok": true, "role": "evaluation", "message_id": "msg-0008"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0009"}
+{"ok": true, "role": "dispatch", "message_id": "msg-0010"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0011"}
+{"ok": true, "role": "evaluation", "message_id": "msg-0012"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0013"}
