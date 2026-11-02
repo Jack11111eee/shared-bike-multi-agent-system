@@ -226,6 +226,34 @@ def cmd_agent(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_multi_agent(args: argparse.Namespace) -> int:
+    # Imported here, not at module scope: `bike-agent repro` must not pull the
+    # multi-agent package (or its optional layers) into its import graph
+    # (NF-34).
+    from bike_agent.multi_agent.orchestrator import Orchestrator
+    from bike_agent.multi_agent.task import build_task
+
+    config, layout = _config(args), _layout(args)
+    source = args.source or config.get("primary_source", "xm")
+    task = build_task(
+        config,
+        source,
+        baseline_budget=args.baseline_budget,
+        max_budget=args.max_budget,
+        max_rounds=args.max_rounds,
+        min_service_rate=args.min_service_rate,
+        max_candidates_per_round=args.max_candidates_per_round,
+        max_distinct_candidates=args.max_distinct_candidates,
+        max_tool_calls=args.max_tool_calls,
+        tool_timeout_s=args.tool_timeout,
+        task_timeout_s=args.task_timeout,
+        mode=args.mode,
+    )
+    outcome = Orchestrator(config, layout, task).run()
+    print(json.dumps(outcome.summary(), ensure_ascii=False, indent=2))
+    print(f"[multi-agent] decision -> {outcome.run_dir / 'decision.json'}")
+    return outcome.exit_code
+
 def cmd_tools(args: argparse.Namespace) -> int:
     if args.schema:
         Draft202012Validator.check_schema(TOOL_SCHEMA)
@@ -304,6 +332,27 @@ def build_parser() -> argparse.ArgumentParser:
     agent.add_argument("--strategy", choices=["rule", "optimized"], default="rule")
     agent.add_argument("--top-k", type=int, default=5)
     agent.set_defaults(func=cmd_agent)
+
+    multi_agent = sub.add_parser(
+        "multi-agent", help="rule-driven four-role dispatch decision loop (Phase 6)"
+    )
+    multi_agent.add_argument("--source", choices=["xm", "sh"])
+    multi_agent.add_argument("--mode", choices=["deterministic"], default="deterministic")
+    multi_agent.add_argument("--baseline-budget", type=int, default=None)
+    multi_agent.add_argument(
+        "--max-budget",
+        type=int,
+        default=None,
+        help="hard per-bucket budget ceiling; defaults to the baseline budget",
+    )
+    multi_agent.add_argument("--max-rounds", type=int, default=3)
+    multi_agent.add_argument("--min-service-rate", type=float, default=None)
+    multi_agent.add_argument("--max-candidates-per-round", type=int, default=2)
+    multi_agent.add_argument("--max-distinct-candidates", type=int, default=6)
+    multi_agent.add_argument("--max-tool-calls", type=int, default=20)
+    multi_agent.add_argument("--tool-timeout", type=float, default=60.0)
+    multi_agent.add_argument("--task-timeout", type=float, default=300.0)
+    multi_agent.set_defaults(func=cmd_multi_agent)
 
     tools = sub.add_parser("tools", help="agent tool contracts")
     tools.add_argument("--schema", action="store_true")

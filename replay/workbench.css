@@ -88,9 +88,68 @@ table.inputs{width:100%;border-collapse:collapse;font-size:11px}
 table.inputs th,table.inputs td{border:1px solid var(--line);padding:3px 8px;text-align:left}
 table.inputs .sha{font-variant-numeric:tabular-nums;color:var(--muted)}
 .workbench .notice{margin:6px 0}
+/* -- F21 geographic view: the basemap stays behind the data -------------- */
+.projection-switch,.metric-switch,.range-switch,.forecast-controls{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.forecast-controls{gap:18px}
+.projection-switch button,.metric-switch button,.range-switch button{padding:5px 12px;
+border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit;cursor:pointer}
+.projection-switch button.active,.metric-switch button.active,.range-switch button.active{
+border-color:var(--accent);color:var(--accent);font-weight:600}
+.geo-panes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+/* An author `display` rule outranks the UA sheet's [hidden] rule, so the
+   hidden attribute needs to win explicitly -- otherwise the geographic panes
+   stay painted while the page says the rule grid is showing. */
+.geo-panes[hidden],.panes[hidden],.geo-view[hidden]{display:none !important}
+.geo-panes .geo-view{min-width:0}
+.geo-panes .geo-delta{grid-column:1/-1}
+.geo-attribution{grid-column:1/-1}
+svg.geo-map{display:block;width:100%;height:auto;max-width:560px;background:#dbe9f4;border-radius:6px}
+.geo-land{fill:#f2efe9;stroke:#2c5f8a;stroke-width:0.7}
+.geo-water{fill:none;stroke:#5aa9d6;stroke-width:0.9;opacity:.85}
+.geo-admin{fill:none;stroke:#b0574a;stroke-width:0.5;stroke-dasharray:3 2;opacity:.7}
+/* Inventory cells sit on the land: a thin light stroke keeps each cell legible
+   over a pale basemap without turning the map into a hatch. */
+svg.geo-map rect.cell{fill:#1f6feb;stroke:#ffffff;stroke-width:0.4;stroke-opacity:.45;cursor:pointer}
+svg.geo-map rect.cell.selected{stroke:var(--accent);stroke-width:2.2;stroke-opacity:1}
+svg.geo-map rect.delta.improved{fill:var(--improved);stroke:#ffffff;stroke-width:0.4;stroke-opacity:.45}
+svg.geo-map rect.delta.worsened{fill:var(--worsened);stroke:#ffffff;stroke-width:0.4;stroke-opacity:.45}
+svg.geo-map rect.delta.unchanged{fill:var(--neutral);fill-opacity:.10 !important;stroke:#ffffff;stroke-width:0.3;stroke-opacity:.35}
+.geo-move{stroke:#d9480f;stroke-width:1.4;opacity:.85}
+.scale-line{stroke:#2b3a48;stroke-width:1.4}
+.scale-label{font-size:9px;fill:#2b3a48}
+.geo-credit{font-size:7px;fill:#5b6b7a}
+@media (prefers-color-scheme: dark){
+.scale-line{stroke:#cbd5df}
+.scale-label{fill:#cbd5df}
+.geo-credit{fill:#8fa0b0}
+}
+/* -- F22 prediction chart ------------------------------------------------ */
+.forecast-readout{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin:6px 0}
+.forecast-readout b{color:var(--fg);font-variant-numeric:tabular-nums}
+svg.forecast-chart{display:block;width:100%;height:auto;max-width:760px}
+.chart-axis{stroke:var(--line);stroke-width:1}
+.chart-zero{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 3;opacity:.6}
+.chart-cursor{stroke:var(--accent);stroke-width:1.5}
+.chart-tick{font-size:10px;fill:var(--muted)}
+.chart-empty{font-size:12px;fill:var(--muted)}
+.series.actual{stroke:#1f6feb;stroke-width:2}
+.series.baseline{stroke:#c07000;stroke-width:1.6;stroke-dasharray:6 4}
+.series.pred{stroke:#b3341f;stroke-width:1.6;stroke-dasharray:1 3}
+.chart-point{fill:#1f6feb;cursor:pointer}
+.chart-point:hover{fill:var(--accent);r:6}
+@media (prefers-color-scheme: dark){
+.series.actual{stroke:#6aa8ff}
+.series.baseline{stroke:#e0a54a}
+.series.pred{stroke:#ff8a6b}
+.chart-point{fill:#6aa8ff}
+svg.geo-map{background:#16202b}
+.geo-land{fill:#22303d;stroke:#6aa8ff}
+.geo-water{stroke:#4d7f9e}
+.geo-admin{stroke:#b0574a}
+}
 @media (max-width:900px){
 .workbench main{grid-template-columns:1fr}
-.panes .side,.ledger-panes{grid-template-columns:1fr}
+.panes .side,.ledger-panes,.geo-panes{grid-template-columns:1fr}
 .event button{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion: reduce){

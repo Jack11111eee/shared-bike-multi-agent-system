@@ -315,7 +315,12 @@ def test_presentation_bundle_does_not_duplicate_the_player_frames(presentations,
 
 def test_site_stays_within_the_phase4_budget(presentations):
     total = sum(path.stat().st_size for path in SITE.rglob("*") if path.is_file())
-    assert total < 8 * 1024 * 1024, f"replay/ is {total / 1048576:.3f} MiB"
+    # Phase 5 §1.3 revises the *site total* 8 → 12 MiB. This file is the third
+    # place that asserted the same total (the other two are named in §1.3); the
+    # per-file caps below are untouched. Phase 5 never wrote its decision
+    # record (DECISIONS.md ended at D23 when Phase 6 started), so there is no
+    # decision entry to cite here.
+    assert total < 12 * 1024 * 1024, f"replay/ is {total / 1048576:.3f} MiB"
     for source in SOURCES:
         presentation_bytes = (SITE / source / "presentation.js").stat().st_size
         assert presentation_bytes <= 2 * 1024 * 1024, f"{source} presentation.js is {presentation_bytes}"

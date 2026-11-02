@@ -21,6 +21,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
+# Verification of the Phase 5 media: Pillow decodes the PNGs and the gate checks
+# they are real 1600×900 frames.  `bike-agent replay`, the pipeline and the rest
+# of the test suite do not need it.
+media-check = ["Pillow>=10.0"]
+# Rebuilding the basemap extracts from the upstream archives (development only).
+basemap = ["pyshp>=2.3"]
+# Capturing screenshots and the demo video (development only).
+capture = ["websockets>=12.0"]
 
 [project.scripts]
 bike-agent = "bike_agent.cli:main"

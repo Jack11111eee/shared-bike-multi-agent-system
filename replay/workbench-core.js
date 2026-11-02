@@ -10,6 +10,9 @@
       started: state.started,
       frame: state.frame,
       mode: state.mode,
+      projection: state.projection,
+      forecastMetric: state.forecastMetric,
+      forecastRange: state.forecastRange,
       cell: state.cell,
       scenario: state.scenario,
       playing: state.playing,
@@ -25,6 +28,9 @@
       started: false,
       frame: 0,
       mode: 'side',
+      projection: 'grid',
+      forecastMetric: 'out',
+      forecastRange: 'cell',
       cell: null,
       scenario: 'baseline',
       playing: false,
@@ -126,6 +132,23 @@
       setMode: function (mode) {
         if (mode !== 'side' && mode !== 'delta') return false;
         state.mode = mode;
+        return true;
+      },
+      /* Switching projection is a pure view change: source, frame, cell and
+         scenario are untouched, so the same cell stays selected in both. */
+      setProjection: function (value) {
+        if (value !== 'grid' && value !== 'geo') return false;
+        state.projection = value;
+        return true;
+      },
+      setForecastMetric: function (value) {
+        if (['out', 'in', 'net'].indexOf(value) < 0) return false;
+        state.forecastMetric = value;
+        return true;
+      },
+      setForecastRange: function (value) {
+        if (value !== 'cell' && value !== 'source') return false;
+        state.forecastRange = value;
         return true;
       },
       selectCell: function (cellId) {

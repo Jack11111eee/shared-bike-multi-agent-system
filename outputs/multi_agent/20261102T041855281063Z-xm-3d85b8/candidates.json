@@ -1,0 +1,97 @@
+[
+  {
+    "candidate_id": "cand-r1-1",
+    "strategy": "optimized",
+    "budget": 200,
+    "rationale": "诊断显示时段 2020-12-25 08:00:00 的未满足请求最高（2541 次）；在相同每时段预算 200 下改用约束优化，检验算法本身能否减少未满足请求。",
+    "expected_tradeoff": "可能降低未满足请求，但可能增加搬运距离；预算不变，收益不能归因于资源增加。",
+    "revision_of": null,
+    "round": 1,
+    "status": "rejected",
+    "result_id": "res-3e00cb4b63f4cebb",
+    "metrics": {
+      "unmet_requests": 3669,
+      "distance_bike_km": 804.379945681073,
+      "composite_cost": 3829.8759891362147,
+      "service_rate": 0.9123423165137615
+    },
+    "violations": {
+      "conservation": 0,
+      "capacity": 0,
+      "budget": 0,
+      "negative_inventory": 0,
+      "clamped_moves": 0
+    },
+    "deltas": {
+      "cost_delta": 41.72133661911721,
+      "unmet_gain": -52,
+      "service_rate_delta_pp": -0.1242354740061069
+    },
+    "defects": [
+      "service_rate 0.912342 < min_service_rate 0.920000",
+      "composite_cost 高于基准：3829.875989 > 3788.154653（cost_delta = candidate - baseline）"
+    ]
+  },
+  {
+    "candidate_id": "cand-r1-2",
+    "strategy": "optimized",
+    "budget": 400,
+    "rationale": "诊断显示时段 2020-12-25 08:00:00 的未满足请求最高（2541 次）；把每时段预算上限从 200 提高到 400，检验资源增加带来的变化。",
+    "expected_tradeoff": "预算上限提高到 400，资源变化必须单独披露；不能把改善全部归因于算法。",
+    "revision_of": null,
+    "round": 1,
+    "status": "rejected",
+    "result_id": "res-2a53984605221a8f",
+    "metrics": {
+      "unmet_requests": 3471,
+      "distance_bike_km": 1566.0614425210072,
+      "composite_cost": 3784.2122885042013,
+      "service_rate": 0.9170728211009175
+    },
+    "violations": {
+      "conservation": 0,
+      "capacity": 0,
+      "budget": 0,
+      "negative_inventory": 0,
+      "clamped_moves": 0
+    },
+    "deltas": {
+      "cost_delta": -3.942364012896178,
+      "unmet_gain": 146,
+      "service_rate_delta_pp": 0.348814984709489
+    },
+    "defects": [
+      "service_rate 0.917073 < min_service_rate 0.920000"
+    ]
+  },
+  {
+    "candidate_id": "cand-r2-1",
+    "strategy": "rule",
+    "budget": 400,
+    "rationale": "回应评估对 cand-r1-2 的反馈（按评估建议调整策略）：从 optimized/400 改为 rule/400。",
+    "expected_tradeoff": "这是一次定向修订；是否更好由重新评估决定，不预设结论。",
+    "revision_of": "cand-r1-2",
+    "round": 2,
+    "status": "selected",
+    "result_id": "res-dc294620c721073e",
+    "metrics": {
+      "unmet_requests": 3306,
+      "distance_bike_km": 1784.5682631661805,
+      "composite_cost": 3662.913652633236,
+      "service_rate": 0.9210149082568807
+    },
+    "violations": {
+      "conservation": 0,
+      "capacity": 0,
+      "budget": 0,
+      "negative_inventory": 0,
+      "clamped_moves": 0
+    },
+    "deltas": {
+      "cost_delta": -125.2409998838616,
+      "unmet_gain": 311,
+      "service_rate_delta_pp": 0.7430237003058116
+    },
+    "defects": []
+  }
+]

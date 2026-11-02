@@ -1,0 +1,908 @@
+{
+  "phase": 5,
+  "requirement": "REQUIREMENTS-PHASE5.md F23",
+  "generated_by": "scripts/capture_presentation.py",
+  "note": "截图与视频都是真实浏览器对已生成页面的捕获；不使用图片编辑或合成补出未实现的控件、数字或底图。媒体放在仓库根 presentations/phase5/，不进入 replay/，也不扩大静态 HTTP 根。",
+  "tool_versions": {
+    "python": "3.13.2",
+    "chrome": {
+      "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "version": "Google Chrome 156.0.8078.79"
+    },
+    "ffmpeg": {
+      "path": "/opt/homebrew/bin/ffmpeg",
+      "version": "ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers"
+    },
+    "websockets": "16.1.1"
+  },
+  "input_digest": "b3f79cb34acdfabfdabcb5f35678fd7615482b33bec696aaff728d04a49190d4",
+  "input_files": {
+    "outputs/forecast.xm.parquet": "200eb7519603764b08b11f5d020577a2d1eda0c5b5c8c60a26d767bd48281cbe",
+    "outputs/forecast.sh.parquet": "af98dae59d3a5ae5a19592d376a3e31e36ce1d4081805404747e96b9fd83ecdc",
+    "outputs/replay.rule.xm.parquet": "3685572bb273a79192085cf552b0b08d9b61366bf959c46a07bbfe5c063a3230",
+    "outputs/replay.optimized.xm.parquet": "c32ddbc58bc8f7d0b4cfdbf6cb85c89fcaa45e00d2e2f6153bf556bba3b7526c",
+    "outputs/replay.rule.sh.parquet": "f4b66ee41edcdcc7506d8f70909eed30465c795e117fdcbd607f1c459039446f",
+    "outputs/replay.optimized.sh.parquet": "8cf31eaaed6b877ccb1948ec44365990583673578869f493ab341f618b59c56a",
+    "outputs/sim_rule.xm.csv": "55e04c8a641f618b4033ee8b15bfd8794beeb2280f85b603fd42742698b0594f",
+    "outputs/sim_optimized.xm.csv": "ef7ae71fa3597123b0230f157070c7d42b607174c4aef276a9823a9ea78bb7cf",
+    "outputs/sim_rule.sh.csv": "95d55a31e105e76bb854f80b1271c6be05d4afe747cc7922fa324b1091ebb31f",
+    "outputs/sim_optimized.sh.csv": "17cc5a6e7bbd8e09c8dab610eb7480a0c49d0bdc42ecd6399aa43d09736b9fa4",
+    "outputs/sim_sensitivity.xm.json": "9cc4c4a0d0627f72009567c79007065fe7b9c232a91d01392c2e392bdc23c017",
+    "outputs/sim_sensitivity.sh.json": "8e6d141bcc376d5bec9d55fda36da556b8b43b87490371d8d9031b454ba14dfe",
+    "data/basemap/raw/xm.json": "4cd702ac5cf8922cbb6871035f63266d4c61e2bb708408cee4713c167fed5c42",
+    "data/basemap/raw/sh.json": "62bcc13bcf3bb2c41225ae551fb78b2fad31e3291eb7ea350b71bf64ee3bbc3f",
+    "replay/workbench.css": "74fbf70b772c56e7424a71b082469edf133bd549d3023c7a5157a95a5ecbd564",
+    "replay/workbench.js": "a663bfc9bf000adaddc0c087db372c3098d1ac1daa81970e55bbd55e76c9fc9a",
+    "replay/workbench-core.js": "823bf54207a02bb07b8964033772fd7eca7f56b29c1f83a90b70fa6396e40085",
+    "replay/workbench-geo.js": "6367e0354e0dac290007d6978a577c4897a325ced9b70f11469ce47f5e3931eb",
+    "replay/xm/workbench.html": "39da5923c19f0377fb13eb3e0cc5f30ac5df418e77dbc21886c9d7aa53642dbc",
+    "replay/sh/workbench.html": "5a34e9a10340d74737c83c8f663c32ab7f07f39d46de1bbb221f43f993542cf9",
+    "replay/xm/replay-data.js": "03a39f924b4c6fd3b37328b27a696a705371bea97db4ec913f4c52765b14844e",
+    "replay/sh/replay-data.js": "ad458936238c7376d71a3b389993bc86c24e5b315ddc9151b5205d78acb1eeae",
+    "replay/xm/presentation.js": "593bce0408685be4161f10b072dd7b058195ea285d15ad40b8e023801d9db20b",
+    "replay/sh/presentation.js": "06ab9f1d212d2d7e909389e1408f9bd5a741ea4aa4c791f29e110429b2aaf301",
+    "replay/xm/basemap.js": "a6040d9ba7bba8773fa66fee23ff7f39b032027b1978e22611e2735acfbc98c6",
+    "replay/sh/basemap.js": "d677741ba0a9db40b83e7c0a92af0a4125c4e9925385353cd06e507ddacb572a",
+    "replay/xm/forecast.js": "eef72d513279eb537f3d0a4baeab1596c05c9bd2e05f7648a940c10f9b3c9ca6",
+    "replay/sh/forecast.js": "bdd67d52325ae77c949cbe790ce17c2b5825771ccd918a692440e07cb2433e76"
+  },
+  "capture_command": "python3 scripts/capture_presentation.py --all",
+  "screenshots": [
+    {
+      "key": "guide-overview",
+      "title": "导览概貌 · XM",
+      "caption": "XM 复盘工作台的演示导览首章：4 个时间单元、169 个格子，S-RULE 与 S-OPT 的未满足请求与搬运量。",
+      "path": "presentations/phase5/guide-overview.png",
+      "type": "image/png",
+      "page": "replay/xm/workbench.html",
+      "capture_command": "python3 scripts/capture_presentation.py --shots  # key=guide-overview",
+      "tool_versions": {
+        "python": "3.13.2",
+        "chrome": {
+          "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "version": "Google Chrome 156.0.8078.79"
+        },
+        "ffmpeg": {
+          "path": "/opt/homebrew/bin/ffmpeg",
+          "version": "ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers"
+        },
+        "websockets": "16.1.1"
+      },
+      "input_digest": "b3f79cb34acdfabfdabcb5f35678fd7615482b33bec696aaff728d04a49190d4",
+      "theme": "light",
+      "viewport": "1600x900",
+      "source": "xm",
+      "frame": 0,
+      "time_bucket": "2020-12-25 06:00:00",
+      "mode": "side",
+      "projection": "grid",
+      "cell": "C0007_0010",
+      "scenario": "baseline",
+      "forecast_metric": "out",
+      "forecast_range": "cell",
+      "forecast_bucket": "2020-12-25 06:00:00",
+      "forecast_mae": "30.673471486744695",
+      "forecast_n": "4",
+      "delta_net": "0",
+      "recipe": [
+        [
+          "click",
+          "[data-guide-action=\"start\"]"
+        ],
+        [
+          "scroll",
+          "#guide"
+        ]
+      ],
+      "sha256": "d28fe2a5270525b88e68a1d31223bb312e9cb2cac7a57f3159f78eeac6c22357",
+      "bytes": 165361,
+      "captured_at": "2026-11-02T03:21:51+00:00",
+      "status": "ok"
+    },
+    {
+      "key": "xm-geo-delta",
+      "title": "XM 地理底图上的差分地图",
+      "caption": "XM 第 2 个时间单元、差分模式下切到地理底图：两个退步格（S-OPT 未满足更多）落在厦门岛内，色域固定 ±102 次。",
+      "path": "presentations/phase5/xm-geo-delta.png",
+      "type": "image/png",
+      "page": "replay/xm/workbench.html",
+      "capture_command": "python3 scripts/capture_presentation.py --shots  # key=xm-geo-delta",
+      "tool_versions": {
+        "python": "3.13.2",
+        "chrome": {
+          "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "version": "Google Chrome 156.0.8078.79"
+        },
+        "ffmpeg": {
+          "path": "/opt/homebrew/bin/ffmpeg",
+          "version": "ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers"
+        },
+        "websockets": "16.1.1"
+      },
+      "input_digest": "b3f79cb34acdfabfdabcb5f35678fd7615482b33bec696aaff728d04a49190d4",
+      "theme": "light",
+      "viewport": "1600x900",
+      "source": "xm",
+      "frame": 1,
+      "time_bucket": "2020-12-25 07:00:00",
+      "mode": "delta",
+      "projection": "geo",
+      "cell": "C0007_0010",
+      "scenario": "baseline",
+      "forecast_metric": "out",
+      "forecast_range": "cell",
+      "forecast_bucket": "2020-12-25 07:00:00",
+      "forecast_mae": "30.673471486744695",
+      "forecast_n": "4",
+      "delta_net": "125",
+      "recipe": [
+        [
+          "js",
+          "var s=document.querySelector('[data-control=\"scrub\"]');s.value='1';s.dispatchEvent(new Event('input',{bubbles:true}));"
+        ],
+        [
+          "click",
+          "[data-mode=\"delta\"]"
+        ],
+        [
+          "click",
+          "[data-projection=\"geo\"]"
+        ],
+        [
+          "scroll",
+          "[data-maps]"
+        ]
+      ],
+      "sha256": "256499cc2c4ec661d3a15d1df7edba44980e9b2a68c402ca2c30d232c863f03c",
+      "bytes": 222286,
+      "captured_at": "2026-11-02T03:22:03+00:00",
+      "status": "ok"
+    },
+    {
+      "key": "xm-ledger",
+      "title": "XM 单格库存账本",
+      "caption": "XM 默认格 C0007_0010（累计 S-RULE 未满足最高）在两策略下的期初/调入/调出/归还/期末与全回放历史，四个派生值都能由自身操作数复算。",
+      "path": "presentations/phase5/xm-ledger.png",
+      "type": "image/png",
+      "page": "replay/xm/workbench.html",
+      "capture_command": "python3 scripts/capture_presentation.py --shots  # key=xm-ledger",
+      "tool_versions": {
+        "python": "3.13.2",
+        "chrome": {
+          "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "version": "Google Chrome 156.0.8078.79"
+        },
+        "ffmpeg": {
+          "path": "/opt/homebrew/bin/ffmpeg",
+          "version": "ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers"
+        },
+        "websockets": "16.1.1"
+      },
+      "input_digest": "b3f79cb34acdfabfdabcb5f35678fd7615482b33bec696aaff728d04a49190d4",
+      "theme": "light",
+      "viewport": "1600x900",
+      "source": "xm",
+      "frame": 0,
+      "time_bucket": "2020-12-25 06:00:00",
+      "mode": "side",
+      "projection": "grid",
+      "cell": "C0007_0010",
+      "scenario": "baseline",
+      "forecast_metric": "out",
+      "forecast_range": "cell",
+      "forecast_bucket": "2020-12-25 06:00:00",
+      "forecast_mae": "30.673471486744695",
+      "forecast_n": "4",
+      "delta_net": "0",
+      "recipe": [
+        [
+          "click",
+          "[data-mode=\"side\"]"
+        ],
+        [
+          "scroll",
+          "#ledger"
+        ]
+      ],
+      "sha256": "1f88c5342828217745c2e4bec1427de2304eed6fa4012aaad4fb6127d9a8a1d2",
+      "bytes": 191216,
+      "captured_at": "2026-11-02T03:22:07+00:00",
+      "status": "ok"
+    },
+    {
+      "key": "sh-forecast",
+      "title": "SH 预测联动",
+      "caption": "SH 当前格的实际、季节均值基线与模型预测三条序列（149 个测试时段），当前点误差与局部 MAE（含样本数）同屏显示。",
+      "path": "presentations/phase5/sh-forecast.png",
+      "type": "image/png",
+      "page": "replay/sh/workbench.html",
+      "capture_command": "python3 scripts/capture_presentation.py --shots  # key=sh-forecast",
+      "tool_versions": {
+        "python": "3.13.2",
+        "chrome": {
+          "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "version": "Google Chrome 156.0.8078.79"
+        },
+        "ffmpeg": {
+          "path": "/opt/homebrew/bin/ffmpeg",
+          "version": "ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers"
+        },
+        "websockets": "16.1.1"
+      },
+      "input_digest": "b3f79cb34acdfabfdabcb5f35678fd7615482b33bec696aaff728d04a49190d4",
+      "theme": "light",
+      "viewport": "1600x900",
+      "source": "sh",
+      "frame": 39,
+      "time_bucket": "2016-08-27 11:00:00",
+      "mode": "side",
+      "projection": "grid",
+      "cell": "C0007_0006",
+      "scenario": "baseline",
+      "forecast_metric": "out",
+      "forecast_range": "cell",
+      "forecast_bucket": "2016-08-27 11:00:00",
+      "forecast_mae": "1.403775242776319",
+      "forecast_n": "149",
+      "delta_net": "0",
+      "recipe": [
+        [
+          "scroll",
+          "#forecast"
+        ],
+        [
+          "click",
+          "#forecast-chart circle:nth-of-type(40)"
+        ]
+      ],
+      "sha256": "0280d1a4c9a9e384af25220c2c75b3b76f478982df1889d944cb613f4ef13d52",
+      "bytes": 233796,
+      "captured_at": "2026-11-02T03:22:13+00:00",
+      "status": "ok"
+    },
+    {
+      "key": "scenario",
+      "title": "敏感性场景切换",
+      "caption": "XM 切换到 initial_fill=0.3 场景：两策略四项汇总指标相对同源同策略 baseline 的绝对与百分比变化；地图仍是 baseline 回放。",
+      "path": "presentations/phase5/scenario.png",
+      "type": "image/png",
+      "page": "replay/xm/workbench.html",
+      "capture_command": "python3 scripts/capture_presentation.py --shots  # key=scenario",
+      "tool_versions": {
+        "python": "3.13.2",
+        "chrome": {
+          "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "version": "Google Chrome 156.0.8078.79"
+        },
+        "ffmpeg": {
+          "path": "/opt/homebrew/bin/ffmpeg",
+          "version": "ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers"
+        },
+        "websockets": "16.1.1"
+      },
+      "input_digest": "b3f79cb34acdfabfdabcb5f35678fd7615482b33bec696aaff728d04a49190d4",
+      "theme": "light",
+      "viewport": "1600x900",
+      "source": "xm",
+      "frame": 0,
+      "time_bucket": "2020-12-25 06:00:00",
+      "mode": "side",
+      "projection": "grid",
+      "cell": "C0007_0010",
+      "scenario": "initial_fill=0.3",
+      "forecast_metric": "out",
+      "forecast_range": "cell",
+      "forecast_bucket": "2020-12-25 06:00:00",
+      "forecast_mae": "30.673471486744695",
+      "forecast_n": "4",
+      "delta_net": "0",
+      "recipe": [
+        [
+          "click",
+          "[data-scenario=\"initial_fill=0.3\"]"
+        ],
+        [
+          "scroll",
+          "#scenarios"
+        ]
+      ],
+      "sha256": "c5883d781a4b8d275dc8afe26d53fce94d7bf0df8b350ed05c6b9607e4556bdf",
+      "bytes": 236118,
+      "captured_at": "2026-11-02T03:22:15+00:00",
+      "status": "ok"
+    },
+    {
+      "key": "sh-geo",
+      "title": "SH 地理底图",
+      "caption": "SH 工作台切到地理底图：黄浦江与区界为定位语境，255 个格子的期末库存叠加其上，比例尺与出处可复算。",
+      "path": "presentations/phase5/sh-geo.png",
+      "type": "image/png",
+      "page": "replay/sh/workbench.html",
+      "capture_command": "python3 scripts/capture_presentation.py --shots  # key=sh-geo",
+      "tool_versions": {
+        "python": "3.13.2",
+        "chrome": {
+          "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "version": "Google Chrome 156.0.8078.79"
+        },
+        "ffmpeg": {
+          "path": "/opt/homebrew/bin/ffmpeg",
+          "version": "ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers"
+        },
+        "websockets": "16.1.1"
+      },
+      "input_digest": "b3f79cb34acdfabfdabcb5f35678fd7615482b33bec696aaff728d04a49190d4",
+      "theme": "light",
+      "viewport": "1600x900",
+      "source": "sh",
+      "frame": 0,
+      "time_bucket": "2016-08-25 20:00:00",
+      "mode": "side",
+      "projection": "geo",
+      "cell": "C0007_0006",
+      "scenario": "baseline",
+      "forecast_metric": "out",
+      "forecast_range": "cell",
+      "forecast_bucket": "2016-08-25 20:00:00",
+      "forecast_mae": "1.403775242776319",
+      "forecast_n": "149",
+      "delta_net": "0",
+      "recipe": [
+        [
+          "click",
+          "[data-mode=\"side\"]"
+        ],
+        [
+          "click",
+          "[data-projection=\"geo\"]"
+        ],
+        [
+          "scroll",
+          "[data-maps]"
+        ]
+      ],
+      "sha256": "6d164bf17048b5042c17cdf3f804513e56f00c26623c8f77a1b861aae74e1068",
+      "bytes": 279762,
+      "captured_at": "2026-11-02T03:22:18+00:00",
+      "status": "ok"
+    }
+  ],
+  "videos": [
+    {
+      "key": "demo",
+      "title": "演示录屏 · 两源复盘",
+      "path": "presentations/phase5/demo.webm",
+      "type": "video/webm",
+      "page": "replay/xm/workbench.html ; replay/sh/workbench.html",
+      "capture_command": "python3 scripts/capture_presentation.py --video",
+      "tool_versions": {
+        "python": "3.13.2",
+        "chrome": {
+          "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "version": "Google Chrome 156.0.8078.79"
+        },
+        "ffmpeg": {
+          "path": "/opt/homebrew/bin/ffmpeg",
+          "version": "ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers"
+        },
+        "websockets": "16.1.1"
+      },
+      "input_digest": "b3f79cb34acdfabfdabcb5f35678fd7615482b33bec696aaff728d04a49190d4",
+      "theme": "light",
+      "viewport": "1280x720",
+      "fps": 4,
+      "duration_s": 116.0,
+      "declared_duration_s": 116.0,
+      "chapters": [
+        {
+          "id": "xm-overview",
+          "title": "XM · 导览概貌",
+          "at": 0.0,
+          "until": 16.0,
+          "data_clock": {
+            "source": "xm",
+            "frame": 0,
+            "time_bucket": "2020-12-25 06:00:00",
+            "note": "本章展示的数据时段；视频时长与数据时钟无关"
+          },
+          "state": {
+            "mode": "side",
+            "projection": "grid",
+            "cell": "C0007_0010",
+            "scenario": "baseline",
+            "forecast_metric": "out",
+            "forecast_range": "cell"
+          },
+          "recipe": [
+            [
+              "click",
+              "[data-guide-action=\"start\"]"
+            ],
+            [
+              "scroll",
+              "#guide"
+            ]
+          ]
+        },
+        {
+          "id": "xm-event",
+          "title": "XM · 关键事件跳转",
+          "at": 16.0,
+          "until": 32.0,
+          "data_clock": {
+            "source": "xm",
+            "frame": 2,
+            "time_bucket": "2020-12-25 08:00:00",
+            "note": "本章展示的数据时段；视频时长与数据时钟无关"
+          },
+          "state": {
+            "mode": "side",
+            "projection": "grid",
+            "cell": "C0007_0010",
+            "scenario": "baseline",
+            "forecast_metric": "out",
+            "forecast_range": "cell"
+          },
+          "recipe": [
+            [
+              "js",
+              "document.querySelector('[data-guide-action=\"exit\"]').click();"
+            ],
+            [
+              "click",
+              "[data-event]:not([disabled])"
+            ],
+            [
+              "scroll",
+              "[data-maps]"
+            ]
+          ]
+        },
+        {
+          "id": "xm-delta",
+          "title": "XM · 地理底图上的策略差分",
+          "at": 32.0,
+          "until": 50.0,
+          "data_clock": {
+            "source": "xm",
+            "frame": 1,
+            "time_bucket": "2020-12-25 07:00:00",
+            "note": "本章展示的数据时段；视频时长与数据时钟无关"
+          },
+          "state": {
+            "mode": "delta",
+            "projection": "geo",
+            "cell": "C0007_0010",
+            "scenario": "baseline",
+            "forecast_metric": "out",
+            "forecast_range": "cell"
+          },
+          "recipe": [
+            [
+              "js",
+              "var s=document.querySelector('[data-control=\"scrub\"]');s.value='1';s.dispatchEvent(new Event('input',{bubbles:true}));"
+            ],
+            [
+              "click",
+              "[data-mode=\"delta\"]"
+            ],
+            [
+              "click",
+              "[data-projection=\"geo\"]"
+            ],
+            [
+              "scroll",
+              "[data-maps]"
+            ]
+          ]
+        },
+        {
+          "id": "xm-ledger",
+          "title": "XM · 单格账本",
+          "at": 50.0,
+          "until": 66.0,
+          "data_clock": {
+            "source": "xm",
+            "frame": 0,
+            "time_bucket": "2020-12-25 06:00:00",
+            "note": "本章展示的数据时段；视频时长与数据时钟无关"
+          },
+          "state": {
+            "mode": "side",
+            "projection": "grid",
+            "cell": "C0007_0010",
+            "scenario": "baseline",
+            "forecast_metric": "out",
+            "forecast_range": "cell"
+          },
+          "recipe": [
+            [
+              "click",
+              "[data-mode=\"side\"]"
+            ],
+            [
+              "click",
+              "[data-projection=\"grid\"]"
+            ],
+            [
+              "scroll",
+              "#ledger"
+            ]
+          ]
+        },
+        {
+          "id": "sh-forecast",
+          "title": "SH · 预测联动",
+          "at": 66.0,
+          "until": 84.0,
+          "data_clock": {
+            "source": "sh",
+            "frame": 39,
+            "time_bucket": "2016-08-27 11:00:00",
+            "note": "本章展示的数据时段；视频时长与数据时钟无关"
+          },
+          "state": {
+            "mode": "side",
+            "projection": "grid",
+            "cell": "C0007_0006",
+            "scenario": "baseline",
+            "forecast_metric": "out",
+            "forecast_range": "cell"
+          },
+          "recipe": [
+            [
+              "scroll",
+              "#forecast"
+            ],
+            [
+              "click",
+              "#forecast-chart circle:nth-of-type(40)"
+            ]
+          ]
+        },
+        {
+          "id": "scenario",
+          "title": "XM · 敏感性场景",
+          "at": 84.0,
+          "until": 100.0,
+          "data_clock": {
+            "source": "xm",
+            "frame": 0,
+            "time_bucket": "2020-12-25 06:00:00",
+            "note": "本章展示的数据时段；视频时长与数据时钟无关"
+          },
+          "state": {
+            "mode": "side",
+            "projection": "grid",
+            "cell": "C0007_0010",
+            "scenario": "initial_fill=0.3",
+            "forecast_metric": "out",
+            "forecast_range": "cell"
+          },
+          "recipe": [
+            [
+              "click",
+              "[data-scenario=\"initial_fill=0.3\"]"
+            ],
+            [
+              "scroll",
+              "#scenarios"
+            ]
+          ]
+        },
+        {
+          "id": "sh-geo",
+          "title": "SH · 地理底图",
+          "at": 100.0,
+          "until": 116.0,
+          "data_clock": {
+            "source": "sh",
+            "frame": 0,
+            "time_bucket": "2016-08-25 20:00:00",
+            "note": "本章展示的数据时段；视频时长与数据时钟无关"
+          },
+          "state": {
+            "mode": "side",
+            "projection": "geo",
+            "cell": "C0007_0006",
+            "scenario": "baseline",
+            "forecast_metric": "out",
+            "forecast_range": "cell"
+          },
+          "recipe": [
+            [
+              "click",
+              "[data-mode=\"side\"]"
+            ],
+            [
+              "click",
+              "[data-projection=\"geo\"]"
+            ],
+            [
+              "scroll",
+              "[data-maps]"
+            ]
+          ]
+        }
+      ],
+      "frames_captured": 464,
+      "sha256": "575babe8c91d6585ed0c4b5b72bf6f9425e309e7edf65ba9d0d75c213f4477f5",
+      "bytes": 503332,
+      "captured_at": "2026-11-02T03:28:28+00:00",
+      "status": "ok",
+      "note": "演示选段、模拟值：按既定章节停留并显式切章，画面全部来自真实已生成页面；视频播放时长与数据时钟分开，数据只有小时级时间单元，视频不暗示更细的观测频率。"
+    }
+  ],
+  "replay_check": {
+    "ok": true,
+    "checked_at": "2026-11-02T03:22:34+00:00",
+    "n": 6,
+    "keys": [
+      "source",
+      "frame",
+      "time_bucket",
+      "mode",
+      "projection",
+      "cell",
+      "scenario",
+      "forecast_metric",
+      "forecast_range",
+      "forecast_bucket",
+      "forecast_mae",
+      "forecast_n",
+      "delta_net"
+    ],
+    "states": {
+      "guide-overview": {
+        "ok": true,
+        "expected": {
+          "source": "xm",
+          "frame": 0,
+          "time_bucket": "2020-12-25 06:00:00",
+          "mode": "side",
+          "projection": "grid",
+          "cell": "C0007_0010",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2020-12-25 06:00:00",
+          "forecast_mae": "30.673471486744695",
+          "forecast_n": "4",
+          "delta_net": "0"
+        },
+        "replayed": {
+          "source": "xm",
+          "frame": 0,
+          "time_bucket": "2020-12-25 06:00:00",
+          "mode": "side",
+          "projection": "grid",
+          "cell": "C0007_0010",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2020-12-25 06:00:00",
+          "forecast_mae": "30.673471486744695",
+          "forecast_n": "4",
+          "delta_net": "0"
+        }
+      },
+      "xm-geo-delta": {
+        "ok": true,
+        "expected": {
+          "source": "xm",
+          "frame": 1,
+          "time_bucket": "2020-12-25 07:00:00",
+          "mode": "delta",
+          "projection": "geo",
+          "cell": "C0007_0010",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2020-12-25 07:00:00",
+          "forecast_mae": "30.673471486744695",
+          "forecast_n": "4",
+          "delta_net": "125"
+        },
+        "replayed": {
+          "source": "xm",
+          "frame": 1,
+          "time_bucket": "2020-12-25 07:00:00",
+          "mode": "delta",
+          "projection": "geo",
+          "cell": "C0007_0010",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2020-12-25 07:00:00",
+          "forecast_mae": "30.673471486744695",
+          "forecast_n": "4",
+          "delta_net": "125"
+        }
+      },
+      "xm-ledger": {
+        "ok": true,
+        "expected": {
+          "source": "xm",
+          "frame": 0,
+          "time_bucket": "2020-12-25 06:00:00",
+          "mode": "side",
+          "projection": "grid",
+          "cell": "C0007_0010",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2020-12-25 06:00:00",
+          "forecast_mae": "30.673471486744695",
+          "forecast_n": "4",
+          "delta_net": "0"
+        },
+        "replayed": {
+          "source": "xm",
+          "frame": 0,
+          "time_bucket": "2020-12-25 06:00:00",
+          "mode": "side",
+          "projection": "grid",
+          "cell": "C0007_0010",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2020-12-25 06:00:00",
+          "forecast_mae": "30.673471486744695",
+          "forecast_n": "4",
+          "delta_net": "0"
+        }
+      },
+      "sh-forecast": {
+        "ok": true,
+        "expected": {
+          "source": "sh",
+          "frame": 39,
+          "time_bucket": "2016-08-27 11:00:00",
+          "mode": "side",
+          "projection": "grid",
+          "cell": "C0007_0006",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2016-08-27 11:00:00",
+          "forecast_mae": "1.403775242776319",
+          "forecast_n": "149",
+          "delta_net": "0"
+        },
+        "replayed": {
+          "source": "sh",
+          "frame": 39,
+          "time_bucket": "2016-08-27 11:00:00",
+          "mode": "side",
+          "projection": "grid",
+          "cell": "C0007_0006",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2016-08-27 11:00:00",
+          "forecast_mae": "1.403775242776319",
+          "forecast_n": "149",
+          "delta_net": "0"
+        }
+      },
+      "scenario": {
+        "ok": true,
+        "expected": {
+          "source": "xm",
+          "frame": 0,
+          "time_bucket": "2020-12-25 06:00:00",
+          "mode": "side",
+          "projection": "grid",
+          "cell": "C0007_0010",
+          "scenario": "initial_fill=0.3",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2020-12-25 06:00:00",
+          "forecast_mae": "30.673471486744695",
+          "forecast_n": "4",
+          "delta_net": "0"
+        },
+        "replayed": {
+          "source": "xm",
+          "frame": 0,
+          "time_bucket": "2020-12-25 06:00:00",
+          "mode": "side",
+          "projection": "grid",
+          "cell": "C0007_0010",
+          "scenario": "initial_fill=0.3",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2020-12-25 06:00:00",
+          "forecast_mae": "30.673471486744695",
+          "forecast_n": "4",
+          "delta_net": "0"
+        }
+      },
+      "sh-geo": {
+        "ok": true,
+        "expected": {
+          "source": "sh",
+          "frame": 0,
+          "time_bucket": "2016-08-25 20:00:00",
+          "mode": "side",
+          "projection": "geo",
+          "cell": "C0007_0006",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2016-08-25 20:00:00",
+          "forecast_mae": "1.403775242776319",
+          "forecast_n": "149",
+          "delta_net": "0"
+        },
+        "replayed": {
+          "source": "sh",
+          "frame": 0,
+          "time_bucket": "2016-08-25 20:00:00",
+          "mode": "side",
+          "projection": "geo",
+          "cell": "C0007_0006",
+          "scenario": "baseline",
+          "forecast_metric": "out",
+          "forecast_range": "cell",
+          "forecast_bucket": "2016-08-25 20:00:00",
+          "forecast_mae": "1.403775242776319",
+          "forecast_n": "149",
+          "delta_net": "0"
+        }
+      }
+    },
+    "mismatches": []
+  },
+  "last_run": {
+    "mode": "all",
+    "command": "python3 scripts/capture_presentation.py --all",
+    "exit_code": 0,
+    "started_at": "2026-11-02T03:21:20+00:00",
+    "finished_at": "2026-11-02T03:28:31+00:00",
+    "files": [
+      {
+        "path": "presentations/phase5/guide-overview.png",
+        "bytes": 165361,
+        "sha256": "d28fe2a5270525b88e68a1d31223bb312e9cb2cac7a57f3159f78eeac6c22357",
+        "written": true
+      },
+      {
+        "path": "presentations/phase5/xm-geo-delta.png",
+        "bytes": 222286,
+        "sha256": "256499cc2c4ec661d3a15d1df7edba44980e9b2a68c402ca2c30d232c863f03c",
+        "written": true
+      },
+      {
+        "path": "presentations/phase5/xm-ledger.png",
+        "bytes": 191216,
+        "sha256": "1f88c5342828217745c2e4bec1427de2304eed6fa4012aaad4fb6127d9a8a1d2",
+        "written": true
+      },
+      {
+        "path": "presentations/phase5/sh-forecast.png",
+        "bytes": 233796,
+        "sha256": "0280d1a4c9a9e384af25220c2c75b3b76f478982df1889d944cb613f4ef13d52",
+        "written": true
+      },
+      {
+        "path": "presentations/phase5/scenario.png",
+        "bytes": 236118,
+        "sha256": "c5883d781a4b8d275dc8afe26d53fce94d7bf0df8b350ed05c6b9607e4556bdf",
+        "written": true
+      },
+      {
+        "path": "presentations/phase5/sh-geo.png",
+        "bytes": 279762,
+        "sha256": "6d164bf17048b5042c17cdf3f804513e56f00c26623c8f77a1b861aae74e1068",
+        "written": true
+      },
+      {
+        "path": "presentations/phase5/demo.webm",
+        "bytes": 503332,
+        "sha256": "575babe8c91d6585ed0c4b5b72bf6f9425e309e7edf65ba9d0d75c213f4477f5",
+        "written": true
+      }
+    ]
+  }
+}

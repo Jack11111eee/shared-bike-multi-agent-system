@@ -1,0 +1,144 @@
+{
+  "run_id": "20261102T041850728379Z-sh-6d9b3d",
+  "task_id": "task-sh-42",
+  "source": "sh",
+  "mode": "deterministic",
+  "rule_based": true,
+  "llm_connected": false,
+  "terminal_state": "accepted",
+  "reason": "候选 cand-r1-1 通过硬约束且优于可行基准：cost_delta = -13.465634，unmet_gain = +11。",
+  "selected": {
+    "kind": "candidate",
+    "candidate_id": "cand-r1-1",
+    "strategy": "optimized",
+    "budget": 200,
+    "result_id": "res-fa6b34cfaf178790",
+    "metrics": {
+      "unmet_requests": 170,
+      "distance_bike_km": 3547.0926179873723,
+      "composite_cost": 879.4185235974745,
+      "service_rate": 0.9941170363705575
+    },
+    "violations": {
+      "conservation": 0,
+      "capacity": 0,
+      "budget": 0,
+      "negative_inventory": 0,
+      "clamped_moves": 0
+    },
+    "deltas": {
+      "cost_delta": -13.465633952943222,
+      "unmet_gain": 11,
+      "service_rate_delta_pp": 0.03806623524933439
+    }
+  },
+  "baseline": {
+    "kind": "baseline",
+    "candidate_id": null,
+    "strategy": "rule",
+    "budget": 200,
+    "result_id": "res-b269c79a7c28ea0b",
+    "metrics": {
+      "unmet_requests": 181,
+      "distance_bike_km": 3559.4207877520885,
+      "composite_cost": 892.8841575504177,
+      "service_rate": 0.9937363740180641
+    },
+    "violations": {
+      "conservation": 0,
+      "capacity": 0,
+      "budget": 0,
+      "negative_inventory": 0,
+      "clamped_moves": 0
+    },
+    "feasible": true,
+    "deltas": {
+      "cost_delta": 0.0,
+      "unmet_gain": 0,
+      "service_rate_delta_pp": 0.0
+    }
+  },
+  "ranking": [
+    {
+      "kind": "candidate",
+      "candidate_id": "cand-r1-1",
+      "strategy": "optimized",
+      "budget": 200,
+      "result_id": "res-fa6b34cfaf178790",
+      "metrics": {
+        "unmet_requests": 170,
+        "distance_bike_km": 3547.0926179873723,
+        "composite_cost": 879.4185235974745,
+        "service_rate": 0.9941170363705575
+      },
+      "violations": {
+        "conservation": 0,
+        "capacity": 0,
+        "budget": 0,
+        "negative_inventory": 0,
+        "clamped_moves": 0
+      },
+      "deltas": {
+        "cost_delta": -13.465633952943222,
+        "unmet_gain": 11,
+        "service_rate_delta_pp": 0.03806623524933439
+      }
+    },
+    {
+      "kind": "baseline",
+      "candidate_id": null,
+      "strategy": "rule",
+      "budget": 200,
+      "result_id": "res-b269c79a7c28ea0b",
+      "metrics": {
+        "unmet_requests": 181,
+        "distance_bike_km": 3559.4207877520885,
+        "composite_cost": 892.8841575504177,
+        "service_rate": 0.9937363740180641
+      },
+      "violations": {
+        "conservation": 0,
+        "capacity": 0,
+        "budget": 0,
+        "negative_inventory": 0,
+        "clamped_moves": 0
+      },
+      "deltas": {
+        "cost_delta": 0.0,
+        "unmet_gain": 0,
+        "service_rate_delta_pp": 0.0
+      }
+    }
+  ],
+  "limits": {
+    "max_rounds": 3,
+    "rounds_used": 1,
+    "max_candidates_per_round": 2,
+    "max_distinct_candidates": 6,
+    "distinct_candidates": 1,
+    "max_tool_calls": 20,
+    "tool_calls_used": 4,
+    "tool_calls_recorded": 4,
+    "cache_hits": 0,
+    "backend_executions": 4,
+    "tool_timeout_s": 60.0,
+    "task_timeout_s": 300.0,
+    "task_elapsed_s": 1.981541
+  },
+  "timing": {
+    "task_elapsed_ms": 1981.549,
+    "backend_simulation_ms": 1719.393,
+    "diagnosis_tool_ms": 191.431,
+    "scheduling_overhead_ms": 70.725,
+    "note": "调度开销 = 任务总时长 − 工具耗时；不是页面加载时间"
+  },
+  "input_digest": "1d8401e0f7d056c4e750b5bf499aefbb09078bf698235a704d6d137a9104110d",
+  "candidate_count": 1,
+  "tool_calls": 4,
+  "cache_hits": 0,
+  "backend_executions": 4,
+  "started_at": "2026-11-02T04:18:50.728547+00:00",
+  "finished_at": "2026-11-02T04:18:52.710590+00:00",
+  "duration_s": 1.981982,
+  "exit_code": 0
+}

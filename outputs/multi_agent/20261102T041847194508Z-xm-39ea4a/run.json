@@ -1,0 +1,40 @@
+{
+  "run_id": "20261102T041847194508Z-xm-39ea4a",
+  "task_id": "task-xm-42",
+  "source": "xm",
+  "mode": "deterministic",
+  "rule_based": true,
+  "llm_connected": false,
+  "terminal_state": "baseline_retained",
+  "started_at": "2026-11-02T04:18:47.194658+00:00",
+  "finished_at": "2026-11-02T04:18:48.134269+00:00",
+  "input_digest": "6f88d46c504d5712306c9fd31267a6f3baae095d9eb92fb5edbbb8033320ba26",
+  "tool_calls": 4,
+  "cache_hits": 0,
+  "backend_executions": 4,
+  "messages": 9,
+  "rejections": 0,
+  "candidates": 1,
+  "timing": {
+    "task_elapsed_ms": 939.146,
+    "backend_simulation_ms": 589.411,
+    "diagnosis_tool_ms": 231.427,
+    "scheduling_overhead_ms": 118.309,
+    "note": "调度开销 = 任务总时长 − 工具耗时；不是页面加载时间"
+  },
+  "bytes": {
+    "task.json": 1942,
+    "input_manifest.json": 1693,
+    "messages.jsonl": 11240,
+    "rejections.jsonl": 0,
+    "tool_calls.jsonl": 36866,
+    "events.jsonl": 0,
+    "candidates.json": 1137,
+    "evaluations.json": 2157,
+    "decision.json": 3762,
+    "report.md": 1781,
+    "run.json": 1104
+  },
+  "total_bytes": 61682,
+  "events": 0
+}

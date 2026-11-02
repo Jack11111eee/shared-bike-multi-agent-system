@@ -1,0 +1,33 @@
+{
+  "run_id": "20261102T024103782577Z-xm-8785a4",
+  "task_id": "task-xm-42",
+  "source": "xm",
+  "mode": "deterministic",
+  "rule_based": true,
+  "llm_connected": false,
+  "terminal_state": "accepted",
+  "started_at": "2026-11-02T02:41:03.783141+00:00",
+  "finished_at": "2026-11-02T02:41:06.994987+00:00",
+  "input_digest": "6f88d46c504d5712306c9fd31267a6f3baae095d9eb92fb5edbbb8033320ba26",
+  "tool_calls": 6,
+  "cache_hits": 0,
+  "backend_executions": 6,
+  "messages": 14,
+  "rejections": 0,
+  "candidates": 3,
+  "bytes": {
+    "task.json": 1953,
+    "input_manifest.json": 1693,
+    "messages.jsonl": 14686,
+    "rejections.jsonl": 0,
+    "tool_calls.jsonl": 42793,
+    "events.jsonl": 0,
+    "candidates.json": 3185,
+    "evaluations.json": 3398,
+    "decision.json": 2982,
+    "report.md": 1945,
+    "run.json": 845
+  },
+  "total_bytes": 73480,
+  "events": 0
+}

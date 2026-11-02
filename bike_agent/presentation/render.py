@@ -24,10 +24,14 @@ from bike_agent.presentation.analysis import (
     SCENARIO_METRICS,
     presentation_js,
 )
+from bike_agent.presentation.geo_js import GEO_JS
 from bike_agent.replay.site import CELL_GAP, CELL_PX, STRATEGIES, STRATEGY_LABELS
 
 MAX_WORKBENCH_BYTES = 256 * 1024
 MAX_PRESENTATION_BYTES = 2 * 1024 * 1024
+#: NF-30: the two sources' prediction payloads together must stay under 2 MiB,
+#: so each is capped at the full budget and the pair is checked after the build.
+MAX_FORECAST_BYTES = 2 * 1024 * 1024
 
 
 def _esc(value: Any) -> str:
@@ -235,7 +239,54 @@ def _frame_block(presentation: dict[str, Any]) -> str:
     )
 
 
-def _map_block(presentation: dict[str, Any]) -> str:
+def _geo_attribution(source: str, basemap: dict[str, Any] | None) -> str:
+    """F21-4: the visible provenance, as plain text, agreeing with the manifest.
+
+    Source URLs are written out, never linked: the site has to stay offline, and
+    a URL that is also a link invites a runtime request.  The licence file names
+    and the CRS statement come from the same manifest the check compares against,
+    so the page cannot drift from it.
+    """
+    if not basemap:
+        return (
+            f"地理底图由页面脚本从 <code>replay/{_esc(source)}/basemap.js</code> 生成；"
+            "来源与许可见 <code>replay/basemap/manifest.json</code>。"
+            "搬运连线是格心到格心的调度关系，<strong>不是道路轨迹</strong>。"
+        )
+    datasets = basemap.get("datasets", {})
+
+    def license_paths(entry: dict[str, Any]) -> str:
+        texts = entry.get("license_texts") or [entry["license_file"]]
+        return "、".join(f"<code>replay/basemap/{_esc(text)}</code>" for text in texts)
+
+    credits = "；".join(
+        f"{_esc(entry['attribution'])}（{_esc(entry['license_id'])}，"
+        f"许可文本随包在 {license_paths(entry)}）"
+        for entry in datasets.values()
+        if entry.get("attribution")
+    )
+    provenance = "；".join(
+        f"{_esc(entry.get('name', name))}：来源页 {_esc(entry['source_page'])}，"
+        f"下载 {_esc(entry['download_url'])}"
+        for name, entry in datasets.items()
+        if entry.get("source_page")
+    )
+    coverage = (basemap.get("sources", {}).get(source) or {}).get("coverage", {})
+    bbox = coverage.get("display_bbox")
+    window = (
+        f"显示窗口 {bbox[0]:.4f}–{bbox[2]:.4f}°E，{bbox[1]:.4f}–{bbox[3]:.4f}°N；" if bbox else ""
+    )
+    return (
+        f"地理底图：{credits}。"
+        f"来源页与下载地址（纯文本，不作外链）：{provenance}。"
+        f"来源、许可与投影参数逐项记录在 <code>replay/basemap/manifest.json</code>。"
+        f"两源业务坐标与底图均按 WGS-84 直接叠加，<strong>不做 GCJ-02 转换</strong>"
+        f"（依据见 docs/crs-evidence.md）；{window}"
+        f"搬运连线是格心到格心的调度关系，<strong>不是道路轨迹</strong>。"
+    )
+
+
+def _map_block(presentation: dict[str, Any], attribution: str = "") -> str:
     source = presentation["source"]
     cell_ids = presentation["cell_ids"]
     geom = presentation["geom"]
@@ -314,6 +365,13 @@ def _map_block(presentation: dict[str, Any]) -> str:
         f'<div class="mode-switch" role="group" aria-label="地图模式">'
         f'<button data-mode="side" class="active">并排对照</button>'
         f'<button data-mode="delta">未满足请求差分</button></div>'
+        f'<div class="projection-switch" role="group" aria-label="投影">'
+        f'<button data-projection="grid" class="active">规则网格</button>'
+        f'<button data-projection="geo">地理底图</button></div>'
+        f'<p class="hint" id="projection-note" data-projection="grid">'
+        f"规则网格按行列排布，格子等距，只表示相对位置；"
+        f"地理底图按真实经纬度投影，底图来源、许可与坐标口径见地图下方的出处说明。"
+        f"切换投影不会改变数据源、时段或已选格子。</p>"
         f'<div class="map-summary" id="delta-summary" data-status="{_esc(summary["status"])}">'
         f'<span>本帧净差 <b class="metric" data-metric="delta_net" data-value="{summary["net"]}" '
         f'data-source="outputs/replay.optimized.{source}.parquet" '
@@ -337,6 +395,13 @@ def _map_block(presentation: dict[str, Any]) -> str:
         f'<div class="panes" id="panes">'
         f'<div class="side" data-view="side">{side}</div>'
         f'<div class="delta-view" data-view="delta" hidden>{delta_pane}</div>'
+        f"</div>"
+        f'<div class="geo-panes" data-geo-panes hidden>'
+        f'<div class="geo-view" data-view="geo-side" data-geo-strategy="rule"></div>'
+        f'<div class="geo-view" data-view="geo-side" data-geo-strategy="optimized"></div>'
+        f'<div class="geo-view geo-delta" data-view="geo-delta" data-geo-strategy="delta" hidden></div>'
+        f'<p class="hint geo-attribution" id="geo-attribution" data-basemap-source="'
+        f'{_esc(source)}">{attribution}</p>'
         f"</div>"
         f'<p class="hint">点击格子即可选择；键盘用户请用账本上方的「选择格子」下拉框'
         f"（{presentation['n_cells']} 个格子不适合逐个做成 tab 停靠点）。"
@@ -499,6 +564,77 @@ def _ledger_block(presentation: dict[str, Any]) -> str:
     )
 
 
+def _forecast_block(presentation: dict[str, Any]) -> str:
+    """F22: the shell; the three series themselves are drawn by the page script.
+
+    The chart has to follow the selected cell, the metric and the range, so it is
+    drawn from the published ``forecast.js`` rather than prerendered -- but every
+    number it can show is published there, and the readout carries the same
+    ``data-source``/``data-formula``/``data-join-key`` trail as the rest of the
+    page.  What is prerendered here is the part that does not change: the
+    switches, the labels and the scope statement.
+    """
+    source = presentation["source"]
+    forecast_file = f"outputs/forecast.{source}.parquet"
+    first_bucket = presentation["frames"][0]["time_bucket"]
+    return (
+        f'<section class="card wide forecast" id="forecast" data-forecast>'
+        f"<h2>预测联动</h2>"
+        f'<p class="hint" id="forecast-scope">'
+        f"只显示 <code>{forecast_file}</code> 覆盖的测试段（本页 {presentation['n_frames']} 个时段）；"
+        f"不补训练期预测、不插值、不前向填充，缺失点显示为空态。"
+        f"<strong>两条策略消费同一份需求预测</strong>，预测不随调度策略变化，只有调度结果变化。"
+        f"MAE 是点估计误差，<strong>不是预测区间</strong>。</p>"
+        f'<div class="forecast-controls">'
+        f'<div class="metric-switch" role="group" aria-label="预测指标">'
+        f'<button data-forecast-metric="out" class="active">借出</button>'
+        f'<button data-forecast-metric="in">归还</button>'
+        f'<button data-forecast-metric="net">净流量</button></div>'
+        f'<div class="range-switch" role="group" aria-label="预测范围">'
+        f'<button data-forecast-range="cell" class="active">当前格</button>'
+        f'<button data-forecast-range="source">全源汇总</button></div></div>'
+        f'<p class="hint" id="forecast-range-label" data-value="cell">'
+        f"范围：<b>当前格</b>；指标：<b>借出</b>（次/时段）。净流量口径 net = 借出 − 归还"
+        f"（正 = 净流出，负 = 净流入）。</p>"
+        f'<div class="forecast-readout">'
+        f'<span>时段 <b class="metric" id="forecast-bucket" data-metric="forecast_bucket" '
+        f'data-value="{_esc(first_bucket)}" data-source="{forecast_file}" '
+        f'data-formula="row-position → time_bucket" data-join-key="time_bucket">'
+        f"{_esc(first_bucket)}</b></span>"
+        f'<span>实际 <b class="metric" id="forecast-actual" data-metric="forecast_actual" data-value="" '
+        f'data-source="{forecast_file}" data-formula="actual_out | actual_in | actual_out − actual_in" '
+        f'data-join-key="">—</b></span>'
+        f'<span>季节均值基线 <b class="metric" id="forecast-baseline" data-metric="forecast_baseline" '
+        f'data-value="" data-source="{forecast_file}" data-formula="baseline_out | baseline_in" '
+        f'data-join-key="">—</b></span>'
+        f'<span>模型预测 <b class="metric" id="forecast-pred" data-metric="forecast_pred" data-value="" '
+        f'data-source="{forecast_file}" data-formula="pred_out | pred_in" data-join-key="">—</b></span>'
+        f'<span>误差 pred − actual <b class="metric" id="forecast-error" data-metric="forecast_error" '
+        f'data-value="" data-source="{forecast_file}" data-formula="pred − actual" '
+        f'data-join-key="">—</b></span>'
+        f'<span>|误差| <b class="metric" id="forecast-abs-error" data-metric="forecast_abs_error" '
+        f'data-value="" data-source="{forecast_file}" data-formula="|pred − actual|" '
+        f'data-join-key="">—</b></span>'
+        f'<span><b id="forecast-mae-label">局部 MAE</b> '
+        f'<b class="metric" id="forecast-mae" data-metric="forecast_mae" data-value="" '
+        f'data-source="{forecast_file}" data-formula="mean(|pred − actual|) over paired points" '
+        f'data-join-key="">—</b>（n = <b class="metric" id="forecast-n" data-metric="forecast_n" '
+        f'data-value="" data-source="{forecast_file}" data-formula="count(paired points)" '
+        f'data-join-key="">—</b>）</span></div>'
+        f'<svg class="forecast-chart" id="forecast-chart" role="img" '
+        f'aria-label="{_esc(source.upper())} 预测三系列"></svg>'
+        f'<p class="hint" id="forecast-legend">'
+        f'<span class="key actual">实线 = 实际</span>、'
+        f'<span class="key baseline">虚线 = 季节均值基线</span>、'
+        f'<span class="key pred">点线 = 模型预测</span>；'
+        f"三条线用线型而不只靠颜色区分。点击曲线上的时段会暂停播放并跳到该时段，选中格保持不变。</p>"
+        f'<p class="hint" id="forecast-eval">全源评估数字直接引用既有评估产物 '
+        f"<code>outputs/forecast_metrics.{source}.json</code>，"
+        f"与本页按格重算的局部 MAE 不是同一口径，标签与样本数分别显示。</p>"
+        f"</section>"
+    )
+
+
 def _scenarios_block(presentation: dict[str, Any]) -> str:
     scenarios = presentation["scenarios"]
     buttons = "".join(
@@ -590,7 +726,9 @@ def _evidence_block(presentation: dict[str, Any]) -> str:
 
 
 # -- page -------------------------------------------------------------------
-def render_workbench(presentation: dict[str, Any], other_sources: list[str]) -> str:
+def render_workbench(
+    presentation: dict[str, Any], other_sources: list[str], attribution: str = ""
+) -> str:
     source = presentation["source"]
     # Each source ships its own page with its own bundle, so switching source is
     # a navigation, not a re-render: a plain link works without the other
@@ -629,7 +767,8 @@ def render_workbench(presentation: dict[str, Any], other_sources: list[str]) -> 
 <main>
 {_guide_block(presentation)}
 {_frame_block(presentation)}
-{_map_block(presentation)}
+{_map_block(presentation, attribution)}
+{_forecast_block(presentation)}
 {_events_block(presentation)}
 {_ledger_block(presentation)}
 {_scenarios_block(presentation)}
@@ -648,14 +787,19 @@ def render_workbench(presentation: dict[str, Any], other_sources: list[str]) -> 
 </noscript>
 <script src="replay-data.js"></script>
 <script src="presentation.js"></script>
+<script src="basemap.js"></script>
+<script src="forecast.js"></script>
 <script src="../workbench-core.js"></script>
+<script src="../workbench-geo.js"></script>
 <script src="../workbench.js"></script>
 </body>
 </html>
 """
 
 
-def render_workbench_page(presentation: dict[str, Any], other_sources: list[str]) -> str:
+def render_workbench_page(
+    presentation: dict[str, Any], other_sources: list[str], attribution: str = ""
+) -> str:
     """The page as shipped.
 
     Switching source navigates to that source's own page instead of re-rendering
@@ -665,7 +809,7 @@ def render_workbench_page(presentation: dict[str, Any], other_sources: list[str]
     scenario selection for free, because the next page starts from its own
     defaults.
     """
-    return render_workbench(presentation, other_sources)
+    return render_workbench(presentation, other_sources, attribution)
 
 
 # -- writing ----------------------------------------------------------------
@@ -675,11 +819,20 @@ def build_workbench(
     presentations: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     """Write ``replay/<source>/{presentation.js,workbench.html}`` and the shared assets."""
+    from bike_agent.basemap.build import build_basemap
+    from bike_agent.presentation.forecast import build_forecast, forecast_js
+
     site_dir = layout.root / "replay"
     site_dir.mkdir(parents=True, exist_ok=True)
     (site_dir / "workbench.css").write_text(WORKBENCH_CSS, encoding="utf-8")
     (site_dir / "workbench-core.js").write_text(WORKBENCH_CORE_JS, encoding="utf-8")
     (site_dir / "workbench.js").write_text(WORKBENCH_JS, encoding="utf-8")
+    (site_dir / "workbench-geo.js").write_text(GEO_JS, encoding="utf-8")
+
+    # F21 / F22: the basemap and the prediction series are published next to the
+    # page, one bundle per source, exactly like the replay data.
+    basemap = build_basemap(config, layout, list(presentations))
+    basemap_manifest = json.loads((site_dir / "basemap" / "manifest.json").read_text(encoding="utf-8"))
 
     written: dict[str, Any] = {}
     for source, presentation in presentations.items():
@@ -692,8 +845,22 @@ def build_workbench(
                 f"NF-24 cap of {MAX_PRESENTATION_BYTES}; compact the encoding, never drop frames"
             )
         (source_dir / "presentation.js").write_text(payload, encoding="utf-8")
+
+        forecast_payload = build_forecast(config, layout, source, presentation["cell_ids"])
+        forecast_text = forecast_js(forecast_payload)
+        if len(forecast_text.encode("utf-8")) > MAX_FORECAST_BYTES:
+            raise ValueError(
+                f"{source}: forecast.js is {len(forecast_text.encode('utf-8'))} bytes, over the "
+                f"NF-30 per-source cap of {MAX_FORECAST_BYTES}; compact the encoding, never drop points"
+            )
+        (source_dir / "forecast.js").write_text(forecast_text, encoding="utf-8")
+
         others = [value for key, value in presentations.items() if key != source]
-        page = render_workbench_page(presentation, [others[0]["source"]] if others else [])
+        page = render_workbench_page(
+            presentation,
+            [others[0]["source"]] if others else [],
+            _geo_attribution(source, basemap_manifest),
+        )
         if len(page.encode("utf-8")) > MAX_WORKBENCH_BYTES:
             raise ValueError(
                 f"{source}: workbench.html is {len(page.encode('utf-8'))} bytes, over the "
@@ -704,6 +871,8 @@ def build_workbench(
             "path": str(source_dir / "workbench.html"),
             "presentation_bytes": len(payload.encode("utf-8")),
             "workbench_bytes": len(page.encode("utf-8")),
+            "forecast_bytes": len(forecast_text.encode("utf-8")),
+            "basemap_bytes": basemap.get(source, {}).get("bytes", 0),
             "n_frames": presentation["n_frames"],
             "n_cells": presentation["n_cells"],
             "n_events": len(presentation["events"]),
@@ -804,9 +973,68 @@ table.inputs{width:100%;border-collapse:collapse;font-size:11px}
 table.inputs th,table.inputs td{border:1px solid var(--line);padding:3px 8px;text-align:left}
 table.inputs .sha{font-variant-numeric:tabular-nums;color:var(--muted)}
 .workbench .notice{margin:6px 0}
+/* -- F21 geographic view: the basemap stays behind the data -------------- */
+.projection-switch,.metric-switch,.range-switch,.forecast-controls{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.forecast-controls{gap:18px}
+.projection-switch button,.metric-switch button,.range-switch button{padding:5px 12px;
+border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit;cursor:pointer}
+.projection-switch button.active,.metric-switch button.active,.range-switch button.active{
+border-color:var(--accent);color:var(--accent);font-weight:600}
+.geo-panes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+/* An author `display` rule outranks the UA sheet's [hidden] rule, so the
+   hidden attribute needs to win explicitly -- otherwise the geographic panes
+   stay painted while the page says the rule grid is showing. */
+.geo-panes[hidden],.panes[hidden],.geo-view[hidden]{display:none !important}
+.geo-panes .geo-view{min-width:0}
+.geo-panes .geo-delta{grid-column:1/-1}
+.geo-attribution{grid-column:1/-1}
+svg.geo-map{display:block;width:100%;height:auto;max-width:560px;background:#dbe9f4;border-radius:6px}
+.geo-land{fill:#f2efe9;stroke:#2c5f8a;stroke-width:0.7}
+.geo-water{fill:none;stroke:#5aa9d6;stroke-width:0.9;opacity:.85}
+.geo-admin{fill:none;stroke:#b0574a;stroke-width:0.5;stroke-dasharray:3 2;opacity:.7}
+/* Inventory cells sit on the land: a thin light stroke keeps each cell legible
+   over a pale basemap without turning the map into a hatch. */
+svg.geo-map rect.cell{fill:#1f6feb;stroke:#ffffff;stroke-width:0.4;stroke-opacity:.45;cursor:pointer}
+svg.geo-map rect.cell.selected{stroke:var(--accent);stroke-width:2.2;stroke-opacity:1}
+svg.geo-map rect.delta.improved{fill:var(--improved);stroke:#ffffff;stroke-width:0.4;stroke-opacity:.45}
+svg.geo-map rect.delta.worsened{fill:var(--worsened);stroke:#ffffff;stroke-width:0.4;stroke-opacity:.45}
+svg.geo-map rect.delta.unchanged{fill:var(--neutral);fill-opacity:.10 !important;stroke:#ffffff;stroke-width:0.3;stroke-opacity:.35}
+.geo-move{stroke:#d9480f;stroke-width:1.4;opacity:.85}
+.scale-line{stroke:#2b3a48;stroke-width:1.4}
+.scale-label{font-size:9px;fill:#2b3a48}
+.geo-credit{font-size:7px;fill:#5b6b7a}
+@media (prefers-color-scheme: dark){
+.scale-line{stroke:#cbd5df}
+.scale-label{fill:#cbd5df}
+.geo-credit{fill:#8fa0b0}
+}
+/* -- F22 prediction chart ------------------------------------------------ */
+.forecast-readout{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin:6px 0}
+.forecast-readout b{color:var(--fg);font-variant-numeric:tabular-nums}
+svg.forecast-chart{display:block;width:100%;height:auto;max-width:760px}
+.chart-axis{stroke:var(--line);stroke-width:1}
+.chart-zero{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 3;opacity:.6}
+.chart-cursor{stroke:var(--accent);stroke-width:1.5}
+.chart-tick{font-size:10px;fill:var(--muted)}
+.chart-empty{font-size:12px;fill:var(--muted)}
+.series.actual{stroke:#1f6feb;stroke-width:2}
+.series.baseline{stroke:#c07000;stroke-width:1.6;stroke-dasharray:6 4}
+.series.pred{stroke:#b3341f;stroke-width:1.6;stroke-dasharray:1 3}
+.chart-point{fill:#1f6feb;cursor:pointer}
+.chart-point:hover{fill:var(--accent);r:6}
+@media (prefers-color-scheme: dark){
+.series.actual{stroke:#6aa8ff}
+.series.baseline{stroke:#e0a54a}
+.series.pred{stroke:#ff8a6b}
+.chart-point{fill:#6aa8ff}
+svg.geo-map{background:#16202b}
+.geo-land{fill:#22303d;stroke:#6aa8ff}
+.geo-water{stroke:#4d7f9e}
+.geo-admin{stroke:#b0574a}
+}
 @media (max-width:900px){
 .workbench main{grid-template-columns:1fr}
-.panes .side,.ledger-panes{grid-template-columns:1fr}
+.panes .side,.ledger-panes,.geo-panes{grid-template-columns:1fr}
 .event button{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion: reduce){
@@ -826,6 +1054,9 @@ WORKBENCH_CORE_JS = """/* Phase 4 navigation state machine.  No DOM access: test
       started: state.started,
       frame: state.frame,
       mode: state.mode,
+      projection: state.projection,
+      forecastMetric: state.forecastMetric,
+      forecastRange: state.forecastRange,
       cell: state.cell,
       scenario: state.scenario,
       playing: state.playing,
@@ -841,6 +1072,9 @@ WORKBENCH_CORE_JS = """/* Phase 4 navigation state machine.  No DOM access: test
       started: false,
       frame: 0,
       mode: 'side',
+      projection: 'grid',
+      forecastMetric: 'out',
+      forecastRange: 'cell',
       cell: null,
       scenario: 'baseline',
       playing: false,
@@ -944,6 +1178,23 @@ WORKBENCH_CORE_JS = """/* Phase 4 navigation state machine.  No DOM access: test
         state.mode = mode;
         return true;
       },
+      /* Switching projection is a pure view change: source, frame, cell and
+         scenario are untouched, so the same cell stays selected in both. */
+      setProjection: function (value) {
+        if (value !== 'grid' && value !== 'geo') return false;
+        state.projection = value;
+        return true;
+      },
+      setForecastMetric: function (value) {
+        if (['out', 'in', 'net'].indexOf(value) < 0) return false;
+        state.forecastMetric = value;
+        return true;
+      },
+      setForecastRange: function (value) {
+        if (value !== 'cell' && value !== 'source') return false;
+        state.forecastRange = value;
+        return true;
+      },
       selectCell: function (cellId) {
         if (cellId === null || cellId === undefined) {
           state.cell = null;
@@ -996,11 +1247,44 @@ WORKBENCH_JS = """/* Phase 4: DOM wiring only.  All navigation rules live in wor
 
   var sourceNames = Object.keys(P);
   var core = Core.create({ source: document.body.getAttribute('data-source'), sources: P });
+  // F28: restore an analysis position from a collaboration-page deep link.
+  // Invalid values are rejected by the core setters, so a bad cell id leaves
+  // the page at its default instead of fabricating a selection.
+  function deepParams() {
+    var raw = (window.location.hash || '').replace(/^#/, '');
+    if (!raw && window.location.search) raw = window.location.search.replace(/^\\?/, '');
+    var out = {};
+    if (!raw) return out;
+    raw.split('&').forEach(function (part) {
+      var at = part.indexOf('=');
+      if (at > 0) out[decodeURIComponent(part.slice(0, at))] = decodeURIComponent(part.slice(at + 1));
+    });
+    return out;
+  }
+  var deep = deepParams();
+  if (deep.frame !== undefined) { var deepFrame = parseInt(deep.frame, 10); if (isFinite(deepFrame)) core.setFrame(deepFrame); }
+  if (deep.cell) core.selectCell(deep.cell);
+  if (deep.mode) core.setMode(deep.mode);
+  if (deep.projection) core.setProjection(deep.projection);
+  if (deep.scenario) core.setScenario(deep.scenario);
   var timer = null;
+  // The geographic view lives in its own script: it builds SVG from published
+  // geometry, and keeping that out of this file is what lets the rule-grid delta
+  // map stay an in-place update with no element construction at all.
+  var Geo = window.WorkbenchGeo || null;
+  if (Geo) Geo.attach((window.BASEMAP_DATA || {})[document.body.getAttribute('data-source')] || null);
+  var F = (window.FORECAST_DATA || {})[document.body.getAttribute('data-source')] || null;
 
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
   function fmtInt(v) { return Number(v).toLocaleString('en-US'); }
+  // A missing prediction is an em dash, never a zero: the chart has to be able
+  // to say "no data here" rather than draw a point on the axis.
+  function fmtNum(value, digits) {
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'number' && !isFinite(value)) return '—';
+    return digits ? Number(value).toFixed(digits) : fmtInt(Math.round(value));
+  }
   function signed(v) { return (v > 0 ? '+' : '') + fmtInt(v); }
   function pack(name) { return P[name]; }
   function replay(name) { return R[name]; }
@@ -1133,6 +1417,28 @@ WORKBENCH_JS = """/* Phase 4: DOM wiring only.  All navigation rules live in wor
     var side = q('[data-view="side"]'), deltaView = q('[data-view="delta"]');
     if (side) side.hidden = state.mode !== 'side';
     if (deltaView) deltaView.hidden = state.mode !== 'delta';
+    // Projection and mode are independent switches: the rule grid and the
+    // geographic view each honour the current mode, so a reader can compare the
+    // same delta picture in both projections without losing the cell.
+    var geo = state.projection === 'geo';
+    var panes = q('#panes');
+    if (panes) panes.hidden = geo;
+    var geoPanes = q('[data-geo-panes]');
+    if (geoPanes) geoPanes.hidden = !geo;
+    qa('[data-geo-strategy]').forEach(function (node) {
+      var isDelta = node.getAttribute('data-geo-strategy') === 'delta';
+      node.hidden = isDelta !== (state.mode === 'delta');
+    });
+    qa('[data-projection]').forEach(function (button) {
+      button.classList.toggle('active', button.getAttribute('data-projection') === state.projection);
+    });
+    var projectionNote = q('#projection-note');
+    if (projectionNote) {
+      projectionNote.setAttribute('data-projection', state.projection);
+      projectionNote.textContent = geo
+        ? '地理底图：按真实经纬度投影，南北方向正确；底图只作位置语境，不参与指标计算。切换回规则网格不改变选中格子。'
+        : '规则网格按行列排布，格子等距，只表示相对位置；切换地理底图会保留数据源、时段与选中格子。';
+    }
     var guideChapter = q('#guide-chapter');
     if (guideChapter) {
       guideChapter.textContent = chapter < 0 ? '未开始' : String(chapter + 1);
@@ -1288,6 +1594,236 @@ WORKBENCH_JS = """/* Phase 4: DOM wiring only.  All navigation rules live in wor
     });
   }
 
+  // -- F22: prediction series -----------------------------------------------
+  var CHART = { width: 720, height: 230, pad: { l: 52, r: 14, t: 12, b: 30 } };
+
+  // The float series are published as base64 little-endian float64 so they
+  // round-trip bit-exactly; NaN marks a point the parquet does not have.
+  function decodeFloats(block) {
+    var raw = atob(block.values);
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    var view = new DataView(bytes.buffer);
+    var out = new Float64Array(bytes.length / 8);
+    for (var j = 0; j < out.length; j++) out[j] = view.getFloat64(j * 8, true);
+    return out;
+  }
+
+  function seriesFor(metric, name) {
+    var block = F.metrics[metric];
+    if (!block || !block.series[name]) return null;
+    var raw = block.series[name];
+    if (raw.kind === 'int') {
+      var flat = [];
+      for (var r = 0; r < raw.values.length; r++) {
+        for (var c = 0; c < raw.values[r].length; c++) flat.push(raw.values[r][c]);
+      }
+      return flat;
+    }
+    return decodeFloats(raw);
+  }
+
+  function forecastValues(state, metric) {
+    var block = F.metrics[metric];
+    if (!block) return null;
+    if (state.forecastRange === 'source') {
+      return {
+        actual: block.summary.actual.values,
+        baseline: block.summary.baseline.values,
+        pred: block.summary.pred.values,
+        nCells: block.summary.actual.n_cells,
+        local: block.local.source,
+        scope: 'source'
+      };
+    }
+    var index = F.cell_ids.indexOf(state.cell || pack(state.source).ledger_top_cell.cell_id);
+    if (index < 0) return null;
+    var n = F.n_buckets;
+    var actual = seriesFor(metric, 'actual');
+    var baseline = seriesFor(metric, 'baseline');
+    var pred = seriesFor(metric, 'pred');
+    var cellNet = function (name) {
+      if (metric !== 'net') return seriesFor(metric, name).slice(index * n, index * n + n);
+      var outV = seriesFor('out', name).slice(index * n, index * n + n);
+      var inV = seriesFor('in', name).slice(index * n, index * n + n);
+      return outV.map(function (value, i) { return value - inV[i]; });
+    };
+    return {
+      actual: cellNet('actual'),
+      baseline: cellNet('baseline'),
+      pred: cellNet('pred'),
+      nCells: 1,
+      local: block.local.per_cell[index],
+      scope: 'cell',
+      cell: F.cell_ids[index]
+    };
+  }
+
+  // The chart is rebuilt as markup, not as elements: workbench.js must never
+  // construct SVG nodes (the rule-grid delta map is updated in place, and that
+  // property is what keeps its geometry single-sourced in Python).  A string is
+  // also the cheaper path for 149 points that all change when the range flips.
+  function esc(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderForecast(state) {
+    var svg = q('#forecast-chart');
+    if (!F || !svg) return;
+    var metric = state.forecastMetric;
+    var values = forecastValues(state, metric);
+    var labels = F.buckets;
+    var frame = state.frame;
+    svg.setAttribute('viewBox', '0 0 ' + CHART.width + ' ' + CHART.height);
+
+    if (!values) {
+      svg.innerHTML = '<text x="16" y="28" class="chart-empty">该格没有预测数据</text>';
+      // Nothing below runs, so the labels and readouts have to be cleared here:
+      // leaving the previous render's numbers on screen would show one cell's
+      // MAE next to "this cell has no forecast".
+      var emptyRange = q('#forecast-range-label');
+      if (emptyRange) {
+        emptyRange.setAttribute('data-value', 'none');
+        emptyRange.innerHTML = '范围：<b>当前格</b>；该格没有预测数据。';
+      }
+      var emptyMae = q('#forecast-mae-label');
+      if (emptyMae) emptyMae.textContent = '局部 MAE';
+      ['forecast_bucket', 'forecast_actual', 'forecast_baseline', 'forecast_pred',
+        'forecast_error', 'forecast_abs_error', 'forecast_mae', 'forecast_n'].forEach(function (name) {
+        setMetric(name, null, '—', 'scope=none');
+      });
+      qa('[data-forecast-metric]').forEach(function (button) {
+        button.classList.toggle('active', button.getAttribute('data-forecast-metric') === metric);
+      });
+      qa('[data-forecast-range]').forEach(function (button) {
+        button.classList.toggle('active', button.getAttribute('data-forecast-range') === state.forecastRange);
+      });
+      return;
+    }
+
+    var all = values.actual.concat(values.baseline, values.pred).filter(function (v) {
+      return v !== null && v !== undefined && isFinite(v);
+    });
+    var lo = all.length ? Math.min.apply(null, all) : 0;
+    var hi = all.length ? Math.max.apply(null, all) : 1;
+    if (hi === lo) { hi = lo + 1; lo = lo - 1; }
+    var innerW = CHART.width - CHART.pad.l - CHART.pad.r;
+    var innerH = CHART.height - CHART.pad.t - CHART.pad.b;
+    var x = function (i) { return CHART.pad.l + (labels.length > 1 ? (i / (labels.length - 1)) * innerW : innerW / 2); };
+    var y = function (v) { return CHART.pad.t + innerH - ((v - lo) / (hi - lo)) * innerH; };
+
+    var parts = [];
+    if (lo < 0 && hi > 0) {
+      parts.push('<line x1="' + CHART.pad.l + '" y1="' + y(0).toFixed(1) + '" x2="' +
+        (CHART.width - CHART.pad.r) + '" y2="' + y(0).toFixed(1) + '" class="chart-zero"/>');
+    }
+    parts.push('<line x1="' + CHART.pad.l + '" y1="' + (CHART.pad.t + innerH) + '" x2="' +
+      (CHART.width - CHART.pad.r) + '" y2="' + (CHART.pad.t + innerH) + '" class="chart-axis"/>');
+    [[hi, 'hi'], [lo, 'lo']].forEach(function (pair) {
+      parts.push('<text x="' + (CHART.pad.l - 8) + '" y="' + (y(pair[0]) + 4).toFixed(1) +
+        '" class="chart-tick" text-anchor="end">' + esc(fmtNum(pair[0], Math.abs(pair[0]) < 10 ? 2 : 0)) + '</text>');
+    });
+    parts.push('<text x="' + x(0).toFixed(1) + '" y="' + (CHART.height - 8) +
+      '" class="chart-tick" text-anchor="start">' + esc(labels[0].slice(5, 16)) + '</text>');
+    if (labels.length > 1) {
+      parts.push('<text x="' + x(labels.length - 1).toFixed(1) + '" y="' + (CHART.height - 8) +
+        '" class="chart-tick" text-anchor="end">' + esc(labels[labels.length - 1].slice(5, 16)) + '</text>');
+    }
+
+    // The cursor marks the frame the map is showing, so the chart and the map
+    // can never disagree about which time is on screen.
+    if (frame >= 0 && frame < labels.length) {
+      parts.push('<line x1="' + x(frame).toFixed(1) + '" y1="' + CHART.pad.t + '" x2="' +
+        x(frame).toFixed(1) + '" y2="' + (CHART.pad.t + innerH) + '" class="chart-cursor"/>');
+    }
+
+    ['baseline', 'pred', 'actual'].forEach(function (name) {
+      var series = values[name];
+      var segment = [];
+      var flush = function () {
+        if (segment.length > 1) {
+          parts.push('<polyline points="' + segment.join(' ') + '" class="series ' + name +
+            '" fill="none"/>');
+        }
+        segment = [];
+      };
+      series.forEach(function (value, i) {
+        if (value === null || value === undefined || !isFinite(value)) { flush(); return; }
+        segment.push(x(i).toFixed(1) + ',' + y(value).toFixed(1));
+      });
+      flush();
+    });
+
+    // Clickable points: each names its bucket, and the click is handled by the
+    // delegated listener below, so the chart and the clock cannot drift apart.
+    values.actual.forEach(function (value, i) {
+      if (value === null || value === undefined || !isFinite(value)) return;
+      parts.push('<circle cx="' + x(i).toFixed(1) + '" cy="' + y(value).toFixed(1) +
+        '" r="4" class="chart-point" data-forecast-bucket="' + i + '" data-bucket="' +
+        esc(labels[i]) + '"><title>' + esc(labels[i]) + ' 实际 ' + esc(fmtNum(value, 2)) +
+        '</title></circle>');
+    });
+    svg.innerHTML = parts.join('');
+
+    var bucketIndex = frame >= 0 && frame < labels.length ? frame : 0;
+    var label = q('#forecast-range-label');
+    var scopeText = values.scope === 'source'
+      ? '范围：<b>全源汇总</b>（每时段对 ' + values.nCells + ' 个格子求和）'
+      : '范围：<b>当前格 ' + esc(values.cell) + '</b>';
+    if (label) {
+      label.setAttribute('data-value', values.scope);
+      label.innerHTML = scopeText + '；指标：<b>' + esc(F.labels.metrics[metric]) + '</b>。' +
+        (metric === 'net' ? esc(F.labels.net) + '。' : '');
+    }
+    var readout = {
+      forecast_bucket: labels[bucketIndex],
+      forecast_actual: values.actual[bucketIndex],
+      forecast_baseline: values.baseline[bucketIndex],
+      forecast_pred: values.pred[bucketIndex]
+    };
+    var join = 'scope=' + values.scope + (values.cell ? ';cell_id=' + values.cell : '') +
+      ';metric=' + metric + ';time_bucket=' + labels[bucketIndex];
+    setMetric('forecast_bucket', readout.forecast_bucket, readout.forecast_bucket, join);
+    setMetric('forecast_actual', readout.forecast_actual, fmtNum(readout.forecast_actual, 2), join);
+    setMetric('forecast_baseline', readout.forecast_baseline, fmtNum(readout.forecast_baseline, 2), join);
+    setMetric('forecast_pred', readout.forecast_pred, fmtNum(readout.forecast_pred, 2), join);
+    var has = readout.forecast_actual !== null && readout.forecast_actual !== undefined &&
+      readout.forecast_pred !== null && readout.forecast_pred !== undefined;
+    var error = has ? readout.forecast_pred - readout.forecast_actual : null;
+    setMetric('forecast_error', error, fmtNum(error, 2), join);
+    var absError = error === null ? null : Math.abs(error);
+    setMetric('forecast_abs_error', absError, fmtNum(absError, 2), join);
+    setMetric('forecast_mae', values.local.mae, fmtNum(values.local.mae, 3), join);
+    setMetric('forecast_n', values.local.n, String(values.local.n), join);
+    // The number changes meaning with the range, so its label must change too:
+    // a source-wide MAE wearing the "局部" label is a different quantity.
+    var maeLabel = q('#forecast-mae-label');
+    if (maeLabel) maeLabel.textContent = values.scope === 'source' ? '全源 MAE' : '局部 MAE';
+    // The page has to show the model-vs-baseline comparison it cites, including
+    // when the model loses -- XM's borrowed-bike prediction does.
+    var evalNode = q('#forecast-eval');
+    if (evalNode && F.evaluation && F.evaluation.metrics) {
+      var ev = F.evaluation.metrics;
+      var rows = [['借出', 'out_count'], ['归还', 'in_count']].map(function (pair) {
+        var base = ev.baseline[pair[1]].mae;
+        var model = ev.model[pair[1]].mae;
+        return pair[0] + ' MAE 基线 ' + fmtNum(base, 3) + ' / 模型 ' + fmtNum(model, 3) +
+          '（' + (model <= base ? '模型更好' : '模型未优于基线') + '）';
+      });
+      evalNode.innerHTML = '全源评估引用既有产物 <code>outputs/forecast_metrics.' +
+        esc(F.source) + '.json</code>：' + rows.join('；') +
+        '。MAE 是点估计误差，<strong>不是预测区间</strong>；' +
+        '它与本页按格重算的局部 MAE 不是同一口径，标签与样本数分别显示。';
+    }
+    qa('[data-forecast-metric]').forEach(function (button) {
+      button.classList.toggle('active', button.getAttribute('data-forecast-metric') === metric);
+    });
+    qa('[data-forecast-range]').forEach(function (button) {
+      button.classList.toggle('active', button.getAttribute('data-forecast-range') === state.forecastRange);
+    });
+  }
+
   function renderAll() {
     var state = core.get();
     renderGrids(state);
@@ -1295,6 +1831,8 @@ WORKBENCH_JS = """/* Phase 4: DOM wiring only.  All navigation rules live in wor
     renderFrameLabels(state);
     renderState(state);
     renderLedger(state);
+    if (Geo) Geo.render(state);
+    renderForecast(state);
     if (window.__WORKBENCH_RENDER_COUNT__ !== undefined) window.__WORKBENCH_RENDER_COUNT__++;
   }
 
@@ -1346,6 +1884,37 @@ WORKBENCH_JS = """/* Phase 4: DOM wiring only.  All navigation rules live in wor
     button.addEventListener('click', function () {
       act(function () { return core.setMode(button.getAttribute('data-mode')); });
     });
+  });
+
+  qa('[data-projection]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      act(function () { return core.setProjection(button.getAttribute('data-projection')); });
+    });
+  });
+
+  qa('[data-forecast-metric]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      act(function () { return core.setForecastMetric(button.getAttribute('data-forecast-metric')); });
+    });
+  });
+
+  qa('[data-forecast-range]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      act(function () { return core.setForecastRange(button.getAttribute('data-forecast-range')); });
+    });
+  });
+
+  // Clicking a point on the curve jumps the clock to that bucket and pauses --
+  // the same rule as an event jump: the target must not be taken away by
+  // playback.  The selected cell is untouched.
+  var chart = q('#forecast-chart');
+  if (chart) chart.addEventListener('click', function (event) {
+    var target = event.target;
+    var bucket = target && target.getAttribute ? target.getAttribute('data-forecast-bucket') : null;
+    if (bucket === null || bucket === undefined) return;
+    var index = parseInt(bucket, 10);
+    if (!isFinite(index)) return;
+    act(function () { core.setPlaying(false); return core.setFrame(index); });
   });
 
   qa('[data-scenario]').forEach(function (button) {
