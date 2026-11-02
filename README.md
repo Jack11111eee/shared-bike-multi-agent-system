@@ -1,176 +1,276 @@
-# bike-agent
+# bike-agent · 城市共享单车供需失衡预测与多智能体调度工作台
 
-城市共享单车供需失衡预测与调度优先级分析。Phase 1 实现 `REQUIREMENTS.md` 的 F1–F7，
-Phase 2 实现 `REQUIREMENTS-PHASE2.md` 的 F8–F11（回放可视化、前后端与智能体层），
-Phase 3 实现 `REQUIREMENTS-PHASE3.md` 的 F12–F15（播放器、可视化扩展、总览页与服务化），
-Phase 4 实现 `REQUIREMENTS-PHASE4.md` 的 F16–F20（演示导览、关键事件、差分地图、单格账本、场景切换）：
+用两个真实公开数据集做共享单车的需求预测、失衡风险排序与调度仿真，再由四个大模型角色
+（协调 / 诊断 / 方案 / 评估）在受约束的工具集里协作，选出一个可被仿真验证的调度方案，
+并保留完整的决策证据。
 
-- **F1** 两个数据源适配器（厦门 DS-XM、上海 DS-SH）→ 统一订单契约 + 完整性报告
-- **F2** 五条清洗规则 → 规则网格 × 1 小时聚合（含零值面板）
-- **F3** 季节均值基线 + LightGBM，严格按时间切分评估
-- **F4** 可解释风险评分 → 优先补车 / 优先清运清单
-- **F5** 同一回放条件下的规则调度 vs 约束优化调度
-- **F6** 一条命令从零复现全部报告、图表与产物
-- **F7** 三个稳定的 agent 工具契约（零 LLM 依赖）
-- **F8** 逐格逐时间单元状态落盘，与既有汇总逐单元自洽
-- **F9** 回放 HTTP 服务（薄封装，三工具契约复用）
-- **F10** 离线回放界面，两策略并排，帧数等于产物帧数
-- **F11** 可审计的智能体层（可选，独立模块，零 LLM）
-- **F12** 自动播放器：自动播放、控制条、全帧覆盖、离线可用
-- **F13** 可视化扩展：固定色标、跨帧趋势图、帧内明细、两策略对照
-- **F14** 总览页 `replay/dashboard.html`，并在 `REPORT.md` 中嵌入图表
-- **F15** `serve` 静态托管站点 + `GET /api/replay/timeline` 时间轴接口
-- **F16** 演示导览：首页入口 + 五章推进（数据概貌 → 关键时段 → 策略差异 → 单格账本 → 参数实验）
-- **F17** 关键事件跳转：两源四类事件的清单与一键定位，跳转即暂停
-- **F18** 策略差分地图：逐格 `delta_unmet`，每源固定色域 ±M，与并排视图互切
-- **F19** 单格库存账本：两策略逐帧账本、调入/调出原始记录与全回放历史
-- **F20** 敏感性场景切换：七个已计算场景、双策略四指标、相对基准的变化
+- 代码仓库：<https://github.com/Jack11111eee/shared-bike-multi-agent-system>
+- 在线演示：**需本机启动**，见下方「启动在线演示」。启动后浏览器访问 `http://127.0.0.1:8000/console/`。
+- 详细方案：[`docs/project-detail.md`](docs/project-detail.md)（Word 版：[`docs/project-detail.docx`](docs/project-detail.docx)）
 
-## 安装
+---
+
+## 1. 启动在线演示
+
+演示站是**本地静态站点 + 本地 HTTP 服务**，不需要部署、不需要联网、不需要 API Key。
+真实模型调用是离线的一次性运行，已经完成并保存在 `outputs/multi_agent/`，回放页面不会再次调用模型。
+
+### 方式 A：一键启动（推荐，macOS）
+
+双击仓库根目录的 `start-demo.command`，或在终端执行：
 
 ```bash
-python3 -m pip install -e .
+./start-demo.command
 ```
 
-要求 Python ≥ 3.10，CPU 即可，无需 GPU。
+脚本会自动挑选一个装好依赖的 Python，从 8000 开始找空闲端口，并打印访问地址：
 
-## 一键复现
+```text
+工作台地址：http://127.0.0.1:8000/console/
+```
+
+保持窗口运行，按 `Ctrl-C` 停止服务。
+
+### 方式 B：命令行启动
 
 ```bash
-bike-agent repro --fresh
+python3 -m pip install -e .            # 基础依赖（CPU 即可，无需 GPU）
+python3 -m bike_agent.cli serve --port 8000
+# 浏览器打开 http://127.0.0.1:8000/console/
 ```
 
-首次运行会下载原始数据（约 110 MB），随后依次完成：下载 → 校验 → 清洗聚合 →
-预测 → 风险清单 → 两种策略仿真 → 报告与图表。退出码 0 表示全部产物生成成功。
+### 方式 C：不启动服务，直接双击打开
 
-## 分步命令
+| 页面 | 文件路径 | 启动服务后的地址 |
+|---|---|---|
+| 四角色决策工作台 | `console/index.html` | `/console/` |
+| 回放站点首页 | `replay/index.html` | `/` |
+| 复盘工作台 | `replay/xm/workbench.html`、`replay/sh/workbench.html` | `/xm/workbench.html`、`/sh/workbench.html` |
+| 智能播放器 | `replay/<source>/player.html` | `/<source>/player.html` |
+| 总览页 | `replay/dashboard.html` | `/dashboard.html` |
+| 多智能体协作页 | `replay/collab.html` | `/collab.html` |
+| 决策报告 | `outputs/multi_agent/<run_id>/presentation/decision-report.html` | `/api/v2/runs/<run_id>/report` |
+
+`serve` 把 `replay/` 作为站点根目录，所以播放器地址是 `http://127.0.0.1:8000/xm/player.html`，
+不是 `/replay/xm/player.html`。文件路径一列用于 `file://` 直接打开，两者内容相同。
+
+### 五分钟演示路径
+
+1. **任务总览**：历史时段、满足率目标（≥ 92%）、每小时搬运上限（400 辆）与四个角色分工。
+2. **协作过程**：点播放或逐步推进；每个节点可展开「收到了什么 / 做了什么 / 交付了什么 / 证据」。
+3. **候选方案**：比较同预算换策略与提高预算的差别；点击候选切换到它的空间结果。
+4. **空间结果**：切时段、切地图指标、切在线/离线底图，查看未满足请求与区域库存账本。
+5. **决策结果**：最终选择、代价、报告与调拨明细下载。
+
+> 主演示运行：`20261102T152230044850Z-xm-llm-a4feea`（accepted，rule / 400）。
+> 工作台同时保留「保留基准」「无可行候选」「执行失败」等真实终态，失败记录不会被改写为成功。
+
+---
+
+## 2. 目录结构树
+
+```text
+bike-agents/
+├── README.md                     本文：启动方式、结构树、模块对应表
+├── start-demo.command            双击启动本地演示服务（自动选 Python 与端口）
+├── pyproject.toml                包定义、依赖、可选 extras（llm / capture / media-check / basemap）
+├── REPORT.md                     数据、方法、关键结果与追溯表（由 repro 生成）
+├── DECISIONS.md                  D1–D30 决策记录：为什么这样算、放弃了哪些方案
+├── REQUIREMENTS*.md              Phase 1–6 的需求与验收条目（F1–F29）
+│
+├── bike_agent/                   全部 Python 代码（一个包，按流水线分层）
+│   ├── cli.py                    唯一命令行入口：data / prep / forecast / risk / simulate /
+│   │                             report / replay / serve / agent / multi-agent / console / tools
+│   ├── config.py, config/default.yaml   配置加载与全部可调假设
+│   │
+│   ├── data/                     【接入层】原始数据 → 统一订单契约
+│   │   ├── xm.py                 DS-XM 适配器（Zenodo 17415891，厦门）
+│   │   ├── sh.py                 DS-SH 适配器（Mobike 上海样本）
+│   │   ├── contract.py           9 字段统一契约与校验
+│   │   └── quality.py            完整性报告
+│   │
+│   ├── prep/                     【清洗与聚合层】
+│   │   ├── clean.py              五条清洗规则，逐条计数
+│   │   ├── grid.py               以米为单位的规则网格（XM 169 格 / SH 255 格）
+│   │   └── aggregate.py          格 × 1 小时完整面板（含零值）
+│   │
+│   ├── forecast/                 【预测层】
+│   │   ├── baseline.py           季节均值基线
+│   │   ├── features.py / model.py   LightGBM（Poisson）与特征
+│   │   ├── split.py              严格按时间切分（前 80% / 后 20%）
+│   │   └── pipeline.py           训练、评估、敏感性
+│   │
+│   ├── risk/                     【风险层】净流出 × 需求规模 × 波动 → 补车 / 清运清单
+│   ├── sim/                      【仿真层】规则调度 vs 约束优化调度的同一回放对比
+│   │   ├── engine.py             逐时间单元的事件顺序与守恒检查
+│   │   ├── strategies.py         rule / optimized 两个调度器
+│   │   └── pipeline.py           对比、敏感性场景、逐格轨迹落盘
+│   │
+│   ├── report/                   【报告层】指标、图表、REPORT/DECISIONS 文本
+│   ├── stats.py                  显著性检验（配对差、bootstrap 置信区间）
+│   │
+│   ├── replay/                   【回放生成层】把产物渲染成离线静态站点
+│   │   ├── site.py               逐帧页、工作台、总览页
+│   │   └── player.py             播放器数据包（replay-data.js）
+│   │
+│   ├── presentation/             【展示层】页面构建与只读视图模型
+│   │   ├── analysis.py / render.py / forecast.py / geo_js.py   工作台与地理图层
+│   │   ├── collab.py             Phase 6 离线协作页
+│   │   ├── run_view.py           运行记录的只读投影（不调用模型）
+│   │   ├── console.py            发布工作台：console/ 与 presentation/
+│   │   └── assets/               页面资源与随包 Leaflet 1.9.4
+│   │
+│   ├── serve/app.py              【服务层】标准库 HTTP：静态托管 + /api/* + /api/v2/*
+│   │
+│   ├── multi_agent/              【多智能体层】
+│   │   ├── task.py               任务定义与冻结输入
+│   │   ├── orchestrator.py       规则驱动的编排（deterministic 模式）
+│   │   ├── runtime.py            大模型模式的合法动作集、状态机、限额
+│   │   ├── llm_roles.py          四个角色的模型调用、工具往返与交付校验
+│   │   ├── contracts_v2.py       版本化动作 / 消息 / 交付 Schema
+│   │   ├── gateway.py            角色可用的工具网关（权限互斥）
+│   │   ├── artifacts.py          每个候选独立的仿真产物
+│   │   ├── journal.py            追加式审计（失败也保留已发生事件）
+│   │   ├── messages.py / roles.py / audit.py / contracts.py
+│   │   └── prompts/              四角色版本化提示词
+│   │
+│   ├── llm/                      【模型接入层】Provider 接口 + DeepSeek 适配
+│   ├── basemap/                  离线底图提取与构建（GSHHG + OSM）
+│   ├── tools/                    F7 三工具契约与薄包装 handler
+│   └── agent/                    Phase 2 可审计规则智能体（可选模块）
+│
+├── console/                      发布出来的决策工作台（静态，双击可开）
+│   ├── index.html                入口
+│   ├── console.js / console.css  三个视图：任务总览 / 协作过程 / 决策结果
+│   ├── maps.js                   高德 → OpenStreetMap → 离线 三层地图
+│   ├── replay-data.js            空间回放数据包
+│   ├── config.js / map-config.js 本地配置（不含密钥）
+│   ├── vendor/leaflet/           随包 Leaflet
+│   └── exports/<run_id>/         每次发布导出的报告、CSV、manifest
+│
+├── replay/                       离线回放站点
+│   ├── index.html                站点首页
+│   ├── dashboard.html            关键数字总览
+│   ├── collab.html               多智能体协作页
+│   ├── player.html/js/css        自动播放器
+│   ├── workbench.*               复盘工作台（导览 / 差分 / 账本 / 场景）
+│   ├── xm/  sh/                  每源一包：frame-NNNN.html、player.html、
+│   │                             workbench.html、replay-data.js、basemap.js
+│   └── basemap/                  底图 manifest 与许可文本
+│
+├── outputs/                      全部落盘产物（可追溯的数字来源）
+│   ├── forecast.<source>.parquet 预测结果
+│   ├── priority_replenish/clear.*.csv   风险清单
+│   ├── sim_*.json / replay.*.parquet    仿真汇总与逐格逐时状态
+│   ├── key_numbers.json          关键数字 → 来源文件对应表
+│   ├── phase7_*.json/xml         验收、浏览器检查、pytest 报告
+│   └── multi_agent/<run_id>/     每次运行一个不可变审计目录
+│
+├── data/                         原始数据（raw/ 与 processed/ 不入库，由 repro 重建）
+├── reports/  figures/            各阶段报告与图表
+├── docs/                         设计与证据文档、项目详细方案
+├── presentations/                汇报 PPT、截图、备份视频、演示包
+├── scripts/                      验收与冒烟脚本（check_*.py、browser_smoke*.py、capture_*）
+└── tests/                        470 项自动测试
+```
+
+---
+
+## 3. 分块对应关系
+
+| 分块 | 回答什么问题 | 主要入口 | 典型产物 |
+|---|---|---|---|
+| 接入 + 清洗聚合 | 数据能不能用、干净不干净 | `bike-agent data fetch/validate`、`prep` | `reports/data_quality.*.md`、`prep.*.md`、`data/processed/` |
+| 预测 | 下一个时间单元会有多少借出/归还 | `bike-agent forecast` | `outputs/forecast.*.parquet`、`reports/forecast_eval.*.md` |
+| 风险 | 哪些格子会缺车、哪些会堆车 | `bike-agent risk` | `priority_replenish.*.csv`、`priority_clear.*.csv` |
+| 仿真 | 同样的需求和预算下，两种调度谁更好 | `bike-agent simulate`、`repro` | `sim_*.json`、`replay.<strategy>.<source>.parquet` |
+| 回放站点 | 逐帧看空间过程，离线可运行 | `bike-agent replay` | `replay/<source>/`、`replay/dashboard.html` |
+| 多智能体（规则） | 四角色协议与协作闭环是否成立 | `bike-agent multi-agent` | `outputs/multi_agent/<run_id>/` |
+| 多智能体（大模型） | 真实模型能否在约束内选出可验证方案 | `bike-agent multi-agent --mode llm` | 同上 + `model_calls.jsonl`、`model_io/` |
+| 发布与工作台 | 把一次真实运行变成可点击的回放 | `bike-agent console publish --run-id …` | `console/`、`presentation/index.html` |
+| 服务 | 把产物和工具契约暴露成 HTTP | `bike-agent serve` | `/api/*`、`/api/v2/*` |
+| 验收 | 结论是否真的被证据支持 | `pytest`、`scripts/check_*.py` | `outputs/phase7_validation.json` 等 |
+
+数据流：
+
+```text
+原始数据 → 统一订单契约 → 清洗 → 网格×小时面板
+        → 预测 / 风险清单 ─┐
+                          ├→ 调度仿真（rule vs optimized）→ 逐格轨迹
+                          └→ 多智能体决策（工具调用 + 约束校验）
+                                                        ↓
+                                        审计目录 → 工作台 / 报告 / 回放站点
+```
+
+---
+
+## 4. 常用命令
 
 ```bash
-bike-agent data fetch --source xm        # 下载 + 归一化 + 契约校验
-bike-agent data validate --source xm     # 完整性报告 reports/data_quality.xm.md
-bike-agent prep --source xm              # 清洗 + 聚合
-bike-agent forecast --source xm          # 基线 + LightGBM
-bike-agent risk --source xm              # 风险评分 + 两张清单
-bike-agent simulate --strategy rule      # 或 --strategy optimized
-bike-agent report --sources xm,sh        # 汇总报告与图表
-bike-agent replay --sources xm,sh        # 回放站点 replay/
-bike-agent serve --check                 # 校验回放服务，不占端口
-bike-agent serve --port 8000             # 启动回放 HTTP 服务
-bike-agent agent --source xm             # 智能体复盘（可选模块）
+python3 -m pip install -e .            # 基础依赖
+python3 -m pip install -e '.[llm]'     # 需要真实调用 DeepSeek 时
+
+bike-agent repro --fresh               # 从零复现全部产物（首次会下载约 110 MB 数据）
+bike-agent serve --port 8000           # 启动本地演示服务
+bike-agent replay --sources xm,sh      # 只重建回放站点
+bike-agent multi-agent --source xm     # 规则驱动的四角色协作（离线、零 LLM）
+bike-agent console publish --run-id <run_id>   # 重新发布某次运行到工作台
+
+python3 -m pytest                      # 全量自动测试
+python3 scripts/check_phase7.py        # Phase 7 确定性验收
 ```
 
-`--source` 可选 `xm` / `sh`；默认主数据源为 `xm`。
+真实大模型运行（会发送聚合指标与角色交付，不发送原始订单与密钥）：
 
-## 回放与播放器（Phase 2–3）
+```bash
+cp .env.example .env.local             # 填入 DEEPSEEK_API_KEY 等，.env.local 已在忽略列表
+python3 -m bike_agent.cli llm check
+python3 -m bike_agent.cli multi-agent --mode llm --source xm --max-budget 400 --min-service-rate 0.92
+```
 
-`bike-agent repro` 会顺带生成 `replay/`：**直接双击 `replay/index.html` 即可打开**，
-不依赖任何网络、构建步骤或后端服务。
+---
 
-- **播放器**（Phase 3）：`replay/<source>/player.html` 打开后自动逐帧播放，
-  可暂停、上一帧 / 下一帧、拖动进度、0.5× / 1× / 2× / 4× 变速、循环；
-  默认 1×，动画只改变停顿，不改变数据
-- **总览页**（Phase 3）：[`replay/dashboard.html`](replay/dashboard.html) 一页汇总关键数字、
-  两源对照、策略对比与 `figures/` 全部图表
-- **逐帧页**（Phase 2，保留）：每个时间单元一页，S-RULE 与 S-OPT 并排同步展示
-  （`replay/<source>/frame-NNNN.html`），承担深链、自动验收与无 JavaScript 回退
-- 帧数**等于**产物时间单元数：XM = 4，SH = 149；没有插值、补帧或合成数据
-- 没有搬运记录的时间单元，画面上不会出现箭头（SH 每策略各有 40 帧）
-- 页面上的每个指标都带 `data-source`，指向 `outputs/` 里的来源文件
-- 播放器数据只打包一次：`replay-data.js`、`player.html` 首帧与
-  `/api/replay/timeline` 共用同一个构建函数
+## 5. 关键结果（全部为模拟值）
 
-两个数据源各有短板，界面上如实说明：**XM 有戏没帧**（服务率约 91%，但只有 4 个时间单元）、
+| 指标 | DS-XM | DS-SH |
+|---|---|---|
+| 行程数 | 220,675 | 102,361 |
+| 网格 × 时间桶 | 169 × 20 | 255 × 743 |
+| 基线 MAE（借出） | 7.0754 | 0.5336 |
+| 模型 MAE（借出） | 7.3755 | 0.5103 |
+| S-RULE 未满足请求 | 3,617 | 181 |
+| S-OPT 未满足请求 | 3,669 | 170 |
+
+- **DS-SH**：S-OPT 综合代价显著更低（892.88 → 879.42，95% CI [-25.31, -1.08]，n=149）。
+- **DS-XM**：S-OPT 点估计更高但差异不显著（3788.15 → 3829.88，95% CI [-268.47, +371.98]，n=4）。
+- **大模型协作运行**：6 个候选、3 轮、22 次模型请求、9 次工具调用、约 59.6 秒；
+  选中 rule / 400，满足率 91.36% → 92.10%，未满足减少 311 次，
+  代价是搬运工作量增加约 928.80 车·公里（预算上限同时从 200 提到 400，属于资源效应）。
+
+两个数据源的真实短板也写在界面上：**XM 有戏没帧**（服务率约 91%，但只有 4 个时间单元）、
 **SH 有帧没戏**（149 帧拖得动，但服务率约 99%，多数帧搬运量只有个位数）。
 
-## 复盘工作台与演示导览（Phase 4）
+---
 
-入口：`replay/index.html` 的 **「演示导览 →」**，或直接打开
-`replay/xm/workbench.html` / `replay/sh/workbench.html`（离线可用，无需服务）。
+## 6. 文档索引
 
-- **五章导览**：数据与需求概貌 → 关键时段 → 策略差异 → 单格账本 → 资源参数实验。
-  有开始 / 上一章 / 下一章 / 重新开始 / 退出导览；不自动翻章，切章与跳事件都会**先暂停播放**。
-  退出导览保留当前分析位置；重新开始回到首章。
-- **关键事件**：每源四类事件（S-RULE 未满足最大、S-RULE 搬运最多、S-OPT 改善最大、S-OPT 退步最大），
-  平手取最早时段，无符合项显示"无改善事件 / 无退步事件"。点击后联动时段、地图、KPI、账本。
-- **差分地图**：「并排对照 / 未满足请求差分」互切。逐格 `delta_unmet = unmet_optimized − unmet_rule`，
-  **负值 = S-OPT 更少未满足**；每源色域固定为 ±M（M = 全回放全部格子的最大绝对差，XM 102 / SH 3）。
-  `gain = unmet_rule − unmet_optimized` 与本指标互为相反数，两者标签不混用。
-- **单格账本**：期初、调入、调出、归还、接纳归还、溢出归还、借车请求、满足、未满足、期末，
-  加该格全回放历史；调入按 `to_cell`、调出按 `from_cell` 从搬运明细求和。
-  默认格子取累计 S-RULE 未满足最高者（平手按 `cell_id` 升序）。
-- **场景切换**：七个已计算场景（`baseline`、`initial_fill=0.3/0.7`、`budget=100/400`、
-  `capacity=0.5x/2x`），双策略四指标与相对同源同策略 baseline 的绝对变化。
-  **场景只更新汇总表，不生成空间回放**，地图始终是 baseline 回放。
-- 导览与事件是**选段**，允许显式跳转并标注"关键事件/选段"；完整播放器仍覆盖全部帧。
-- 数据源切换：每源一页，各自只加载自己的数据包；页首的 `XM` / `SH` 是**链接**，跳到另一源的工作台（两包同页会把站点推过 8 MiB 上限）。
-- 键盘：Tab 到控件即可操作；`←/→` 切帧、`Esc` 退出导览、格子用「选择格子」下拉框选择（格子 rect 不带 `tabindex`，169/255 个格子不做成 tab 停靠点）。
-
-验证命令：
-
-```bash
-python3 scripts/check_presentation.py --phase 4   # 确定性验收，写 outputs/presentation_validation.phase4.json
-python3 scripts/browser_smoke.py --source xm      # 可选：开发期真实浏览器联动冒烟（需要 Chrome）
-```
-
-`browser_smoke.py` 除了点完所有控件，还量测渲染结果：差分格必须有正的 `getBoundingClientRect()`
-宽高（只数元素个数会放过 `x="NaN"` 的零尺寸格子），账本的 `inventory_end` 必须能由它自己
-`data-operands` 里的操作数算回来、`data-join-key` 必须指向屏幕上那个时段。任一不过即判失败。
-
-两者都不参与站点运行；`browser_smoke.py` 找不到浏览器时返回 3 并如实报告"未验证"。
-
-回放服务把同一批产物暴露成 HTTP 接口，三工具接口直接复用 F7 契约：
-
-| 接口 | 能力 |
+| 文档 | 内容 |
 |---|---|
-| `GET /` | 只读托管 `replay/` 静态站点（播放器、逐帧页、总览页） |
-| `GET /api/sources` | 数据源、网格规模、时间范围 |
-| `GET /api/replay/index?source=&strategy=` | 时间轴 |
-| `GET /api/replay/frame?source=&strategy=&time_bucket=` | 单帧逐格状态 + 搬运记录 + 汇总 |
-| `GET /api/replay/timeline?source=` | 播放器用的全帧紧凑数据（与 `replay-data.js` 同源） |
-| `GET /api/tools/forecast` | 与 `get_forecast` 契约一致 |
-| `GET /api/tools/risk` | 与 `get_risk_ranking` 契约一致 |
-| `POST /api/tools/simulate` | 与 `run_simulation` 契约一致 |
+| [`docs/project-detail.md`](docs/project-detail.md) | 项目详细方案：目标、方法、架构、验证、AI 工具使用与改进方向 |
+| [`docs/phase7-usage.md`](docs/phase7-usage.md) | 大模型工作台运行与展示说明 |
+| [`docs/phase7-redesign-design.md`](docs/phase7-redesign-design.md) | Phase 7 架构设计与取舍 |
+| [`docs/phase7-implementation.md`](docs/phase7-implementation.md) | Phase 7 实施与验收记录 |
+| [`docs/crs-evidence.md`](docs/crs-evidence.md) | 坐标口径证据 |
+| [`docs/basemap-sources.md`](docs/basemap-sources.md) | 离线底图来源与许可 |
+| [`REPORT.md`](REPORT.md) | 数据、方法、结果与关键数字追溯 |
+| [`DECISIONS.md`](DECISIONS.md) | D1–D30 决策记录 |
+| [`presentations/phase7/README.md`](presentations/phase7/README.md) | 五页 PPT、讲稿、截图与备份视频 |
 
-静态托管只读、只允许 html/css/js/png/svg/json/txt/ico；路径穿越请求返回 4xx，
-不会返回站点外的文件内容。
+---
 
-## 产物
+## 7. 边界与数据许可
 
-- `reports/`：`data_quality.<source>.md`、`prep.<source>.md`、`forecast_eval.<source>.md`、
-  `risk.<source>.md`、`strategy_comparison.<source>.md`、`cross_source.md`
-- `figures/`：需求热力图、高峰时段分布、预测 vs 实际、优先级清单、策略对比、
-  显著性森林图（`significance.png`，六条结论的变化幅度与 95% 置信区间）
-- `outputs/`：`forecast.parquet`、`priority_replenish.csv`、`priority_clear.csv`、
-  `sim_rule.*`、`sim_optimized.*`、`replay.<strategy>.<source>.parquet`（逐格逐时间单元状态）、
-  `key_numbers.json`、`summary.<source>.json`、`agent_run.<source>.{json,md}`
-- `outputs/`（Phase 4 新增）：`presentation_validation.phase4.json`（`check_presentation.py` 的验收报告）
-- `replay/`：离线回放站点（`index.html` + `dashboard.html` + 播放器 + 每帧一页 +
-  复盘工作台 `workbench.html` + `style.css` / `app.js` / `player.css` / `player.js` /
-  `workbench.css` / `workbench.js` / `workbench-core.js` / `replay-data.js` / `presentation.js`）
-- 根目录：`REPORT.md`、`DECISIONS.md`
-
-## 测试
-
-```bash
-pytest                                                   # 含 Phase 4 的 F16–F20 自动项
-python3 scripts/check_presentation.py --phase 4          # 确定性验收（失败返回非零）
-python3 scripts/browser_smoke.py --source xm --json      # 可选：真实浏览器冒烟
-```
-
-## 工具契约
-
-```bash
-bike-agent tools --schema
-bike-agent tools --call get_risk_ranking --input '{"direction":"replenish","top_k":5}'
-```
-
-## 配置
-
-所有假设（网格大小、时间粒度、切分比例、模型超参、仿真库存/容量/预算）都在
-`bike_agent/config/default.yaml`，可用 `--config override.yaml` 覆盖。
-决策与证据记录在 `DECISIONS.md`。
-
-## 数据许可
-
-DS-XM 仅用于学术/教学，禁止商用，须署名原始数据提供方。
-所有分析均为聚合级别，不产出可识别个体的结果。
+- 所有调度指标均为**模拟值**；未满足借车请求不等于实测缺车或真实损失订单。
+- 历史订单驱动的复盘，不是无未来信息的在线预测实验；提高预算带来的改善包含资源效应。
+- DS-XM 数据仅用于学术/教学，禁止商用，须署名原始数据提供方；分析均为聚合级别。
+- 页面不需要联网；底图为随包的 GSHHG 与 OpenStreetMap 提取，许可文本见 `replay/basemap/licenses/`。

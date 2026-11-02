@@ -618,9 +618,12 @@ ROOT_ASSETS = (
     "workbench.css",
     "workbench.js",
     "workbench-core.js",
+    "workbench-geo.js",
 )
 #: Files ``build_site`` writes into each ``replay/<source>/``.
-SOURCE_ASSETS = ("player.html", "replay-data.js", "presentation.js", "workbench.html")
+SOURCE_ASSETS = ("player.html", "replay-data.js", "presentation.js", "basemap.js", "forecast.js", "workbench.html")
+#: Files written once under ``replay/basemap/`` (F21 manifest and licence texts).
+BASEMAP_ASSETS = ("basemap/manifest.json",)
 
 
 def _expected_site_files(presentations: dict[str, dict[str, Any]]) -> set[str]:
@@ -633,7 +636,11 @@ def _expected_site_files(presentations: dict[str, dict[str, Any]]) -> set[str]:
     """
     from bike_agent.config import Layout
 
-    files = set(ROOT_ASSETS)
+    files = set(ROOT_ASSETS) | set(BASEMAP_ASSETS)
+    # Phase 6 (F28) writes the collaboration page into the same static root.
+    # It is a build product, not a stray file; the Phase 6 checker owns its
+    # contents and size.
+    files.add("collab.html")
     for source, presentation in presentations.items():
         for name in SOURCE_ASSETS:
             files.add(f"{source}/{name}")
@@ -641,6 +648,8 @@ def _expected_site_files(presentations: dict[str, dict[str, Any]]) -> set[str]:
             files.add(f"{source}/frame-{index:04d}.html")
     for figure in Layout().figures.glob("*.png"):
         files.add(f"figures/{figure.name}")
+    for license_file in (SITE / "basemap" / "licenses").glob("*.txt"):
+        files.add(f"basemap/licenses/{license_file.name}")
     return files
 
 
@@ -659,7 +668,9 @@ def _check_budget(checks: Checks, presentations: dict[str, dict[str, Any]]) -> N
     expected = _expected_site_files(presentations)
     detail = {
         "total_bytes": total,
-        "cap_bytes": 8 * 1024 * 1024,
+        # Phase 5 §1.3 revises the site total 8 → 12 MiB; the per-file caps below
+        # are the Phase 4 ones, unchanged.
+        "cap_bytes": 12 * 1024 * 1024,
         "presentation": {
             source: (SITE / source / "presentation.js").stat().st_size for source in SOURCES
         },
@@ -678,7 +689,7 @@ def _check_budget(checks: Checks, presentations: dict[str, dict[str, Any]]) -> N
         "missing_files": sorted(expected - shipped),
     }
     ok = (
-        total < 8 * 1024 * 1024
+        total < 12 * 1024 * 1024
         and all(value <= 2 * 1024 * 1024 for value in detail["presentation"].values())
         and all(value <= 256 * 1024 for value in detail["workbench"].values())
         and all(value <= 1024 * 1024 for value in detail["replay_data"].values())
@@ -689,10 +700,10 @@ def _check_budget(checks: Checks, presentations: dict[str, dict[str, Any]]) -> N
         and not detail["missing_files"]
     )
     checks.add(
-        "NF-24",
-        "replay/ < 8 MiB；presentation ≤ 2 MiB/源；workbench ≤ 256 KiB；旧单文件上限不变",
+        "NF-24 / NF-30",
+        "replay/ < 12 MiB（Phase 5 §1.3）；presentation ≤ 2 MiB/源；workbench ≤ 256 KiB；旧单文件上限不变",
         ok=ok,
-        expected={"total_lt": 8 * 1024 * 1024, "presentation_le": 2 * 1024 * 1024},
+        expected={"total_lt": 12 * 1024 * 1024, "presentation_le": 2 * 1024 * 1024},
         actual=detail,
         inputs=["replay/"],
     )
@@ -845,7 +856,7 @@ def _report(checks: Checks, presentations: dict[str, dict[str, Any]]) -> dict[st
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--phase", type=int, default=4, choices=[4])
+    parser.add_argument("--phase", type=int, default=4, choices=[4, 5])
     parser.add_argument("--json", action="store_true", help="print the report to stdout")
     parser.add_argument(
         "--verbose",
@@ -853,6 +864,13 @@ def main(argv: list[str] | None = None) -> int:
         help="print every check, pass or fail (default: only failures plus a fixed summary)",
     )
     args = parser.parse_args(argv)
+
+    if args.phase == 5:
+        # The phase-5 checks live in their own module so that this file keeps a
+        # single, small entry point; both phases still run through one command.
+        from scripts import check_phase5
+
+        return check_phase5.main(["--json"] if args.json else [])
 
     report = run_checks()
     REPORT.parent.mkdir(parents=True, exist_ok=True)

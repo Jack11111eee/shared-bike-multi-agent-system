@@ -1,0 +1,11 @@
+{"ok": true, "role": "coordinator", "message_id": "msg-0001"}
+{"ok": true, "role": "evaluation", "message_id": "msg-0002"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0003"}
+{"ok": true, "role": "diagnosis", "message_id": "msg-0004"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0005"}
+{"ok": true, "role": "dispatch", "message_id": "msg-0006"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0007"}
+{"ok": true, "role": "evaluation", "message_id": "msg-0008"}
+{"ok": true, "role": "coordinator", "message_id": "msg-0009"}
+{"role": "dispatch", "ok": false, "error": "修订引用与协调请求不一致", "model_call_id": "model-0013"}
+{"role": "dispatch", "ok": false, "error": "初始提案不能声明修订字段", "model_call_id": "model-0014"}

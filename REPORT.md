@@ -161,6 +161,46 @@
 - 人工视觉检查（1440×900、约 400px、明暗主题、五章无死路）仍需人确认；自动验证与浏览器冒烟的结论见 `outputs/presentation_validation.phase4.json`。
 
 
+## 9.7 多智能体协作闭环（Phase 6 · F24–F29）
+
+四角色（协调 / 诊断 / 调度 / 评估）在同一进程内顺序协作，**规则驱动、离线可运行、零 LLM 依赖**：`decision.json` 记录 `rule_based: true`、`llm_connected: false`，运行期不导入任何模型 SDK。
+
+- **F24 角色与消息协议**：七类消息（`task_assignment` / `diagnosis` / `proposal` / `evaluation` / `revision_request` / `revision_proposal` / `final`），逐条通过 JSON Schema（`additionalProperties: false`）才入账；角色只能通过消息与工具适配器交互。
+- **F25 有界闭环**：3 轮、每轮至多 2 个候选、全程至多 6 个不同候选、至多 20 次工具调用、单工具 60 s、单任务 300 s；同一候选失败重试一次；五个终态，只有 `accepted` / `baseline_retained` / `no_feasible_candidate` 退出 0（`contracts.SUCCESS_STATES`；退出码由 `test_normal_path_accepts_a_strictly_better_candidate`、`test_no_improvement_retains_the_baseline`、`test_no_feasible_candidate_is_a_normal_terminal_state`（均为 0）与 `test_cancellation_writes_a_decision_and_stops_calling`（1）逐条断言）。
+- **F26 工具与证据边界**：`evaluate_dispatch_candidate` 是 `run_simulation(..., write=False)` 的薄包装，不写产物；旧三工具契约不变；风险排名只覆盖自己的时段。
+- **F27 运行入口与审计**：`bike-agent multi-agent --source xm|sh`，每次运行写 `outputs/multi_agent/<run_id>/`（task、manifest、messages、tool_calls、candidates、evaluations、decision、report）。
+- **F28 过程展示**：`replay/collab.html` 内嵌已发布运行的审计数据，按源选择运行，时间线按真实消息顺序预渲染；消息、工具与候选详情按所属运行隔离（初版跨运行扁平查找的缺陷已修复，并由浏览器冒烟覆盖）。
+- **F29 真实性与失败验收**：`cost_delta = candidate − baseline`、`unmet_gain = baseline − candidate`，公式与两侧 operands 同时落盘；改变预算的运行按预算实验披露资源变化（距离），不把收益全部归因于算法；预测净流出只写“可能相关，预测非实际损失”；基准本身不可行时不伪造可行回退。
+
+最近的真实运行（按时间取最近四条，每个数据源、每种终态至多一条；完整记录见 `outputs/multi_agent/`）：
+
+| 数据源 | 终态 | 基准 | 选择 | cost_delta | unmet_gain | 距离变化 (bike-km) | 工具调用 | 总耗时 (ms) |
+|---|---|---|---|---|---|---|---|---|
+| SH | accepted | rule/200（可行） | optimized/200 | -13.47 | +11 | -12.33 | 4 | 1,981.5 |
+| XM | accepted | rule/200（不可行） | rule/400 | -125.24 | +311 | +928.80 | 6 | 1,469.6 |
+| XM | baseline_retained | rule/200（可行） | 基准 | +0.00 | +0 | +0.00 | 4 | 939.1 |
+| XM | no_feasible_candidate | rule/200（不可行） | — | — | — | — | 6 | 1,349.7 |
+
+预算与公平对比口径（§2.3 / F29-5）：默认运行在**相同预算**下对照同源 rule 基准，算法差异与资源差异因此可以分开；提高预算的运行是**预算实验**，它的 `cost_delta` 是“新预算候选 − 原预算 rule 基准”，同时列出距离变化，不能把这些收益全部归因于算法。表里的“基准”列写明每次运行实际对照的基准及其可行性；每次运行自己的 `report.md` 也列出基准是否可行、基线与候选的搬运距离及其差值。
+
+耗时拆分（XM 的 `baseline_retained` 运行）：任务总时长 939.1 ms ＝ 后端仿真 589.4 ms ＋ 诊断工具 231.4 ms ＋ 调度 118.3 ms。这是智能体运行耗时，**不是页面加载时间**。
+
+**验收状态（四列，各自附证据）**
+
+| 项目 | 状态 | 证据 |
+|---|---|---|
+| 自动验证 | ✅ | `python3 -m pytest` 463 passed；`scripts/check_multi_agent.py` 20/20 |
+| 真实双源运行 | ✅ | `outputs/multi_agent/`：SH 记录到 accepted；XM 记录到 accepted / no_feasible_candidate / baseline_retained |
+| 浏览器冒烟 | ✅ | `scripts/browser_smoke_multi_agent.py` pass（Chrome 156），含切换运行后的详情归属断言与 400×900 深色模式 |
+| 人工视觉确认 | ⬜ 待确认 | `replay/collab.html` 的外观、排版与可读性未经我代签；需用户自行打开确认 |
+
+**局限（如实说明）**：
+
+- 所有数值来自模拟引擎与已评估的有限候选，不是线上调度收益；`unmet_requests` ≠ 实际缺车量。
+- 规则驱动意味着它不会“发现”规则之外的新策略；接入 LLM 或在线数据都需要另行设计，本期没有这样做。
+- 协作页只发布本机已有的运行记录，选择器列出的是真实终态，不是演示用的合成样例。
+
+
 ## 10. 关键数字追溯（F6-4 / NF-3）
 
 | 指标 | 数值 | 来源文件 |

@@ -315,7 +315,7 @@ Phase 2 的 D9 没有废除：153 个逐帧页（站点共 154 个 HTML，含首
 
 **选择**：方案 ②。`bike_agent/presentation/analysis.py::build_presentation` 是唯一构建入口：帧、KPI、搬运记录复用 Phase 3 的 `build_replay_data`，逐格账本、`delta_unmet`、事件、场景、导览章节与证据记录都在同一个返回值里；`presentation.js`、工作台页面、`scripts/check_presentation.py` 与测试全部读它。
 
-**依据与证据**：单源 `presentation.js` XM 88.6 KB / SH 1372.7 KB；`replay/` 总量 7.05 MiB（上限 8 MiB）。差分色域 M：XM ±102 次、SH ±3 次。为控制体积，工作台不再复制 `inventory_end` / `unmet` / `moved` / `moves` / `kpi`——它们由同一页已加载的 `replay-data.js` 提供，`presentation.js` 用 `shared_with_player` 显式声明。
+**依据与证据**：单源 `presentation.js` XM 88.6 KB / SH 1372.7 KB；`replay/` 总量 9.25 MiB（上限 8 MiB）。差分色域 M：XM ±102 次、SH ±3 次。为控制体积，工作台不再复制 `inventory_end` / `unmet` / `moved` / `moves` / `kpi`——它们由同一页已加载的 `replay-data.js` 提供，`presentation.js` 用 `shared_with_player` 显式声明。
 
 **可逆性**：高，构建函数只读 `outputs/` 与 `data/processed/`；删除 `bike_agent/presentation/` 与页面脚本即回到 Phase 3 形态，旧页面与其测试不受影响。
 
@@ -382,3 +382,67 @@ Phase 2 的 D9 没有废除：153 个逐帧页（站点共 154 个 HTML，含首
 **可逆性**：高，渲染路径集中在 `_delta_rects()` 与 `renderGrids()` 两处；换回脚本渲染只需改这两处。
 
 **日期**：2026-11-01。
+
+## Phase 6 · D26–D30（多智能体协作闭环）
+
+> REQUIREMENTS-PHASE6 §4 规定本期从 D26 继续。D24–D25 未被使用（规划归属 Phase 5），本期不占用、也不改写其它阶段的编号；以下五项对应 §4 表格的 D26–D30。
+
+### D26 · 四角色职责、可替换接口与“独立”的实际含义
+
+**候选方案**：① 一个函数算出全部结果、再把日志分别贴上四个角色名；② 四个纯函数角色，各有自己的上下文与消息信封；③ 四个独立进程/服务。
+
+**选择**：方案 ②，同一进程内顺序协作。协调角色负责分派、复核与最终签署；诊断角色只调用 `get_forecast` 与 `get_risk_ranking`，产出 focus 时段/格子与证据引用；调度角色提出 `(strategy, budget)` 候选并依据反馈修订；评估角色调用新工具并检查五类硬约束，返回 defects 与 `suggested_revision`。每个角色都实现自己的 `handle(context)`。
+
+**依据与证据**：“独立”指独立的代码路径与授权输入，不是独立进程——方案 ① 正是需求禁止的“一个函数算完再贴标签”，方案 ③ 增加部署面却不增加证据。可替换性有两层证据：`test_replacing_the_diagnosis_role_changes_the_dispatch_rationale` 通过 `Orchestrator(roles={"diagnosis": ...})` 注入一个替换角色，调度角色的提案理由随之改变，而调度、评估、协调三个角色未改一行代码；`test_replacing_diagnosis_changes_the_proposal` 说明只需不同的诊断输出（而非不同进程）就能改变提案；`test_every_role_overrides_handle` 断言四个角色都覆盖 `handle`。角色模块不直读 `outputs/` 或 `data/processed/`：AST/导入边界由 `P6-BOUNDARY-ROLES` 与 `test_roles_do_not_import_business_data_modules`、`test_roles_do_not_open_files` 约束，文件读写只出现在工具适配层与运行记录存储层。
+
+**可逆性**：高。角色是纯函数加消息信封，替换某一角色的实现不影响其它角色、消息格式或审计产物。
+
+**日期**：2026-11-02。
+
+### D27 · 消息/状态协议、轮次与停止、反馈如何改变提案
+
+**候选方案**：① 自由文本对话直到“共识”；② 七类结构化消息 + 有界轮次；③ 只记录最终结果、不留过程。
+
+**选择**：方案 ②。消息类型为 `task_assignment` / `diagnosis` / `proposal` / `evaluation` / `revision_request` / `revision_proposal` / `final`，字段含 schema_version、run_id、message_id、parent_id、sender、recipient、type、round、task_id、payload、evidence_refs、status；逐条通过 JSON Schema（`additionalProperties: false`）才入账。上限为 3 轮、每轮至多 2 个候选、全程至多 6 个不同候选、20 次工具调用、单工具 60 s、单任务 300 s；同一候选失败重试一次。
+
+**依据与证据**：错误收件人、重复 ID、悬空引用、跨运行引用、跨源证据、非法 payload、过期/未来轮次都有拒绝测试（`tests/test_multi_agent_protocol.py`）。反馈确实改变提案：评估返回具体 defects 与 `suggested_revision` 后，调度角色改变 strategy 或 budget，`changed_fields` 由上一轮反馈字段引起，`revision_of` 指向被替代的候选且旧候选保留（`test_rejection_changes_the_budget_and_reevaluates`、`test_rejection_changes_the_strategy_and_reevaluates`、`test_revision_fields_are_caused_by_the_previous_feedback`）。停止条件可区分：`test_round_limit_stops_with_limit_reached`、`test_tool_call_limit_stops_before_the_next_backend`、`test_task_deadline_stops_the_run`；终态只有五种（`test_terminal_states_are_the_required_five` 只锁定这五个名字）；退出码策略定义在 `bike_agent/multi_agent/contracts.py::SUCCESS_STATES`（`("accepted", "baseline_retained", "no_feasible_candidate")`）。逐条断言退出码的测试是：`test_normal_path_accepts_a_strictly_better_candidate`（accepted→0）、`test_no_improvement_retains_the_baseline`（baseline_retained→0）、`test_no_feasible_candidate_is_a_normal_terminal_state`（no_feasible_candidate→0）、`test_cancellation_writes_a_decision_and_stops_calling`（failed→1）；`test_a_tie_is_not_reported_as_an_optimization_win` 只断言平手落在 baseline_retained，不涉及退出码。
+
+**可逆性**：高。轮次与上限来自 `TaskSpec`；消息协议集中在契约与存储层，调整需要同时改 schema 与测试，这是预期行为。
+
+**日期**：2026-11-02。
+
+### D28 · 新评估工具、权限、输入冻结、缓存与旧三工具兼容
+
+**候选方案**：① 让评估角色直接调用旧 `run_simulation` 并写产物；② 新增版本化工具 `evaluate_dispatch_candidate`，内部薄封装旧引擎且不写文件；③ 重写一份仿真。
+
+**选择**：方案 ②。新工具 schema 的 `$id` 含 v1，输入含 source/strategy/budget/frozen_context_id，输出含 result_id、实际参数、输入摘要、完整 assumptions、四项 metrics、trajectory、violations 与 `simulated`；实现是 `run_simulation(..., write=False)` 的薄封装，五类 violations 原样透传。旧三工具契约与行为完全不变。
+
+**依据与证据**：`test_old_schema_still_has_exactly_three_tools` 断言旧契约仍只有三个工具；`test_new_tool_is_a_thin_wrapper` 与 `test_new_tool_matches_old_run_simulation_on_real_data` 逐字段对照旧引擎（metrics 与 trajectory 直接等值比较，比 1e-9 更严格）；`test_violations_pass_through_the_wrapper` 与 `test_nonzero_violations_make_the_evaluation_reject` 证明非零 violations 不会被写零。权限：越权或非法参数在工具执行前拒绝（`test_role_without_the_tool_is_denied_before_backend`、`test_illegal_parameters_are_denied_before_backend`）。输入冻结：运行开始计算 sha256 manifest，任一输入变化即停止且不再调用后端（`test_freeze_and_detect_a_changed_input`、`test_cache_is_not_reused_after_an_input_change`）。缓存命中被审计且不重新执行（`test_cache_hit_is_audited_and_does_not_reexecute`）。
+
+**可逆性**：高。新工具是独立模块，删除它不影响旧三工具与 `bike-agent agent`；仿真引擎未被修改。
+
+**日期**：2026-11-02。
+
+### D29 · 推荐目标、预算档位、约束、排序/回退与公平对比口径
+
+**候选方案**：① 固定把预算抬到 400；② 由基准预算推导可用档位；③ 只比较同一预算。
+
+**选择**：方案 ②。目标为 `minimize_composite_cost`；基准策略固定 `rule`，基准预算 200 时可用档位为 100/200，任务显式给出 400 时追加 400，绝不硬编码“总是抬到 400”。硬约束是服务率下限与五类 violations；排序先剔除不可行候选，再按综合代价升序、同价按未满足请求升序。差值符号固定为 `cost_delta = candidate − baseline`、`unmet_gain = baseline − candidate`，服务率差用百分点；公式与两侧 operands（含各自 result_id）同时落盘。候选未严格优于基准时保留基准；基准本身违反硬约束时不得称其为可行回退。
+
+**依据与证据**：`tests/test_multi_agent_tools.py` 用落盘 operands 重算三个差值并与结果比对（`test_the_formula_and_its_operands_are_persisted_with_the_result`）；`test_deltas_use_the_documented_sign_convention` 锁定符号；`test_default_task_does_not_offer_the_doubled_tier` 与 `test_explicit_ceiling_offers_the_doubled_tier` 锁定档位推导；`test_a_tie_is_not_reported_as_an_optimization_win` 与 `test_no_improvement_retains_the_baseline` 锁定回退；`test_baseline_retained_always_selects_the_baseline` 保证 `baseline_retained` 的决策里就是基准视图。公平对比以同源、同假设、同预算的 rule 基准为主（默认预算运行即属此类）；提高预算的运行是预算实验，`cost_delta` 相对的是原预算 rule 基准，因此必须同时披露基准预算、基准是否可行与距离变化，不能把收益全部归因于算法（REPORT §9.7 的“基准”与“距离变化”两列）。报告候选数、调用数、耗时与最终指标，不把旧单智能体“生成复盘文字”的任务当作本期收益基线。
+
+**可逆性**：高。档位与排序规则集中在任务构建、评估契约与协调复核各一处；改口径需要同时改契约与测试。
+
+**日期**：2026-11-02。
+
+### D30 · 审计产物、协作页、离线模式、可选 LLM 与体积边界
+
+**候选方案**：① 每次运行起本地服务渲染；② 预渲染静态页 + 原生脚本、`file://` 打开；③ 只发布 JSON；④ 接入 LLM 驱动角色。
+
+**选择**：方案 ②，且不接 LLM。每次运行写 `outputs/multi_agent/<run_id>/`（task、input_manifest、messages、tool_calls、candidates、evaluations、decision、report）；`replay/collab.html` 内嵌已发布运行的审计数据，对有多条运行的源提供运行选择器（本机 SH 只有一条运行，因此只有 XM 出现选择器），时间线按真实消息顺序预渲染，点击节点、证据 chip 与候选行就地展开。`decision.json` 记录 `rule_based: true`、`llm_connected: false`。
+
+**依据与证据**：方案 ① 与“离线、无构建、无后端”的站点边界冲突，方案 ③ 无法验收“过程可展示”，方案 ④ 没有需求依据且会破坏离线复算。协作页的数据包 108,303 B（两源合计，上限 1 MiB），单次审计目录 58.8–107.1 KB（上限 16 MiB），站点 9.25 MiB / 192 个文件（上限 14 MiB，见 `outputs/multi_agent_validation.phase6.json` 的 `P6-COLLAB-SIZE` / `P6-SITE-SIZE`）。体积有三层事实：HEAD 的断言是 8 MiB；本期开工时工作树已使站点超过 8 MiB；本期在 12 MiB 基础上新增协作页后为 9.25 MiB（生成时实测），14 MiB 的余量留给后续阶段而非为当前体积找借口。实施中发现并修复了一个真实缺陷：各运行的消息/工具/候选 id 都从 `msg-0001`/`tc-0001`/`cand-r1-1` 重新计数，初版脚本用跨运行的扁平映射查找，切换运行后会展开到另一个运行的记录；现改为先用 `closest('section.run')` 确定所属运行，再在该运行的索引里查找，并在详情首行写出 `run_id`/`source`。浏览器冒烟先切到非默认运行、再点击一个 id 与其他运行重复的 `msg-0001`，断言展开记录的 `run_id` 等于被点击的 section（`provenance_matches: true`）。旧断言只在 `tests/test_replay_site.py:330` 与 `tests/test_replay_player.py:430` 把站点总量常量从 8 MiB 改为 14 MiB，`scripts/check_presentation.py` 的文件清单加入 `collab.html`；其余数据、离线与 DOM 断言未动。
+
+**可逆性**：高。页面数据与审计目录一一对应，删掉页面不影响运行记录；展示层改动不触碰决策逻辑。
+
+**日期**：2026-11-02。

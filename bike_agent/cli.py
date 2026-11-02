@@ -226,6 +226,77 @@ def cmd_agent(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_multi_agent(args: argparse.Namespace) -> int:
+    # Imported here, not at module scope: `bike-agent repro` must not pull the
+    # multi-agent package (or its optional layers) into its import graph
+    # (NF-34).
+    from bike_agent.multi_agent.task import build_task
+
+    config, layout = _config(args), _layout(args)
+    source = args.source or config.get("primary_source", "xm")
+    if args.mode == "llm":
+        from bike_agent.llm.provider import load_local_environment
+        from bike_agent.llm.deepseek import DeepSeekProvider
+        from bike_agent.multi_agent.runtime import LLMRuntime
+        from bike_agent.presentation.console import publish_run
+        load_local_environment(layout.root)
+        provider = DeepSeekProvider()
+        if not provider.model:
+            models = provider.list_models()
+            provider.model = "deepseek-flash" if "deepseek-flash" in models else models[0] if models else ""
+        task = build_task(
+            config, source, mode="llm", baseline_budget=args.baseline_budget,
+            max_budget=args.max_budget, max_rounds=args.max_rounds,
+            min_service_rate=args.min_service_rate,
+            max_candidates_per_round=args.max_candidates_per_round,
+            max_distinct_candidates=args.max_distinct_candidates,
+            max_tool_calls=args.max_tool_calls, tool_timeout_s=args.tool_timeout,
+            task_timeout_s=args.task_timeout if args.task_timeout is not None else 600,
+        )
+        outcome = LLMRuntime(config, layout, task, provider).run()
+        published = publish_run(config, layout, outcome["run_id"])
+        print(json.dumps({**outcome, "presentation": published}, ensure_ascii=False, indent=2))
+        return outcome["exit_code"]
+    from bike_agent.multi_agent.orchestrator import Orchestrator
+    task = build_task(
+        config,
+        source,
+        baseline_budget=args.baseline_budget,
+        max_budget=args.max_budget,
+        max_rounds=args.max_rounds,
+        min_service_rate=args.min_service_rate,
+        max_candidates_per_round=args.max_candidates_per_round,
+        max_distinct_candidates=args.max_distinct_candidates,
+        max_tool_calls=args.max_tool_calls,
+        tool_timeout_s=args.tool_timeout,
+        task_timeout_s=args.task_timeout if args.task_timeout is not None else 300,
+        mode=args.mode,
+    )
+    outcome = Orchestrator(config, layout, task).run()
+    print(json.dumps(outcome.summary(), ensure_ascii=False, indent=2))
+    print(f"[multi-agent] decision -> {outcome.run_dir / 'decision.json'}")
+    return outcome.exit_code
+
+
+def cmd_llm(args: argparse.Namespace) -> int:
+    from bike_agent.llm.provider import load_local_environment
+    from bike_agent.llm.deepseek import DeepSeekProvider
+    layout = _layout(args)
+    load_local_environment(layout.root)
+    provider = DeepSeekProvider()
+    models = provider.list_models()
+    print(json.dumps({"provider": provider.name, "available_models": models,
+                      "configured_model": provider.model or None,
+                      "default_model": "deepseek-flash" if "deepseek-flash" in models else (models[0] if models else None)},
+                     ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_console(args: argparse.Namespace) -> int:
+    from bike_agent.presentation.console import publish_run
+    print(json.dumps(publish_run(_config(args), _layout(args), args.run_id), ensure_ascii=False, indent=2))
+    return 0
+
 def cmd_tools(args: argparse.Namespace) -> int:
     if args.schema:
         Draft202012Validator.check_schema(TOOL_SCHEMA)
@@ -304,6 +375,36 @@ def build_parser() -> argparse.ArgumentParser:
     agent.add_argument("--strategy", choices=["rule", "optimized"], default="rule")
     agent.add_argument("--top-k", type=int, default=5)
     agent.set_defaults(func=cmd_agent)
+
+    multi_agent = sub.add_parser(
+        "multi-agent", help="audited four-role dispatch decision (deterministic or LLM)"
+    )
+    multi_agent.add_argument("--source", choices=["xm", "sh"])
+    multi_agent.add_argument("--mode", choices=["deterministic", "llm"], default="deterministic")
+    multi_agent.add_argument("--baseline-budget", type=int, default=None)
+    multi_agent.add_argument(
+        "--max-budget",
+        type=int,
+        default=None,
+        help="hard per-bucket budget ceiling; defaults to the baseline budget",
+    )
+    multi_agent.add_argument("--max-rounds", type=int, default=3)
+    multi_agent.add_argument("--min-service-rate", type=float, default=None)
+    multi_agent.add_argument("--max-candidates-per-round", type=int, default=2)
+    multi_agent.add_argument("--max-distinct-candidates", type=int, default=6)
+    multi_agent.add_argument("--max-tool-calls", type=int, default=20)
+    multi_agent.add_argument("--tool-timeout", type=float, default=60.0)
+    multi_agent.add_argument("--task-timeout", type=float, default=None)
+    multi_agent.set_defaults(func=cmd_multi_agent)
+
+    llm = sub.add_parser("llm", help="check model connectivity without displaying credentials")
+    llm.add_argument("llm_command", choices=["check"])
+    llm.set_defaults(func=cmd_llm)
+
+    console = sub.add_parser("console", help="publish the task decision workbench")
+    console.add_argument("console_command", choices=["publish"])
+    console.add_argument("--run-id", required=True)
+    console.set_defaults(func=cmd_console)
 
     tools = sub.add_parser("tools", help="agent tool contracts")
     tools.add_argument("--schema", action="store_true")

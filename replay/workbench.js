@@ -8,11 +8,44 @@
 
   var sourceNames = Object.keys(P);
   var core = Core.create({ source: document.body.getAttribute('data-source'), sources: P });
+  // F28: restore an analysis position from a collaboration-page deep link.
+  // Invalid values are rejected by the core setters, so a bad cell id leaves
+  // the page at its default instead of fabricating a selection.
+  function deepParams() {
+    var raw = (window.location.hash || '').replace(/^#/, '');
+    if (!raw && window.location.search) raw = window.location.search.replace(/^\?/, '');
+    var out = {};
+    if (!raw) return out;
+    raw.split('&').forEach(function (part) {
+      var at = part.indexOf('=');
+      if (at > 0) out[decodeURIComponent(part.slice(0, at))] = decodeURIComponent(part.slice(at + 1));
+    });
+    return out;
+  }
+  var deep = deepParams();
+  if (deep.frame !== undefined) { var deepFrame = parseInt(deep.frame, 10); if (isFinite(deepFrame)) core.setFrame(deepFrame); }
+  if (deep.cell) core.selectCell(deep.cell);
+  if (deep.mode) core.setMode(deep.mode);
+  if (deep.projection) core.setProjection(deep.projection);
+  if (deep.scenario) core.setScenario(deep.scenario);
   var timer = null;
+  // The geographic view lives in its own script: it builds SVG from published
+  // geometry, and keeping that out of this file is what lets the rule-grid delta
+  // map stay an in-place update with no element construction at all.
+  var Geo = window.WorkbenchGeo || null;
+  if (Geo) Geo.attach((window.BASEMAP_DATA || {})[document.body.getAttribute('data-source')] || null);
+  var F = (window.FORECAST_DATA || {})[document.body.getAttribute('data-source')] || null;
 
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
   function fmtInt(v) { return Number(v).toLocaleString('en-US'); }
+  // A missing prediction is an em dash, never a zero: the chart has to be able
+  // to say "no data here" rather than draw a point on the axis.
+  function fmtNum(value, digits) {
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'number' && !isFinite(value)) return '—';
+    return digits ? Number(value).toFixed(digits) : fmtInt(Math.round(value));
+  }
   function signed(v) { return (v > 0 ? '+' : '') + fmtInt(v); }
   function pack(name) { return P[name]; }
   function replay(name) { return R[name]; }
@@ -145,6 +178,28 @@
     var side = q('[data-view="side"]'), deltaView = q('[data-view="delta"]');
     if (side) side.hidden = state.mode !== 'side';
     if (deltaView) deltaView.hidden = state.mode !== 'delta';
+    // Projection and mode are independent switches: the rule grid and the
+    // geographic view each honour the current mode, so a reader can compare the
+    // same delta picture in both projections without losing the cell.
+    var geo = state.projection === 'geo';
+    var panes = q('#panes');
+    if (panes) panes.hidden = geo;
+    var geoPanes = q('[data-geo-panes]');
+    if (geoPanes) geoPanes.hidden = !geo;
+    qa('[data-geo-strategy]').forEach(function (node) {
+      var isDelta = node.getAttribute('data-geo-strategy') === 'delta';
+      node.hidden = isDelta !== (state.mode === 'delta');
+    });
+    qa('[data-projection]').forEach(function (button) {
+      button.classList.toggle('active', button.getAttribute('data-projection') === state.projection);
+    });
+    var projectionNote = q('#projection-note');
+    if (projectionNote) {
+      projectionNote.setAttribute('data-projection', state.projection);
+      projectionNote.textContent = geo
+        ? '地理底图：按真实经纬度投影，南北方向正确；底图只作位置语境，不参与指标计算。切换回规则网格不改变选中格子。'
+        : '规则网格按行列排布，格子等距，只表示相对位置；切换地理底图会保留数据源、时段与选中格子。';
+    }
     var guideChapter = q('#guide-chapter');
     if (guideChapter) {
       guideChapter.textContent = chapter < 0 ? '未开始' : String(chapter + 1);
@@ -300,6 +355,236 @@
     });
   }
 
+  // -- F22: prediction series -----------------------------------------------
+  var CHART = { width: 720, height: 230, pad: { l: 52, r: 14, t: 12, b: 30 } };
+
+  // The float series are published as base64 little-endian float64 so they
+  // round-trip bit-exactly; NaN marks a point the parquet does not have.
+  function decodeFloats(block) {
+    var raw = atob(block.values);
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    var view = new DataView(bytes.buffer);
+    var out = new Float64Array(bytes.length / 8);
+    for (var j = 0; j < out.length; j++) out[j] = view.getFloat64(j * 8, true);
+    return out;
+  }
+
+  function seriesFor(metric, name) {
+    var block = F.metrics[metric];
+    if (!block || !block.series[name]) return null;
+    var raw = block.series[name];
+    if (raw.kind === 'int') {
+      var flat = [];
+      for (var r = 0; r < raw.values.length; r++) {
+        for (var c = 0; c < raw.values[r].length; c++) flat.push(raw.values[r][c]);
+      }
+      return flat;
+    }
+    return decodeFloats(raw);
+  }
+
+  function forecastValues(state, metric) {
+    var block = F.metrics[metric];
+    if (!block) return null;
+    if (state.forecastRange === 'source') {
+      return {
+        actual: block.summary.actual.values,
+        baseline: block.summary.baseline.values,
+        pred: block.summary.pred.values,
+        nCells: block.summary.actual.n_cells,
+        local: block.local.source,
+        scope: 'source'
+      };
+    }
+    var index = F.cell_ids.indexOf(state.cell || pack(state.source).ledger_top_cell.cell_id);
+    if (index < 0) return null;
+    var n = F.n_buckets;
+    var actual = seriesFor(metric, 'actual');
+    var baseline = seriesFor(metric, 'baseline');
+    var pred = seriesFor(metric, 'pred');
+    var cellNet = function (name) {
+      if (metric !== 'net') return seriesFor(metric, name).slice(index * n, index * n + n);
+      var outV = seriesFor('out', name).slice(index * n, index * n + n);
+      var inV = seriesFor('in', name).slice(index * n, index * n + n);
+      return outV.map(function (value, i) { return value - inV[i]; });
+    };
+    return {
+      actual: cellNet('actual'),
+      baseline: cellNet('baseline'),
+      pred: cellNet('pred'),
+      nCells: 1,
+      local: block.local.per_cell[index],
+      scope: 'cell',
+      cell: F.cell_ids[index]
+    };
+  }
+
+  // The chart is rebuilt as markup, not as elements: workbench.js must never
+  // construct SVG nodes (the rule-grid delta map is updated in place, and that
+  // property is what keeps its geometry single-sourced in Python).  A string is
+  // also the cheaper path for 149 points that all change when the range flips.
+  function esc(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderForecast(state) {
+    var svg = q('#forecast-chart');
+    if (!F || !svg) return;
+    var metric = state.forecastMetric;
+    var values = forecastValues(state, metric);
+    var labels = F.buckets;
+    var frame = state.frame;
+    svg.setAttribute('viewBox', '0 0 ' + CHART.width + ' ' + CHART.height);
+
+    if (!values) {
+      svg.innerHTML = '<text x="16" y="28" class="chart-empty">该格没有预测数据</text>';
+      // Nothing below runs, so the labels and readouts have to be cleared here:
+      // leaving the previous render's numbers on screen would show one cell's
+      // MAE next to "this cell has no forecast".
+      var emptyRange = q('#forecast-range-label');
+      if (emptyRange) {
+        emptyRange.setAttribute('data-value', 'none');
+        emptyRange.innerHTML = '范围：<b>当前格</b>；该格没有预测数据。';
+      }
+      var emptyMae = q('#forecast-mae-label');
+      if (emptyMae) emptyMae.textContent = '局部 MAE';
+      ['forecast_bucket', 'forecast_actual', 'forecast_baseline', 'forecast_pred',
+        'forecast_error', 'forecast_abs_error', 'forecast_mae', 'forecast_n'].forEach(function (name) {
+        setMetric(name, null, '—', 'scope=none');
+      });
+      qa('[data-forecast-metric]').forEach(function (button) {
+        button.classList.toggle('active', button.getAttribute('data-forecast-metric') === metric);
+      });
+      qa('[data-forecast-range]').forEach(function (button) {
+        button.classList.toggle('active', button.getAttribute('data-forecast-range') === state.forecastRange);
+      });
+      return;
+    }
+
+    var all = values.actual.concat(values.baseline, values.pred).filter(function (v) {
+      return v !== null && v !== undefined && isFinite(v);
+    });
+    var lo = all.length ? Math.min.apply(null, all) : 0;
+    var hi = all.length ? Math.max.apply(null, all) : 1;
+    if (hi === lo) { hi = lo + 1; lo = lo - 1; }
+    var innerW = CHART.width - CHART.pad.l - CHART.pad.r;
+    var innerH = CHART.height - CHART.pad.t - CHART.pad.b;
+    var x = function (i) { return CHART.pad.l + (labels.length > 1 ? (i / (labels.length - 1)) * innerW : innerW / 2); };
+    var y = function (v) { return CHART.pad.t + innerH - ((v - lo) / (hi - lo)) * innerH; };
+
+    var parts = [];
+    if (lo < 0 && hi > 0) {
+      parts.push('<line x1="' + CHART.pad.l + '" y1="' + y(0).toFixed(1) + '" x2="' +
+        (CHART.width - CHART.pad.r) + '" y2="' + y(0).toFixed(1) + '" class="chart-zero"/>');
+    }
+    parts.push('<line x1="' + CHART.pad.l + '" y1="' + (CHART.pad.t + innerH) + '" x2="' +
+      (CHART.width - CHART.pad.r) + '" y2="' + (CHART.pad.t + innerH) + '" class="chart-axis"/>');
+    [[hi, 'hi'], [lo, 'lo']].forEach(function (pair) {
+      parts.push('<text x="' + (CHART.pad.l - 8) + '" y="' + (y(pair[0]) + 4).toFixed(1) +
+        '" class="chart-tick" text-anchor="end">' + esc(fmtNum(pair[0], Math.abs(pair[0]) < 10 ? 2 : 0)) + '</text>');
+    });
+    parts.push('<text x="' + x(0).toFixed(1) + '" y="' + (CHART.height - 8) +
+      '" class="chart-tick" text-anchor="start">' + esc(labels[0].slice(5, 16)) + '</text>');
+    if (labels.length > 1) {
+      parts.push('<text x="' + x(labels.length - 1).toFixed(1) + '" y="' + (CHART.height - 8) +
+        '" class="chart-tick" text-anchor="end">' + esc(labels[labels.length - 1].slice(5, 16)) + '</text>');
+    }
+
+    // The cursor marks the frame the map is showing, so the chart and the map
+    // can never disagree about which time is on screen.
+    if (frame >= 0 && frame < labels.length) {
+      parts.push('<line x1="' + x(frame).toFixed(1) + '" y1="' + CHART.pad.t + '" x2="' +
+        x(frame).toFixed(1) + '" y2="' + (CHART.pad.t + innerH) + '" class="chart-cursor"/>');
+    }
+
+    ['baseline', 'pred', 'actual'].forEach(function (name) {
+      var series = values[name];
+      var segment = [];
+      var flush = function () {
+        if (segment.length > 1) {
+          parts.push('<polyline points="' + segment.join(' ') + '" class="series ' + name +
+            '" fill="none"/>');
+        }
+        segment = [];
+      };
+      series.forEach(function (value, i) {
+        if (value === null || value === undefined || !isFinite(value)) { flush(); return; }
+        segment.push(x(i).toFixed(1) + ',' + y(value).toFixed(1));
+      });
+      flush();
+    });
+
+    // Clickable points: each names its bucket, and the click is handled by the
+    // delegated listener below, so the chart and the clock cannot drift apart.
+    values.actual.forEach(function (value, i) {
+      if (value === null || value === undefined || !isFinite(value)) return;
+      parts.push('<circle cx="' + x(i).toFixed(1) + '" cy="' + y(value).toFixed(1) +
+        '" r="4" class="chart-point" data-forecast-bucket="' + i + '" data-bucket="' +
+        esc(labels[i]) + '"><title>' + esc(labels[i]) + ' 实际 ' + esc(fmtNum(value, 2)) +
+        '</title></circle>');
+    });
+    svg.innerHTML = parts.join('');
+
+    var bucketIndex = frame >= 0 && frame < labels.length ? frame : 0;
+    var label = q('#forecast-range-label');
+    var scopeText = values.scope === 'source'
+      ? '范围：<b>全源汇总</b>（每时段对 ' + values.nCells + ' 个格子求和）'
+      : '范围：<b>当前格 ' + esc(values.cell) + '</b>';
+    if (label) {
+      label.setAttribute('data-value', values.scope);
+      label.innerHTML = scopeText + '；指标：<b>' + esc(F.labels.metrics[metric]) + '</b>。' +
+        (metric === 'net' ? esc(F.labels.net) + '。' : '');
+    }
+    var readout = {
+      forecast_bucket: labels[bucketIndex],
+      forecast_actual: values.actual[bucketIndex],
+      forecast_baseline: values.baseline[bucketIndex],
+      forecast_pred: values.pred[bucketIndex]
+    };
+    var join = 'scope=' + values.scope + (values.cell ? ';cell_id=' + values.cell : '') +
+      ';metric=' + metric + ';time_bucket=' + labels[bucketIndex];
+    setMetric('forecast_bucket', readout.forecast_bucket, readout.forecast_bucket, join);
+    setMetric('forecast_actual', readout.forecast_actual, fmtNum(readout.forecast_actual, 2), join);
+    setMetric('forecast_baseline', readout.forecast_baseline, fmtNum(readout.forecast_baseline, 2), join);
+    setMetric('forecast_pred', readout.forecast_pred, fmtNum(readout.forecast_pred, 2), join);
+    var has = readout.forecast_actual !== null && readout.forecast_actual !== undefined &&
+      readout.forecast_pred !== null && readout.forecast_pred !== undefined;
+    var error = has ? readout.forecast_pred - readout.forecast_actual : null;
+    setMetric('forecast_error', error, fmtNum(error, 2), join);
+    var absError = error === null ? null : Math.abs(error);
+    setMetric('forecast_abs_error', absError, fmtNum(absError, 2), join);
+    setMetric('forecast_mae', values.local.mae, fmtNum(values.local.mae, 3), join);
+    setMetric('forecast_n', values.local.n, String(values.local.n), join);
+    // The number changes meaning with the range, so its label must change too:
+    // a source-wide MAE wearing the "局部" label is a different quantity.
+    var maeLabel = q('#forecast-mae-label');
+    if (maeLabel) maeLabel.textContent = values.scope === 'source' ? '全源 MAE' : '局部 MAE';
+    // The page has to show the model-vs-baseline comparison it cites, including
+    // when the model loses -- XM's borrowed-bike prediction does.
+    var evalNode = q('#forecast-eval');
+    if (evalNode && F.evaluation && F.evaluation.metrics) {
+      var ev = F.evaluation.metrics;
+      var rows = [['借出', 'out_count'], ['归还', 'in_count']].map(function (pair) {
+        var base = ev.baseline[pair[1]].mae;
+        var model = ev.model[pair[1]].mae;
+        return pair[0] + ' MAE 基线 ' + fmtNum(base, 3) + ' / 模型 ' + fmtNum(model, 3) +
+          '（' + (model <= base ? '模型更好' : '模型未优于基线') + '）';
+      });
+      evalNode.innerHTML = '全源评估引用既有产物 <code>outputs/forecast_metrics.' +
+        esc(F.source) + '.json</code>：' + rows.join('；') +
+        '。MAE 是点估计误差，<strong>不是预测区间</strong>；' +
+        '它与本页按格重算的局部 MAE 不是同一口径，标签与样本数分别显示。';
+    }
+    qa('[data-forecast-metric]').forEach(function (button) {
+      button.classList.toggle('active', button.getAttribute('data-forecast-metric') === metric);
+    });
+    qa('[data-forecast-range]').forEach(function (button) {
+      button.classList.toggle('active', button.getAttribute('data-forecast-range') === state.forecastRange);
+    });
+  }
+
   function renderAll() {
     var state = core.get();
     renderGrids(state);
@@ -307,6 +592,8 @@
     renderFrameLabels(state);
     renderState(state);
     renderLedger(state);
+    if (Geo) Geo.render(state);
+    renderForecast(state);
     if (window.__WORKBENCH_RENDER_COUNT__ !== undefined) window.__WORKBENCH_RENDER_COUNT__++;
   }
 
@@ -358,6 +645,37 @@
     button.addEventListener('click', function () {
       act(function () { return core.setMode(button.getAttribute('data-mode')); });
     });
+  });
+
+  qa('[data-projection]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      act(function () { return core.setProjection(button.getAttribute('data-projection')); });
+    });
+  });
+
+  qa('[data-forecast-metric]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      act(function () { return core.setForecastMetric(button.getAttribute('data-forecast-metric')); });
+    });
+  });
+
+  qa('[data-forecast-range]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      act(function () { return core.setForecastRange(button.getAttribute('data-forecast-range')); });
+    });
+  });
+
+  // Clicking a point on the curve jumps the clock to that bucket and pauses --
+  // the same rule as an event jump: the target must not be taken away by
+  // playback.  The selected cell is untouched.
+  var chart = q('#forecast-chart');
+  if (chart) chart.addEventListener('click', function (event) {
+    var target = event.target;
+    var bucket = target && target.getAttribute ? target.getAttribute('data-forecast-bucket') : null;
+    if (bucket === null || bucket === undefined) return;
+    var index = parseInt(bucket, 10);
+    if (!isFinite(index)) return;
+    act(function () { core.setPlaying(false); return core.setFrame(index); });
   });
 
   qa('[data-scenario]').forEach(function (button) {

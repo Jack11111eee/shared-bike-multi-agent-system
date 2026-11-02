@@ -1,0 +1,85 @@
+{
+  "phase": "6",
+  "generated_at": "2026-11-02T12:45:30.724089+00:00",
+  "browser": {
+    "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "version": "Google Chrome 156.0.8078.79"
+  },
+  "checks": {
+    "collab_loaded": true,
+    "file_url": true,
+    "message": {
+      "id": "msg-0001",
+      "run_id": "20261102T041847194508Z-xm-39ea4a",
+      "source": "xm",
+      "n_sections": 4,
+      "run_switched_before_click": {
+        "source": "xm",
+        "picked": "20261102T041847194508Z-xm-39ea4a",
+        "options": 3,
+        "before": [
+          "20261102T111807191960Z-xm-6c0b52"
+        ],
+        "after": [
+          "20261102T041847194508Z-xm-39ea4a"
+        ]
+      },
+      "id_collides_elsewhere": true,
+      "clicked": true,
+      "detail_visible": true,
+      "detail_contains_id": true,
+      "provenance_matches": true
+    },
+    "evidence_chip": {
+      "ref": "tc-0001",
+      "run_id": "20261102T041847194508Z-xm-39ea4a",
+      "clicked": true,
+      "detail_contains_ref": true,
+      "provenance_matches": true
+    },
+    "candidate": {
+      "id": "cand-r1-1",
+      "run_id": "20261102T041847194508Z-xm-39ea4a",
+      "clicked": true,
+      "detail_visible": true,
+      "detail_contains_id": true,
+      "provenance_matches": true
+    },
+    "player_deep_link": {
+      "href": "xm/player.html#frame=2",
+      "expected_frame": 2,
+      "label": "3",
+      "bucket": "2020-12-25 08:00:00",
+      "restored": true
+    },
+    "workbench_deep_link": {
+      "href": "xm/workbench.html#frame=2&cell=C0007_0010",
+      "expected_frame": 2,
+      "expected_cell": "C0007_0010",
+      "label": "3",
+      "cell": "C0007_0010",
+      "restored": true
+    },
+    "run_selector": {
+      "present": true,
+      "source": "xm",
+      "options": 3,
+      "before": [
+        "20261102T111807191960Z-xm-6c0b52"
+      ],
+      "after": [
+        "20261102T041847194508Z-xm-39ea4a"
+      ],
+      "switched": true
+    },
+    "narrow_dark": {
+      "viewport": "400x900",
+      "message_clicked": true,
+      "detail_visible": true,
+      "horizontal_overflow_px": 0,
+      "body_background": "rgb(20, 24, 30)",
+      "usable": true
+    }
+  },
+  "result": "pass"
+}

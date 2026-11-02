@@ -1,0 +1,388 @@
+{
+  "phase": "6",
+  "requirement": "REQUIREMENTS-PHASE6.md F24–F29 / NF-34–NF-39",
+  "generated_at": "2026-11-02T13:01:54.908744+00:00",
+  "n_checks": 20,
+  "n_failed": 0,
+  "checks": [
+    {
+      "id": "P6-SCHEMA",
+      "requirement": "F24-1 / F26: task, message, payload and evaluation schemas are valid Draft 2020-12",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "bike_agent/multi_agent/contracts.py",
+        "bike_agent/tools/schemas.py"
+      ],
+      "expected": "every schema validates",
+      "actual": "11 schemas valid",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "bike_agent/multi_agent/contracts.py",
+        "bike_agent/tools/schemas.py"
+      ]
+    },
+    {
+      "id": "P6-OLD-TOOLS",
+      "requirement": "F26-1: the old three-tool contract is unchanged and has no fourth tool",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "bike_agent/tools/schemas.py"
+      ],
+      "expected": "exactly get_forecast/get_risk_ranking/run_simulation, additionalProperties=false",
+      "actual": [
+        "get_forecast",
+        "get_risk_ranking",
+        "run_simulation"
+      ],
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "bike_agent/tools/schemas.py"
+      ]
+    },
+    {
+      "id": "P6-OLD-AGENT",
+      "requirement": "F26-1 / NF-34: the old single-agent outputs still exist",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "outputs/agent_run.xm.json",
+        "outputs/agent_run.xm.md",
+        "outputs/agent_run.sh.json",
+        "outputs/agent_run.sh.md"
+      ],
+      "expected": "agent_run.<source>.{json,md} for both sources",
+      "actual": "present",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "outputs/agent_run.xm.json",
+        "outputs/agent_run.xm.md",
+        "outputs/agent_run.sh.json",
+        "outputs/agent_run.sh.md"
+      ]
+    },
+    {
+      "id": "P6-RUN-PRESENT",
+      "requirement": "F27-1 / F29-1: real runs exist for both sources",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "outputs/multi_agent"
+      ],
+      "expected": "xm and sh each have a run",
+      "actual": [
+        "sh",
+        "xm"
+      ],
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "outputs/multi_agent"
+      ]
+    },
+    {
+      "id": "P6-RUN-XM",
+      "requirement": "F24/F25/F26/F27: xm run is internally consistent and numerically traceable",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "outputs/multi_agent/20261102T111807191960Z-xm-6c0b52"
+      ],
+      "expected": "messages, tool calls, deltas, terminal state and limits agree",
+      "actual": "consistent",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "outputs/multi_agent/20261102T111807191960Z-xm-6c0b52"
+      ]
+    },
+    {
+      "id": "P6-RUN-SH",
+      "requirement": "F24/F25/F26/F27: sh run is internally consistent and numerically traceable",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "outputs/multi_agent/20261102T041850728379Z-sh-6d9b3d"
+      ],
+      "expected": "messages, tool calls, deltas, terminal state and limits agree",
+      "actual": "consistent",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "outputs/multi_agent/20261102T041850728379Z-sh-6d9b3d"
+      ]
+    },
+    {
+      "id": "P6-BUDGET-DEFAULT",
+      "requirement": "F29-1: at least one real run uses the default budget ceiling",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "outputs/multi_agent"
+      ],
+      "expected": "a run with max_budget == baseline_budget",
+      "actual": [
+        "20261102T041850728379Z-sh-6d9b3d",
+        "20261102T041847194508Z-xm-39ea4a",
+        "20261102T035246632636Z-sh-507396",
+        "20261102T035242125386Z-xm-8e8953",
+        "20261102T023803565695Z-sh-1c1cac"
+      ],
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "outputs/multi_agent"
+      ]
+    },
+    {
+      "id": "P6-BUDGET-HIGHER",
+      "requirement": "F29-1: a higher budget ceiling was run and the resource change is disclosed",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "outputs/multi_agent"
+      ],
+      "expected": "at least one run with max_budget > baseline, reported with the ceiling",
+      "actual": {
+        "runs": [
+          "20261102T111807191960Z-xm-6c0b52",
+          "20261102T042830578994Z-xm-fde780",
+          "20261102T041855281063Z-xm-3d85b8",
+          "20261102T035259312543Z-xm-0bc59c",
+          "20261102T024103782577Z-xm-8785a4"
+        ],
+        "disclosed": [
+          "20261102T111807191960Z-xm-6c0b52",
+          "20261102T042830578994Z-xm-fde780",
+          "20261102T041855281063Z-xm-3d85b8",
+          "20261102T035259312543Z-xm-0bc59c",
+          "20261102T024103782577Z-xm-8785a4"
+        ]
+      },
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "outputs/multi_agent"
+      ]
+    },
+    {
+      "id": "P6-EQUIVALENCE",
+      "requirement": "F26-2: the new tool matches the old engine for both sources, strategies and budget tiers",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "outputs/",
+        "data/processed/"
+      ],
+      "expected": "identical metrics, trajectory and violations",
+      "actual": "identical",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "outputs/",
+        "data/processed/"
+      ]
+    },
+    {
+      "id": "P6-NO-WRITE",
+      "requirement": "F26-4: evaluation does not rewrite existing business artefacts",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "outputs/sim_rule.xm.json",
+        "outputs/sim_optimized.xm.json",
+        "outputs/sim_rule.sh.json",
+        "outputs/sim_optimized.sh.json",
+        "outputs/key_numbers.json"
+      ],
+      "expected": "business artefact hashes unchanged",
+      "actual": "unchanged",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "outputs/sim_rule.xm.json",
+        "outputs/sim_optimized.xm.json",
+        "outputs/sim_rule.sh.json",
+        "outputs/sim_optimized.sh.json",
+        "outputs/key_numbers.json"
+      ]
+    },
+    {
+      "id": "P6-BOUNDARY-ROLES",
+      "requirement": "F26-4: roles do not read business files; only the gateway and the run store do",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "bike_agent/multi_agent/roles.py"
+      ],
+      "expected": "no file/data imports or open() in roles.py",
+      "actual": "clean",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "bike_agent/multi_agent/roles.py"
+      ]
+    },
+    {
+      "id": "P6-REPRO-BOUNDARY",
+      "requirement": "NF-34: `bike-agent repro` does not import the multi-agent package at module scope",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "bike_agent/cli.py"
+      ],
+      "expected": "multi_agent imported lazily only",
+      "actual": [
+        "__future__",
+        "argparse",
+        "json",
+        "shutil",
+        "sys",
+        "typing",
+        "jsonschema",
+        "bike_agent.config",
+        "bike_agent.data",
+        "bike_agent.data.base",
+        "bike_agent.data.contract",
+        "bike_agent.forecast.pipeline",
+        "bike_agent.prep.pipeline",
+        "bike_agent.report.pipeline",
+        "bike_agent.risk.pipeline",
+        "bike_agent.replay",
+        "bike_agent.serve",
+        "bike_agent.serve",
+        "bike_agent.sim.pipeline",
+        "bike_agent.tools.handlers",
+        "bike_agent.tools.schemas",
+        "bike_agent.utils"
+      ],
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "bike_agent/cli.py"
+      ]
+    },
+    {
+      "id": "P6-COLLAB-EXISTS",
+      "requirement": "F28-1: the offline collaboration page exists",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "replay/collab.html"
+      ],
+      "expected": "replay/collab.html",
+      "actual": "replay/collab.html",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "replay/collab.html"
+      ]
+    },
+    {
+      "id": "P6-COLLAB-SOURCES",
+      "requirement": "F28-1: the page shows a real run for XM and SH",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "replay/collab.html"
+      ],
+      "expected": "xm and sh runs",
+      "actual": [
+        "sh",
+        "xm"
+      ],
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "replay/collab.html"
+      ]
+    },
+    {
+      "id": "P6-COLLAB-NODES",
+      "requirement": "F28-1/F28-4: page nodes, run ids and terminal states match the audit artefacts",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "replay/collab.html",
+        "outputs/multi_agent/"
+      ],
+      "expected": "every node maps to a real message/tool id; terminal states agree",
+      "actual": "consistent",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "replay/collab.html",
+        "outputs/multi_agent/"
+      ]
+    },
+    {
+      "id": "P6-COLLAB-OFFLINE",
+      "requirement": "F28-3: the page has no external resources and needs no network",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "replay/collab.html"
+      ],
+      "expected": "no external URLs, no fetch/XHR",
+      "actual": "offline",
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "replay/collab.html"
+      ]
+    },
+    {
+      "id": "P6-COLLAB-SIZE",
+      "requirement": "NF-37: collaboration data for both sources is at most 1 MiB",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "replay/collab.html"
+      ],
+      "expected": "<= 1048576 bytes",
+      "actual": 108302,
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "replay/collab.html"
+      ]
+    },
+    {
+      "id": "P6-COLLAB-DEEPLINK",
+      "requirement": "F28-2: the page links to a concrete player/workbench frame (and cell where valid)",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "replay/collab.html"
+      ],
+      "expected": "at least one ../<source>/<page>.html#frame=N link",
+      "actual": 48,
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "replay/collab.html"
+      ]
+    },
+    {
+      "id": "P6-SITE-SIZE",
+      "requirement": "NF-37: the replay site stays under 14 MiB",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "replay/"
+      ],
+      "expected": "< 14680064 bytes",
+      "actual": 9699564,
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "replay/"
+      ]
+    },
+    {
+      "id": "P6-DEEPLINK-CODE",
+      "requirement": "F28-2: the shipped player and workbench parse frame/cell deep links",
+      "command": "python3 scripts/check_multi_agent.py",
+      "inputs": [
+        "replay/player.js",
+        "replay/workbench.js"
+      ],
+      "expected": "location.hash parsing in player.js and workbench.js",
+      "actual": {
+        "player": true,
+        "workbench": true
+      },
+      "result": "pass",
+      "note": "",
+      "evidence": [
+        "replay/player.js",
+        "replay/workbench.js"
+      ]
+    }
+  ]
+}

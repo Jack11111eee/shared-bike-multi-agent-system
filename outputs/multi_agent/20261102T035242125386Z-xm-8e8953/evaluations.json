@@ -1,0 +1,43 @@
+[
+  {
+    "round": 1,
+    "message_id": "msg-0008",
+    "baseline_result_id": "res-373d1017bd8a44c4",
+    "evaluations": [
+      {
+        "candidate_id": "cand-r1-1",
+        "result_id": "res-3e00cb4b63f4cebb",
+        "tool_call_id": "tc-0004",
+        "feasible": true,
+        "violations_ok": true,
+        "service_rate_ok": true,
+        "metrics": {
+          "unmet_requests": 3669,
+          "distance_bike_km": 804.379945681073,
+          "composite_cost": 3829.8759891362147,
+          "service_rate": 0.9123423165137615
+        },
+        "violations": {
+          "conservation": 0,
+          "capacity": 0,
+          "budget": 0,
+          "negative_inventory": 0,
+          "clamped_moves": 0
+        },
+        "deltas": {
+          "cost_delta": 41.72133661911721,
+          "unmet_gain": -52,
+          "service_rate_delta_pp": -0.1242354740061069
+        },
+        "verdict": "accept",
+        "defects": [
+          "composite_cost 高于基准：3829.875989 > 3788.154653（cost_delta = candidate - baseline）"
+        ],
+        "suggested_revision": {
+          "action": "retain_baseline",
+          "reason": "候选可行但综合代价高于基准。"
+        }
+      }
+    ]
+  }
+]

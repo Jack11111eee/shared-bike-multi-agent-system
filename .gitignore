@@ -14,3 +14,14 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Office lock files (WPS / PowerPoint leave these next to an open deck)
+.~*.pptx
+.~*.docx
+
+# Local credentials and execution environment
+.env
+.env.local
+.venv/
+.phase7-slide-build/
+.chart-data-*/

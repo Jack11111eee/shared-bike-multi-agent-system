@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20261102T152230044850Z-xm-llm-a4feea",
+  "captured_at": "2026-11-02T15:42:23.489410+00:00",
+  "client_timezone": "Asia/Shanghai",
+  "capture_kind": "real_browser_screenshot_sequence",
+  "video_note": "真实页面关键状态截图串联，非连续操作录屏；停留时长仅用于阅读，不表示模型真实计算时长。",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "scenes": [
+    {
+      "file": "overview.jpg",
+      "duration_s": 8
+    },
+    {
+      "file": "workflow-diagnosis.jpg",
+      "duration_s": 9
+    },
+    {
+      "file": "workflow-feedback.jpg",
+      "duration_s": 10
+    },
+    {
+      "file": "workflow-evaluation.jpg",
+      "duration_s": 9
+    },
+    {
+      "file": "result.jpg",
+      "duration_s": 10
+    },
+    {
+      "file": "map-online.jpg",
+      "duration_s": 10
+    },
+    {
+      "file": "map-offline.jpg",
+      "duration_s": 5
+    }
+  ],
+  "source_presentation_manifest_sha256": "7291a90083e60410072f3d5529ae019408d0be2fc17d93b7e73fa7b91f26a708",
+  "video_probe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "width": 1440,
+        "height": 900,
+        "r_frame_rate": "4/1"
+      }
+    ],
+    "format": {
+      "duration": "66.000000"
+    }
+  },
+  "files": {
+    "demo-key-scenes.mp4": {
+      "sha256": "318bd864fd888718dfb5572d47bb2abb5735d7994316397e60a49227d160a2a6",
+      "bytes": 521891
+    },
+    "map-offline.jpg": {
+      "sha256": "cbf26497ba1013f95b0295a51c18e980ccb790c81cefd31a25bfcadb9d891c73",
+      "bytes": 85231
+    },
+    "map-online.jpg": {
+      "sha256": "1238f9daaa9e6440731bc00dee9f8a4544a1ecd43b42ff68b1d13d7a197ea24b",
+      "bytes": 119956
+    },
+    "overview.jpg": {
+      "sha256": "7f0fcfdbbd4a1104652b0a7b0baa8af801ccabda38c645442332f6667b8a0b43",
+      "bytes": 96707
+    },
+    "result.jpg": {
+      "sha256": "00fcf3f9f2432909ffbeeba84a2d5503fb566823882407eefcfbb3a71ef0b2f8",
+      "bytes": 93756
+    },
+    "standalone-demo.zip": {
+      "sha256": "b601f9026af3b2926ede88734685753681d2895740df548980c2322f71af48fb",
+      "bytes": 371792
+    },
+    "workflow-diagnosis.jpg": {
+      "sha256": "a67901f98a57948ecdd78d6c1716028c972dd9eed447f3e1c3e0f490a96b2a98",
+      "bytes": 106611
+    },
+    "workflow-evaluation.jpg": {
+      "sha256": "22c5695c9755ab83600aff08ccb0c6a8be1176678bd4dfff791d53aa9d6d64b9",
+      "bytes": 103634
+    },
+    "workflow-feedback.jpg": {
+      "sha256": "ac0dc93fb37e74d4059123cd0e2f9bec49b6a6fc984fb046f93e9b21341d62c6",
+      "bytes": 103256
+    },
+    "bike-agents-report.pptx": {
+      "sha256": "53bf072f69d2362f92cb9bee0bd0adf2810043bd79e898fda8b89bbb136ce8f2",
+      "bytes": 308679
+    }
+  },
+  "deck": {
+    "slides": 5,
+    "editable_table_slide": 2,
+    "editable_chart_slide": 4,
+    "native_powerpoint_open_verified": false
+  }
+}

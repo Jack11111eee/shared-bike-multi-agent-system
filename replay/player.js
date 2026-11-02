@@ -298,7 +298,34 @@
     }
   });
 
+  // F28: a collaboration page links to a specific frame.  Read it from the
+  // hash (preferred) or query string; an out-of-range index is clamped, never
+  // silently ignored.  A deep link also pauses playback so the target stays put.
+  function deepParams(){
+    var raw = (window.location.hash || '').replace(/^#/, '');
+    if(!raw && window.location.search) raw = window.location.search.replace(/^\?/, '');
+    var out = {};
+    if(!raw) return out;
+    raw.split('&').forEach(function(part){
+      var at = part.indexOf('=');
+      if(at > 0) out[decodeURIComponent(part.slice(0, at))] = decodeURIComponent(part.slice(at + 1));
+    });
+    return out;
+  }
+  var deep = deepParams();
+  var deepApplied = false;
+  if(deep.frame !== undefined){
+    var requested = parseInt(deep.frame, 10);
+    if(isFinite(requested)){ index = Math.max(0, Math.min(n - 1, requested)); deepApplied = true; }
+  }
+  if(deep.bucket){
+    for(var d = 0; d < D.frames.length; d++){
+      if(D.frames[d].time_bucket === deep.bucket){ index = d; deepApplied = true; break; }
+    }
+  }
+
   render();
-  // NF-20: honour reduced motion by never starting on its own.
-  if(!reduced) setPlaying(true);
+  // NF-20: honour reduced motion by never starting on its own.  A deep link
+  // also stays paused: the reader asked for one specific frame.
+  if(!reduced && !deepApplied) setPlaying(true);
 })();

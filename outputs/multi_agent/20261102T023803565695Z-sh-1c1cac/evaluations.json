@@ -1,0 +1,38 @@
+[
+  {
+    "round": 1,
+    "message_id": "msg-0008",
+    "baseline_result_id": "res-b269c79a7c28ea0b",
+    "evaluations": [
+      {
+        "candidate_id": "cand-r1-1",
+        "result_id": "res-fa6b34cfaf178790",
+        "tool_call_id": "tc-0004",
+        "feasible": true,
+        "violations_ok": true,
+        "service_rate_ok": true,
+        "metrics": {
+          "unmet_requests": 170,
+          "distance_bike_km": 3547.0926179873723,
+          "composite_cost": 879.4185235974745,
+          "service_rate": 0.9941170363705575
+        },
+        "violations": {
+          "conservation": 0,
+          "capacity": 0,
+          "budget": 0,
+          "negative_inventory": 0,
+          "clamped_moves": 0
+        },
+        "deltas": {
+          "cost_delta": -13.465633952943222,
+          "unmet_gain": 11,
+          "service_rate_delta_pp": 0.03806623524933439
+        },
+        "verdict": "accept",
+        "defects": [],
+        "suggested_revision": null
+      }
+    ]
+  }
+]

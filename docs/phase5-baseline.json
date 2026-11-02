@@ -1,0 +1,315 @@
+{
+  "phase": 4,
+  "captured_at": "2026-11-01T23:10:00Z",
+  "note": "Phase 4 完成时的实测基线；Phase 5 完成后逐项对比，作为 NF-28 的不回归依据。",
+  "pytest": {
+    "command": "python3 -m pytest -q",
+    "result": "all passed",
+    "exit_code": 0
+  },
+  "check_presentation_phase4": {
+    "ok": true,
+    "n_checks": 38,
+    "n_failed": 0
+  },
+  "replay": {
+    "files": 181,
+    "total_bytes": 7387653,
+    "measured_at": "2026-11-01T22:20:00Z",
+    "note": "Phase 5 改动前的实测值（8 MiB 上限下的 7.05 MiB）。改动后的总量记在 outputs/presentation_validation.phase5.json 的 NF-30 检查里。"
+  },
+  "sources": {
+    "xm": {
+      "n_frames": 4,
+      "n_cells": 169,
+      "delta_max_abs": 102,
+      "n_events": 4,
+      "n_scenarios": 7,
+      "n_chapters": 5
+    },
+    "sh": {
+      "n_frames": 149,
+      "n_cells": 255,
+      "delta_max_abs": 3,
+      "n_events": 4,
+      "n_scenarios": 7,
+      "n_chapters": 5
+    }
+  },
+  "key_numbers": [
+    {
+      "metric": "XM · trip rows",
+      "value": 220675,
+      "source_file": "outputs/summary.xm.json"
+    },
+    {
+      "metric": "XM · duplicate rate",
+      "value": 0.0,
+      "source_file": "outputs/summary.xm.json"
+    },
+    {
+      "metric": "XM · abnormal duration share",
+      "value": 0.028594086326045088,
+      "source_file": "outputs/summary.xm.json"
+    },
+    {
+      "metric": "XM · grid cells",
+      "value": 169,
+      "source_file": "outputs/summary.xm.json"
+    },
+    {
+      "metric": "XM · time buckets",
+      "value": 20,
+      "source_file": "outputs/summary.xm.json"
+    },
+    {
+      "metric": "XM · zero-departure share",
+      "value": 0.29763313609467457,
+      "source_file": "outputs/summary.xm.json"
+    },
+    {
+      "metric": "XM · total departures",
+      "value": 195682,
+      "source_file": "outputs/summary.xm.json"
+    },
+    {
+      "metric": "XM · out_count baseline MAE",
+      "value": 7.075443786982248,
+      "source_file": "outputs/forecast_metrics.xm.json"
+    },
+    {
+      "metric": "XM · out_count model MAE",
+      "value": 7.375493945726536,
+      "source_file": "outputs/forecast_metrics.xm.json"
+    },
+    {
+      "metric": "XM · in_count baseline MAE",
+      "value": 6.971153846153846,
+      "source_file": "outputs/forecast_metrics.xm.json"
+    },
+    {
+      "metric": "XM · in_count model MAE",
+      "value": 6.732218897922043,
+      "source_file": "outputs/forecast_metrics.xm.json"
+    },
+    {
+      "metric": "XM · replenish candidates",
+      "value": 35,
+      "source_file": "outputs/risk_summary.xm.json"
+    },
+    {
+      "metric": "XM · clear candidates",
+      "value": 134,
+      "source_file": "outputs/risk_summary.xm.json"
+    },
+    {
+      "metric": "XM · rule unmet requests",
+      "value": 3617,
+      "source_file": "outputs/strategy_comparison.xm.json"
+    },
+    {
+      "metric": "XM · optimized unmet requests",
+      "value": 3669,
+      "source_file": "outputs/strategy_comparison.xm.json"
+    },
+    {
+      "metric": "XM · rule distance bike-km",
+      "value": 855.773262585488,
+      "source_file": "outputs/strategy_comparison.xm.json"
+    },
+    {
+      "metric": "XM · optimized distance bike-km",
+      "value": 804.379945681073,
+      "source_file": "outputs/strategy_comparison.xm.json"
+    },
+    {
+      "metric": "XM · rule composite cost",
+      "value": 3788.1546525170975,
+      "source_file": "outputs/strategy_comparison.xm.json"
+    },
+    {
+      "metric": "XM · optimized composite cost",
+      "value": 3829.8759891362147,
+      "source_file": "outputs/strategy_comparison.xm.json"
+    },
+    {
+      "metric": "XM · rule replay frames",
+      "value": 4,
+      "source_file": "outputs/sim_rule.xm.csv"
+    },
+    {
+      "metric": "XM · rule replay cells",
+      "value": 169,
+      "source_file": "outputs/replay.rule.xm.parquet"
+    },
+    {
+      "metric": "XM · rule replay moves",
+      "value": 17,
+      "source_file": "outputs/sim_moves.rule.xm.json"
+    },
+    {
+      "metric": "XM · rule service rate",
+      "value": 0.9135846712538226,
+      "source_file": "outputs/sim_rule.xm.json"
+    },
+    {
+      "metric": "XM · optimized replay frames",
+      "value": 4,
+      "source_file": "outputs/sim_optimized.xm.csv"
+    },
+    {
+      "metric": "XM · optimized replay cells",
+      "value": 169,
+      "source_file": "outputs/replay.optimized.xm.parquet"
+    },
+    {
+      "metric": "XM · optimized replay moves",
+      "value": 13,
+      "source_file": "outputs/sim_moves.optimized.xm.json"
+    },
+    {
+      "metric": "XM · optimized service rate",
+      "value": 0.9123423165137615,
+      "source_file": "outputs/sim_optimized.xm.json"
+    },
+    {
+      "metric": "SH · trip rows",
+      "value": 102361,
+      "source_file": "outputs/summary.sh.json"
+    },
+    {
+      "metric": "SH · duplicate rate",
+      "value": 0.0,
+      "source_file": "outputs/summary.sh.json"
+    },
+    {
+      "metric": "SH · abnormal duration share",
+      "value": 0.0005275446703334278,
+      "source_file": "outputs/summary.sh.json"
+    },
+    {
+      "metric": "SH · grid cells",
+      "value": 255,
+      "source_file": "outputs/summary.sh.json"
+    },
+    {
+      "metric": "SH · time buckets",
+      "value": 743,
+      "source_file": "outputs/summary.sh.json"
+    },
+    {
+      "metric": "SH · zero-departure share",
+      "value": 0.763850843163645,
+      "source_file": "outputs/summary.sh.json"
+    },
+    {
+      "metric": "SH · total departures",
+      "value": 99920,
+      "source_file": "outputs/summary.sh.json"
+    },
+    {
+      "metric": "SH · out_count baseline MAE",
+      "value": 0.5335703382023951,
+      "source_file": "outputs/forecast_metrics.sh.json"
+    },
+    {
+      "metric": "SH · out_count model MAE",
+      "value": 0.5102694700735417,
+      "source_file": "outputs/forecast_metrics.sh.json"
+    },
+    {
+      "metric": "SH · in_count baseline MAE",
+      "value": 0.539551783129359,
+      "source_file": "outputs/forecast_metrics.sh.json"
+    },
+    {
+      "metric": "SH · in_count model MAE",
+      "value": 0.5128821317574307,
+      "source_file": "outputs/forecast_metrics.sh.json"
+    },
+    {
+      "metric": "SH · replenish candidates",
+      "value": 124,
+      "source_file": "outputs/risk_summary.sh.json"
+    },
+    {
+      "metric": "SH · clear candidates",
+      "value": 131,
+      "source_file": "outputs/risk_summary.sh.json"
+    },
+    {
+      "metric": "SH · rule unmet requests",
+      "value": 181,
+      "source_file": "outputs/strategy_comparison.sh.json"
+    },
+    {
+      "metric": "SH · optimized unmet requests",
+      "value": 170,
+      "source_file": "outputs/strategy_comparison.sh.json"
+    },
+    {
+      "metric": "SH · rule distance bike-km",
+      "value": 3559.4207877520885,
+      "source_file": "outputs/strategy_comparison.sh.json"
+    },
+    {
+      "metric": "SH · optimized distance bike-km",
+      "value": 3547.0926179873723,
+      "source_file": "outputs/strategy_comparison.sh.json"
+    },
+    {
+      "metric": "SH · rule composite cost",
+      "value": 892.8841575504177,
+      "source_file": "outputs/strategy_comparison.sh.json"
+    },
+    {
+      "metric": "SH · optimized composite cost",
+      "value": 879.4185235974745,
+      "source_file": "outputs/strategy_comparison.sh.json"
+    },
+    {
+      "metric": "SH · rule replay frames",
+      "value": 149,
+      "source_file": "outputs/sim_rule.sh.csv"
+    },
+    {
+      "metric": "SH · rule replay cells",
+      "value": 255,
+      "source_file": "outputs/replay.rule.sh.parquet"
+    },
+    {
+      "metric": "SH · rule replay moves",
+      "value": 1404,
+      "source_file": "outputs/sim_moves.rule.sh.json"
+    },
+    {
+      "metric": "SH · rule service rate",
+      "value": 0.9937363740180641,
+      "source_file": "outputs/sim_rule.sh.json"
+    },
+    {
+      "metric": "SH · optimized replay frames",
+      "value": 149,
+      "source_file": "outputs/sim_optimized.sh.csv"
+    },
+    {
+      "metric": "SH · optimized replay cells",
+      "value": 255,
+      "source_file": "outputs/replay.optimized.sh.parquet"
+    },
+    {
+      "metric": "SH · optimized replay moves",
+      "value": 1409,
+      "source_file": "outputs/sim_moves.optimized.sh.json"
+    },
+    {
+      "metric": "SH · optimized service rate",
+      "value": 0.9941170363705575,
+      "source_file": "outputs/sim_optimized.sh.json"
+    }
+  ],
+  "replay_after_phase5": {
+    "files": 191,
+    "total_bytes": 9531161
+  }
+}

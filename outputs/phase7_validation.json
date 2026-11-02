@@ -1,0 +1,131 @@
+{
+  "run_id": "20261102T152230044850Z-xm-llm-a4feea",
+  "ok": true,
+  "checks": [
+    {
+      "name": "real_four_role_run",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "successful_business_terminal",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "provider_evidence_coordinator",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "provider_evidence_diagnosis",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "provider_evidence_dispatch",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "provider_evidence_evaluation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "monotonic_events",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_identity_baseline",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_total_baseline",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_identity_cand-r1-1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_total_cand-r1-1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_identity_cand-r1-2",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_total_cand-r1-2",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_identity_cand-r2-1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_total_cand-r2-1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_identity_cand-r3-1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_total_cand-r3-1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_identity_cand-r3-2",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "spatial_total_cand-r3-2",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "selected_feasible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "export_identity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "export_total",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "published_hashes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "current_ui_assets",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "offline_entry",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}
