@@ -618,3 +618,596 @@ NOTE，我按"顺带能把根因堵掉就堵掉"的原则处理：
 查看 `xm` / `sh` 两个工作台后确认通过，`docs/VISUAL-CHECK-PHASE4.md` 第三栏七项
 全部改为「已确认」。其中 400 px 视口一档仍无机器实测证据（本机 headless Chrome
 把视口夹到 500 px），该行已注明「人眼判断，未量测」，不冒充量测结果。
+
+## Phase 5 — F21–F23（离线地理底图 / 预测图联动 / 演示素材）
+
+范围仅 F21–F23；没有引入多智能体系统，没有新增数据源，没有改预测/仿真/调度结果。
+
+**P5-M25 · 前置与可行性**
+- Phase 4 基线实测后写入 `docs/phase5-baseline.json`：`check_presentation --phase 4` 38/38、
+  pytest 全绿、XM 4 帧/169 格/4 事件/7 场景、SH 149 帧/255 格/4 事件/7 场景、
+  `replay/` 7,387,653 B。Phase 5 结束后同一份快照逐项对比，没有回归。
+- `docs/basemap-sources.md`：四个候选（Natural Earth 10m / OSM coastline-split / GSHHG+Geofabrik /
+  在线瓦片）逐个记提供者、来源页、下载地址、获取日期、许可、可离线再分发与否、sha256，
+  以及否决理由。选中 GSHHG 2.3.7（LGPL-3.0-or-later）+ Geofabrik 上海/福建（ODbL-1.0）。
+- `docs/crs-evidence.md`：XM 有 README 的 WGS-84 声明（A 级）；SH 无声明，用 OSM 道路控制点量
+  8,000 条起点位移——WGS-84 解释 7.1 m、GCJ-02 解回 20.0 m、WGS-84→GCJ-02 10.4 m，
+  远小于 GCJ-02 应有的 (+436, −210) m 量级，**排除 GCJ-02**；两源都不做转换，残余风险写明。
+- `docs/phase5-feasibility.md`：结论先行，无硬阻断；三处取舍（GSHHG 而非 NE、水系按可见长度筛、
+  预测用 base64 float64）。
+- `capture_presentation.py --check` 打印 Chrome 156 / websockets 16.1.1 / ffmpeg 7.1.1，
+  缺任一返回 2 并给准备步骤。
+
+**P5-M26 · F21 底图**
+- 新包 `bike_agent/basemap/`（`sources.py` 来源登记、`prepare.py` 裁剪、`build.py` 投影与发布）。
+  `data/basemap/raw/{xm,sh}.json` 已提交，构建完全离线。
+- 局部等距圆柱投影（标准纬线取窗口中间纬度），北向上，格心与格角由同一 `Projection` 产出；
+  发布几何 169 / 255 个 rect，不丢格不重复。
+- `replay/basemap/manifest.json` 逐份记录来源/许可/许可文本/CRS/覆盖/裁剪窗口与线要素阈值/
+  简化参数/原始与发布 sha256。`clipping` 是本期补上的字段（F21-1 明确要"简化/裁剪操作"）。
+- 地理视图代码单独放在 `bike_agent/presentation/geo_js.py` → `replay/workbench-geo.js`，
+  这样 `workbench.js` 仍保持"不构造格子几何"的既有性质（`test_presentation_delta.py` 守着）。
+- `[hidden]` 被作者样式 `display:grid` 覆盖过一次，补了 `!important` 规则。
+- `browser_smoke.py` 的几何量测原先数到了两个隐藏 SVG（507 格、338 个零尺寸），
+  改成只量可见宿主；随后又把量测挪到"并排"视图，因为只有它带搬运连线——
+  每条 `line.geo-move` 的两端都按发布 rect 重算格心并比对（阈值 0.5 px）。
+
+**P5-M27 · F22 预测联动**
+- `bike_agent/presentation/forecast.py`：三指标 × 三系列；浮点用 base64 小端 float64
+  （逐位精确），`net` 不单独存储、由 out−in 派生（省 ~0.9 MiB）。两源合计 1.80 MiB / 2 MiB。
+- 只显示 `forecast.<source>.parquet` 覆盖的测试段；缺失点保持断口，不前向填充、不补训练期。
+- 局部 MAE 只统计该格可配对测试点并同屏给 n；与全源 MAE 分标签。
+- `browser_smoke.py` 新增指标/范围切换量测：三系列始终 3 条，n 从 4→676（XM）、149→37995（SH），
+  选格与帧不动；MAE 单格 10.12 vs 全源 6.24（XM），说明两个量确实不同。
+
+**P5-M28 · F23 素材**
+- `scripts/cdp.py`（约 300 行 CDP 客户端，不引入 Selenium/Playwright）+ `capture_presentation.py`。
+- 六张 1600×900 PNG + 116 秒 1280×720 VP9 WebM（491–498 KB），全部来自真实页面。
+- **新增 `--verify`**：`--all` 捕获完在同一浏览器里重放每张图的 `recipe`，把 13 个身份状态键
+  与记录逐项比对，结果写进 manifest 的 `replay_check`。这样"状态键能重新定位到当前页面"
+  是实测的，不是自述。`--verify` 不写媒体，也不改写 `last_run`。
+- `last_run.files` 改为列出整个媒体集合，并标 `written` 表示本次是否写出；
+  `--shots` 只刷截图时不会让视频看起来"缺失"。
+
+**P5-M29 · 验证与文档**
+- `scripts/check_phase5.py`，入口 `check_presentation.py --phase 5`，22 项检查全过。
+- 文档：README / REPORT §9.7 / DECISIONS D24–D26 + D27（偏差说明）。D23 已被 Phase 4 占用，
+  按文件内"编号顺延"约定落到 D24–D26，主题与 PRD 一一对应。
+- **偏差**：§1.3 只授权改两处站点总量上限，实际同一断言在 `tests/test_presentation_data.py`
+  还有第三处；三处都改为 12 MiB 并在原地注明（D27），而不是压数据迁就旧常量。
+
+**收尾实测（串行，全部实际执行）**
+- `python3 -m pytest -q`：353 passed / 0 failed / 0 skipped
+- `bike-agent replay --sources xm,sh`：退出码 0（4 帧×169 格 / 149 帧×255 格）
+- `bike-agent serve --check`：退出码 0，13 项 capability 全 true
+- `check_presentation.py --phase 4`：38/38
+- `check_presentation.py --phase 5`：22/22，写 `outputs/presentation_validation.phase5.json`
+- 体积：`replay/` 9,531,161 B（9.09 MiB / 12 MiB）、底图 213,204 B（/ 2 MiB）、
+  预测 1,892,696 B（/ 2 MiB）、`presentations/phase5/` 1,868,174 B（/ 100 MiB）
+
+**踩过的坑（留给后面的人）**
+- **验证命令不能和浏览器冒烟并行。** `browser_smoke.py` 运行期会把 `workbench.smoke.html`
+  写进 `replay/<source>/`，而 Phase 4 的 NF-24 会把它判成 `stray_files`。
+  而且 `check_presentation.py --phase 4` 自己就会跑 `browser_smoke.py`，所以它也不是纯静态检查；
+  我并行跑 `check_presentation --phase 5` 时 NF-28 报过一次假失败；串行重跑即通过。
+  结论：收尾五道门必须排队跑，不是测试不稳定。
+- `--remote-debugging-port=0` 在 macOS Chrome 156 上不写 `DevToolsActivePort`，改成自选空闲端口
+  + 轮询 `/json/list`。
+- SVG 元素没有 `.click()`，CDP 里补了 `MouseEvent` 派发回退。
+- `#forecast-chart circle:nth-of-type(40)` 曾因图表脚本报错而选不到，被 `_apply` 的
+  "找不到控件即中止"拦下——这正是它存在的意义。
+
+**仍未做：人工视觉确认。** 六张截图与视频我没有代用户签署认可，
+完成状态按"自动验证完成 / 浏览器冒烟完成 / 人工视觉待确认"三栏记录。
+
+## Phase 5 · 评审驳回后的修正（第二轮）
+
+独立评审（architect, opus）判 REJECTED，核心结论成立，逐条处理：
+
+**BLOCKER · net 符号与文案相反（真缺陷，不是措辞）**
+数据侧 `net = out − in`（`prep/aggregate.py`、`forecast/pipeline.py`、REQUIREMENTS F4：
+净流出为正），但页面/文档写成 `归还 − 借出`、`正 = 净流入`——公式与符号都反了。
+反例：C0007_0010 第 0 时段 out=112、in=21、net=+91，文案却说是"归还 − 借出 = 净流入"。
+改了 6 处（`forecast.py` 的 `METRIC_LABELS`/`NET_CONVENTION`、`render.py` 的静态说明、
+README、REPORT、DECISIONS D25），并补了**语义测试**：断言标签方向、断言
+`out > in` 的行 net 必为正、`out < in` 的行必为负——不只是比字符串。
+
+**HIGH · 全源范围仍显示"局部 MAE"**
+加 `#forecast-mae-label`，切范围时在「局部 MAE / 全源 MAE」之间切换；浏览器冒烟断言
+两个标签确实不同（`maeLabelCell == '局部 MAE'`、`maeLabelSource == '全源 MAE'`）。
+
+**HIGH · 预测时段与回放时段只比数量、不比取值**
+页面按帧下标对齐，所以两份列表必须是同一份。`build_forecast` 现在读回
+`replay.rule.<source>.parquet` 的 `time_bucket` 并**逐值比较**，不一致直接抛错；
+`check_phase5` 的 F22-1 与 `tests/test_presentation_forecast.py` 各有一条断言，
+另有负向测试（把回放时段整体 +1 小时，必须抛 `ValueError`）。
+
+**MEDIUM · 素材过期查不出来**
+`INPUT_FILES` 只覆盖 `outputs/`，页面改了也能过。现在把 14 个页面资源
+（`workbench.html`、`workbench.js`、`basemap.js`、`forecast.js` …）纳入输入摘要，
+`input_files` 逐文件记 sha256，`check_phase5` 与测试都拿它跟当前工作区比。
+
+**MEDIUM · 搬运端点子检查是纸面通过**
+原实现只查"端点格存在"，却在 docstring 里声称核对了箭头。改成两半：
+成员关系 + **脚本构造**（`centre(move.from_cell)`、`rect.x + width/2`），
+并明确写出"画面上的 x1/y1/x2/y2 由 browser_smoke.py 在真实 DOM 上量"。
+
+**MEDIUM · F22-2 漏了 net 与当前点误差**
+F22-2 现在用 parquet 独立重算 out/in/**net** 的汇总与逐格 MAE；
+误差公式改为断言 JS 里确实是 `pred − actual` 与 `Math.abs(error)`；
+浏览器冒烟再按屏幕上显示的 actual/pred 复算 error 与 |error|。
+
+**MEDIUM · 每个媒体没有捕获状态 / 许可文本只是"通知"**
+每条媒体加 `status: "ok"`。GSHHG 的 `GSHHG-LICENSE.txt` 只有 1,375 B 的许可声明，
+不是 LGPL 全文；补随包 `LGPL-3.0.txt`（归档的 `COPYING.LESSERv3`）与 `GPL-3.0.txt`，
+构建与验收都校验长度 ≥1000 B 且含标识行——占位文件不再能冒充许可。
+
+**MEDIUM · 可选依赖没声明**
+`pyproject.toml` 增加 extras：`media-check`（Pillow）、`basemap`（pyshp）、`capture`（websockets）；
+README 补 Pillow 与安装方式。
+
+**LOW 一并修**：角点核对不再复用构建的 `(ix_max+1)` 步长，改从 parquet 相邻格心推步长；
+`test_inverse_projection_round_trips` 改成独立公式（原来调用被测代码）；
+CRS 文档的 0.09 px / 13.2 km / 33.8 km 改成实测 0.109 px、15.6 km、36.0 km；
+`build.py` 里"prepare.py 是唯一联网的工具"是错的（它只解压本地归档），改正；
+页面现在真的显示基线与模型的 MAE 并写明"模型未优于基线"（XM 借出）；
+`_check_forecast` 去掉没用的 `presentations` 参数与整次 `build_all_presentations`；
+空图层不再被总数掩盖。
+
+**未改的取舍**：视频仍逐帧截图（约 464 张、2 分钟），没有改成 7 张静帧循环。
+理由写在 D26：录屏与截图共用同一条 CDP 路径，只有一套"页面当时是什么样"的实现。
+
+**反馈门说明**：修正后第一次 `ralph verify` 报 3 条 "new failure"，全部是 pytest 进度点
+（`[60%]`、`[80%]`、`[100%]`）——新增测试让行宽与百分比变了，不是失败。旧基线已另存
+`feedback-baseline.pre-review-fixes.json`，重录后重跑。
+
+## 2026-11-02 · 复核第二轮（REJECTED，1 blocking + 1 secondary + 2 low）
+
+**BLOCKING · 部分重录可以带着旧素材通过验收**
+`_write_manifest` 每次写清单都用当前工作区重算摘要，而 `--verify` / `--shots` / `--video`
+保留旧素材。失败序列：`--all` → 改 `replay/workbench.js` → `--verify` → 清单顶部是新摘要、
+六张 PNG 仍是旧页面，F23-2 却通过。逐条 `input_digest` 早已记录，但没人读它。
+修法：`capture_snapshot()` 决定写哪个快照（捕获取当前工作区，`--verify` 沿用捕获时的）；
+F23-2 与 `test_presentation_media.py` 逐条要求 `entry["input_digest"] == input_digest()`；
+`stale_entries()` 由命令与验收共用；部分重录发现旧素材就点名、写 `last_run.stale_media`、
+返回非零。新增 4 个测试（逐条摘要、部分重录判定、`--verify` 不改摘要、`prepare` 复制许可）。
+
+**SECONDARY · 重建流程满足不了新的许可门**
+`build._write_licenses` 要求四份文本，`prepare.py` 只复制 `LICENSE.TXT`，错误信息还把责任
+推给 `prepare`。GSHHG 归档实际带 `COPYING.LESSERv3` 但不带 `COPYINGv3`，两份归档都没有
+ODbL 全文。修法：`_copy_licenses()` 复制归档里有的两份，缺任何一份就在写提取文件前失败并
+逐份给出获取位置；`build` 的错误信息改为指向人工步骤。`docs/basemap-sources.md` §5 写明分工。
+
+**LOW · 空预测分支留下上一个格子的标签与读数**
+`renderForecast` 在 `!values` 时只换图内文字就返回。现在同时复位 `#forecast-range-label`、
+`#forecast-mae-label` 与八个读数（`data-value` 置空、显示 `—`、`join-key` 置 `scope=none`）。
+注意 `replay/workbench.js` 是 `render.py` 里 `WORKBENCH_JS` 生成的——改的是生成器，
+改完跑 `bike-agent replay` 覆盖，再按新摘要重录媒体。
+
+**LOW · P5-PRE 漏了回放 parquet**
+F22-1 要读 `replay.rule.<source>.parquet`，缺文件时验收会抛 `FileNotFoundError` 而不是报
+一条失败的检查。已加入前置清单。
+
+**验收**：`pytest`、`replay --sources xm,sh`、`serve --check`、`--phase 4`、`--phase 5` 串行跑；
+媒体用 `--all` 重录（`workbench.js` 变了，逐条摘要会点名旧素材）。
+
+## 2026-11-02 · 复核通过后的清理（deslop）
+
+复核结论 APPROVED。清理前把 3 条 LOW advisory 一并处理：
+
+- **A1** `capture_snapshot("verify", {})` 不再"沿用"一个不存在的快照：没有 `input_digest`/`input_files`
+  时抛 `SnapshotMissing`，`main()` 打印中文说明并返回 2。原来的回退会写出一份"媒体从未有过"的
+  摘要，正是该函数 docstring 说不能发生的事。测试改为断言它拒绝。
+- **A2** `--verify` 在输入已改动时向 stderr 打印一行提示（状态键仍能定位，但画面不是当前页面的），
+  让操作者在动作点看到漂移，而不是等下一次验收。不改变退出码——`--verify` 自己的职责仍是复核状态键。
+- **A3** `prepare.main()` 捕获 `FileNotFoundError` 并走 `parser.error()`，缺归档/缺许可是操作者错误，
+  不再抛 traceback。
+- **A4** `docs/basemap-sources.md` §5 记录 GSHHG 归档两个成员与随包文件的 sha256（逐字节相同，已实测），
+  读者可离线复核；GPL/ODbL 不列摘要并说明原因。
+
+**deslop 具体改动**（只动本会话改过的文件）：
+
+1. `PAGE_ASSETS` 由 `INPUT_FILES` 派生，取代 `check_phase5` 与 `test_presentation_media` 里各自
+   手抄的 8 项页面资源清单（共三处重复 → 一处）。派生后覆盖 14 个页面资源，全部本来就在
+   `input_files` 里，判定结果不变。
+2. 删除 `test_input_digest_detects_a_changed_input`：它的断言（`input_digest() == manifest["input_digest"]`）
+   已被 `test_every_medium_carries_the_digest_of_its_own_capture` 完整包含且更强（逐条 + 顶部）。
+   删除重复覆盖，不是丢失覆盖。
+3. 顺手修回被前一次编辑压掉的空行（`# -- missing tools --` 段落标题与 def 之间）。
+
+**清理后验收**：`pytest` 364 passed（原 365，删掉 1 个重复测试）；`replay`、`serve --check`、
+`--phase 4`、`--phase 5` 全部退出 0；媒体摘要与当前树一致、`stale == []`、14 个页面资源全覆盖。
+`ralph verify` 首次报 2 条 "new failure" 全是 pytest 进度点（测试数 365→364 导致百分比行变化），
+旧基线存为 `feedback-baseline.pre-deslop.json`，重录后 clean。
+
+## Phase 5 交付状态（三栏）
+
+| 栏目 | 状态 | 证据 |
+|---|---|---|
+| **自动验证完成** | ✅ | `pytest` 364 passed；`check_presentation.py --phase 4` 38/38；`--phase 5` 22/22（`outputs/presentation_validation.phase5.json`，`n_failed: 0`）；`ralph verify` clean |
+| **浏览器冒烟完成** | ✅ | `browser_smoke.py --source xm` 实测投影/差分格尺寸/搬运端点/预测联动/MAE 标签/事件跳转游标；返回 0 |
+| **人工视觉确认** | ⬜ **待确认** | 六张截图与 116 秒视频**未经我代签**；需用户按 `presentations/phase5/README.md` 自行查看 |
+
+体积：站点 9,532,307 B（9.09 MiB < 12 MiB）；底图 134,417 B（≤ 2 MiB）；
+预测展示数据 1,892,696 B（≤ 2 MiB）；媒体 1,868,174 B（≤ 100 MiB，且在站点外）。
+视频 503,332 B / 116.0 s / 1280×720 / VP9 / 4 fps；截图 6 张 1600×900；`last_run.exit_code == 0`。
+
+**范围确认**：仅 F21–F23。未新增数据源、未做逆地理编码/道路路由/GPS 轨迹重建/3D；
+未改预测、仿真、调度结果；无置信区间；无在线地图账号或 API key；无公开发布或自动上传。
+
+
+## Phase 6 开工基线（M30，按实测记录）
+
+任务描述称“Phase 4/5 尚未实施、`scripts/check_presentation.py` 与 `outputs/presentation_validation.*`
+不存在、站点约 5.6 MB / 157 HTML、旧断言 6 MiB”。开工核验结果与描述**不一致**，按实测记录：
+
+- Phase 4 已在提交 `c52d78a` 中；Phase 5 的改动已在工作树中（`scripts/check_presentation.py`、
+  `outputs/presentation_validation.phase4.json`、`outputs/presentation_validation.phase5.json`、
+  `replay/basemap/`、`replay/*/forecast.js`、`bike_agent/basemap/` 等），尚未提交。
+- 开工站点：**9,532,307 B（9.09 MiB）/ 159 个 HTML**（含 `collab.html` 之前；Phase 5 交付记录）。
+  旧断言常量是 **12 MiB**，不是 6 MiB。
+- `python3 -m pytest`：**364 passed**（Phase 5 交付基线）。
+- `python3 scripts/check_presentation.py --phase 4`：38/38；`--phase 5`：22/22。
+- `python3 scripts/check_multi_agent.py`：**尚不存在**，按任务要求先如实失败，再实现。
+- `bike-agent replay --sources xm,sh`、`bike-agent serve --check`：退出 0。
+
+因此本期把站点总量常量从 **12 → 14 MiB**，并在 `DECISIONS.md` D33 写明“不是从 6 MiB 直接到
+14 MiB”；没有回退或删除已有的 Phase 4/5 产物。
+
+另：Phase 5 的 progress 声称决策落在 `DECISIONS.md` D24–D26 + D27，但实测该文件正文止于 D23，
+D24–D28 没有对应条目。本期不补写 Phase 5 决策（超出范围），Phase 6 按 PRD 指定使用 D29–D33，
+并在 D29 前注明这一编号跳跃的实际原因。
+
+## Phase 6 实现摘要（M30–M35）
+
+- **M30**：`bike_agent/multi_agent/contracts.py`（11 个 Draft 2020-12 schema）、`task.py`
+  （TaskSpec、预算档位、输入 manifest 与 sha256 冻结）、`messages.py`（MessageStore 七类消息与
+  引用/轮次校验）、`roles.py`（四角色独立 `handle`）。非法任务与消息在任何工具调用前被拒。
+- **M31**：`gateway.py` 角色权限、参数校验、上限、冻结校验、缓存与重试；新工具
+  `evaluate_dispatch_candidate` 薄封装 `run_simulation(..., write=False)`，metrics/trajectory/
+  violations 原样透出；旧三工具 schema 与 handler 未改。角色模块的 AST/导入边界测试通过。
+- **M32**：`bike-agent multi-agent` 完成基准→诊断→提案→评估→结论；每次运行写独立
+  `outputs/multi_agent/<run_id>/`；离线、无 LLM SDK。
+- **M33**：拒绝→反馈→修订→重评估真实走通（改策略与改预算两条路径）；五终态与退出码；
+  轮次/候选/工具/时限上限；确定性；失败矩阵。
+- **M34**：`scripts/check_multi_agent.py` 20 项检查 + `outputs/multi_agent_validation.phase6.json`；
+  XM/SH 真实运行、默认与显式 400 上限；`bike-agent repro` 退出 0，业务产物无 diff，
+  不自动触发 multi-agent。
+- **M35**：`bike_agent/presentation/collab.py` + `replay/collab.html`，节点带真实
+  `data-message-id` / `data-tool-call-id`，深链到播放器与工作台；空态、离线、规则驱动标注；
+  `scripts/browser_smoke_multi_agent.py` 真实 Chrome 冒烟。
+
+**本轮遇到的问题与修正**：
+
+1. 协调角色最初把“自报通过”当证据 → 改为回读工具输出，核对 metrics、violations、result_id、
+   frozen_context_id，任一不符即拒绝。
+2. 服务率缺陷时方案角色会降低预算 → 改为按 `suggested_revision.action` 分支，`raise_budget`
+   不再尝试更低档。
+3. 基准不可行但存在可行候选时误判 `no_feasible_candidate` → 先判定候选可行性，再决定是否回退。
+4. 平手被策略名字典序判为“优化” → `_strictly_better` 只比较代价/服务率/预算/距离，平手保留基准。
+5. 工具调用上限检查在递增前，导致上限 1 仍执行 2 次 → 改为递增后检查。
+6. 协作页深链写成 `../xm/...`，从站点根打开会越界 → 改为 `xm/...`；浏览器冒烟补上
+   `Page.navigate` 丢失 fragment 的处理。
+7. Phase 4 检查器把新页面 `collab.html` 判为 stray file → 在派生清单中加入该构建产物，
+   旧断言不放宽（见 D33 兼容修订）。
+8. 并发运行两个浏览器冒烟会留下 `workbench.smoke.html`，导致站点体积/文件清单失败 →
+   改为串行运行检查与冒烟，确认无残留后再验收。
+9. F28 修改了 `replay/player.js` / `replay/workbench.js`，Phase 5 媒体摘要失效 → 按提示重跑
+   `capture_presentation.py --all` 刷新整套素材；不是新增 Phase 5 能力，也不代替人工视觉签收。
+
+
+## Phase 6 `bike-agent repro` 回归证据
+
+`bike-agent repro`（退出 0）后，以下文件与 `HEAD` 逐字节相同（sha256 对照 `git show HEAD:<path>`）：
+
+| 文件 | sha256（前 16 位） |
+|---|---|
+| `outputs/key_numbers.json` | `3788d0f7836620e8` |
+| `outputs/sim_rule.xm.json` | `ad638c921451e607` |
+| `outputs/sim_optimized.xm.json` | `4de075df790ee0c8` |
+| `outputs/sim_rule.sh.json` | `0ed3905530b587e5` |
+| `outputs/sim_optimized.sh.json` | `8ef45512e25d265b` |
+| `outputs/agent_run.xm.json` | `3ac0dc03c0401f30` |
+| `outputs/agent_run.sh.json` | `c80785d19b16cb3d` |
+
+`outputs/multi_agent/` 仍只有 5 个本期手动运行目录，最新目录的 mtime 早于 repro，证明
+`repro` **没有自动触发**多智能体。旧 `bike-agent agent` 与 `outputs/agent_run.*` 保持可用。
+
+
+## Phase 6 验收结果（滚动更新）
+
+- `python3 -m pytest`：开工基线 364 passed；本期实现后 **459 passed，退出 0**（新增 95 项，含评审修正后的回归）。
+- `bike-agent repro`：退出 0；业务产物与 HEAD 逐字节一致（见上表）；未触发多智能体。
+- Phase 5 媒体因 F28 页面改动而失效，已用 `capture_presentation.py --all` 刷新；
+  `pytest` 中两条媒体摘要测试恢复通过。
+- `python3 scripts/check_presentation.py --phase 4`：**38/38 通过，退出 0**（含 `collab.html` 归属修订）。
+- `python3 scripts/check_presentation.py --phase 5`：**22/22 通过，退出 0**（媒体已刷新）。
+- `python3 scripts/check_multi_agent.py`：**20/20 通过，退出 0**；报告
+  `outputs/multi_agent_validation.phase6.json`（`n_checks: 20`, `n_failed: 0`）。
+- `bike-agent replay --sources xm,sh`：退出 0；`bike-agent serve --check`：退出 0。
+- `python3 scripts/browser_smoke_multi_agent.py --json`：**pass**，真实 Chrome 156.0.8078.79，
+  `file://` 下点击消息/候选并恢复播放器与工作台深链。
+
+**资源统计（实测）**：
+
+- 站点 `replay/`：**9,698,277 B（9.25 MiB）**，上限 14 MiB。
+- 协作页打包数据（两源，XM 三个终态各一份）：**108,303 B**，上限 1 MiB；`replay/collab.html` 163,505 B。
+- 单次审计目录：**61,710–107,076 B**，上限 16 MiB。
+- Phase 5 媒体：六张截图 + 116.0 s / 1280×720 WebM，位于 `presentations/phase5/`（站点外）。
+
+**NF-39 耗时拆分**（新增 `decision.json.timing`、`run.json.timing`、`report.md` 一行、
+协作页「本次投入」）：任务总时长 = 后端仿真 + 诊断工具 + 消息调度，实测三份运行分别为
+939.1 / 1,981.5 / 1,215.3 ms，其中后端仿真占 63%/87%/69%。`check_multi_agent.py` 的
+`P6-RUN-*` 校验三项相加等于总时长；`tests/test_multi_agent_loop.py::test_timing_separates_backend_simulation_from_scheduling`
+覆盖落盘与报告。
+
+## Phase 6 交付状态（四栏）
+
+| 栏目 | 状态 | 证据 |
+|---|---|---|
+| **自动验证** | ✅ | `pytest` **463 passed**（收尾时实测，含协作页运行隔离、角色替换与运行报告距离披露测试）；`check_multi_agent.py` 20/20；`check_presentation.py --phase 4` 38/38、`--phase 5` 22/22；`replay`、`serve --check`、`bike-agent repro` 退出 0 |
+| **真实双源运行** | ✅ | `outputs/multi_agent/`：XM 默认 `20261102T041847194508Z-xm-39ea4a` `baseline_retained`；SH 默认 `20261102T041850728379Z-sh-6d9b3d` `accepted`（cost_delta −13.47）；XM 高上限 `20261102T041855281063Z-xm-3d85b8` `accepted`（rule/400，cost_delta −125.24）；XM 高约束 `20261102T042830578994Z-xm-fde780` `no_feasible_candidate`（3 个候选全不可行） |
+| **浏览器冒烟** | ✅ | `browser_smoke_multi_agent.py` pass（Chrome 156）；**先切到非默认运行**再点击与其 id 冲突的 `msg-0001`，消息/证据 chip/候选三处 `provenance_matches` 均为 true；播放器 `#frame=2`、工作台 `#frame=2&cell=C0007_0010` 深链恢复；400×900 + 深色模式可用（溢出 0 px） |
+| **人工视觉确认** | ⬜ **待确认** | 协作页与刷新后的 Phase 5 素材**未经我代签**；需用户自行查看 `replay/collab.html` 与 `presentations/phase5/` |
+
+
+## Phase 6 独立评审与修正
+
+第一轮独立评审结论为 **REJECTED**，指出 2 个 blocker、2 个 major 与若干 minor。逐条处理：
+
+| 评审项 | 修正 | 证据 |
+|---|---|---|
+| blocker：`baseline_retained` 可能 `selected=None`，与项目自带检查器冲突 | `_decision_payload` 在 `baseline_retained` 且基准可行时补上基准视图 | `test_baseline_retained_always_selects_the_baseline`；`check_multi_agent` 的 P6-RUN-XM |
+| blocker：循环中途失败丢失 `final` 消息，并出现 `parent_id=null` 拒绝 | `_send_final` 在没有传入 id 时挂到最后一条实际消息 | `test_a_failed_run_still_ends_with_a_parented_final_message` |
+| major：F25-3 的“取消”未实现 | `run()` 捕获 `KeyboardInterrupt`，写 `failed` 终态与完整审计 | `test_cancellation_writes_a_decision_and_stops_calling` |
+| major：REPORT/DECISIONS 引用旧运行与错误的体积基线 | 全部改用本期可复现运行；D33 分三层写清 HEAD=8 MiB、工作树=12 MiB、本次 12→14；消息链改为 `msg-0009`→`0014` | REPORT §9.7、D30/D32/D33 |
+| minor：公式未显式落盘 | 评估条目与 `evaluations.json` 增加 `formula` + `operands`（含两侧 `result_id`） | `test_the_formula_and_its_operands_are_persisted_with_the_result` |
+| minor：协调角色没有 `handle` | 增加 `CoordinatorRole.handle()`，调度器改用它 | `test_every_role_overrides_handle` |
+| minor：错时段风险排名无负向测试 | 新增测试，断言 `covers_focus_bucket=False` 与 `possible_related` | `test_diagnosis_marks_a_risk_ranking_from_another_bucket_as_not_covering` |
+| minor：提案级非法预算无测试 | 新增测试，断言评估次数不增加 | `test_proposal_level_illegal_budget_fails_before_any_evaluation` |
+| minor：协作页无运行选择器，`baseline_retained` 不可见 | 增加按源选择器；XM 三个正常终态各一份，默认 `accepted` | 页面 `run-picker`、`test_the_page_offers_a_run_selector_and_an_alternative_state`、浏览器冒烟 `run_selector` |
+| minor：候选状态把“可行”写成“accepted” | 改为 `feasible` / `rejected` / `selected` | 真实运行 `candidates.json` |
+| minor：focus cell 深链未标 `possible_related` | 链接旁注明“可能相关，预测非实际损失，待核查” | `test_focus_cells_carry_the_possible_related_caveat` |
+| minor：README 消息类型写错 | 改为实际七类，含 `revision_proposal` | README |
+| minor：repro 传递导入声明过强 | docstring 改为“只导入 contracts”，并加导入阻断测试 | `test_repro_site_import_does_not_load_the_agent_runtime` |
+
+
+## Ralph 反馈门与基线重录
+
+首轮 `ralph verify`（对照 10:32 的开工基线）报 9 条 "new" 签名，逐条核对后全部是：
+
+- pytest 的进度点百分比行与 `459 passed` 汇总行（测试数从 364 增加到 459，属于本期新增）；
+- `check_multi_agent.py: phase 6: 20/20 checks passed`（该脚本在开工基线时**尚不存在**，基线记为不可运行）。
+
+四条 feedback 命令本身都退出 0，没有真实失败。按 Phase 5 已用过的做法：旧基线另存为
+`feedback-baseline.pre-phase6.json`，再以当前全绿状态重录基线；不改命令、不吞退出码。
+重录后再次 verify 仍报 **1 条** new 签名：pytest 汇总行里的实际耗时后缀（如
+`459 passed, 14 warnings in <v> (0:03:14)`）。这是 `omc` 的数值归一化只覆盖
+“3.14s/320ms”这类带单位时长、未覆盖 pytest 的 `M:SS` 格式造成的；同一命令本次退出 0、
+结果 459 passed。没有通过 `-p no:terminal`、过滤输出或改 feedbackCommands 来消掉它，
+保持“命令真实输出、退出码原样”。
+
+## 复查后剩余缺陷：协作页详情面板未按运行隔离（已修复）
+
+第二轮评审（以及此前的窄范围复查）确认其余项全部成立，只剩一个真实缺陷：消息/工具/候选 id
+在每个运行内从 `msg-0001`/`tc-0001`/`cand-r1-1` 重新计数，而页面脚本用扁平 map
+（`byMessage`/`byTool`/`candidates`）跨所有已发布运行查找；加入运行选择器后，点击任一时间线
+节点或候选行可能展开**另一个运行**的记录。
+
+修复：
+
+- `bike_agent/presentation/collab.py`：改为按 `run_id` 建立每个运行的索引，点击时先用
+  `closest('section.run')` 解析所属运行，再在该运行的索引里查找；展开内容首行写明
+  `run_id` / `source` / 记录 id，候选面板同样带归属。
+- 写脚本时踩到一次真实故障：Python 三引号字符串里的 `'\n'` 被解释成换行，发布页的 JS
+  变成未闭合字符串，整段脚本不执行（点击节点无反应）。改为 `'\\n'` 后重新构建；
+  冒烟脚本因此先失败、修复后通过——这不是“先绿后白”的假证据。
+- `scripts/browser_smoke_multi_agent.py`：先把多运行源切到第二个运行，再在该运行内点击
+  一个**与他运行 id 重复**的 `msg-0001`，断言详情里的 `run_id` 等于被点击的 section；
+  证据 chip 与候选行做同样的归属断言；`_all_ok` 增加三条 `provenance_matches`。
+- `tests/test_multi_agent_collab.py`：新增 `test_detail_lookups_are_scoped_to_the_owning_run`
+  （页面脚本必须含 `closest('section.run')`、不得再有扁平 `byMessage[`，且已发布 payload
+  确实存在跨运行重复 id，证明隔离是必要的）。
+- 顺带修正取消路径的轮次计数：`run()` 的 `finally` 用 `store.current_round` 与返回值取大，
+  中途 Ctrl-C 不再把已经跑过的轮次报成 `rounds_used: 0`；
+  `tests/test_multi_agent_loop.py` 新增 `test_cancelling_mid_round_reports_the_round_that_was_open`
+  （基准成功、第一轮候选评估被取消，断言 `evaluator.calls == [("rule", 200)]` 且
+  `rounds_used == 1`）。
+
+修复后门禁（串行执行）：
+
+- `python3 -m pytest` → **461 passed**, 14 warnings, exit 0（新增 2 条测试）；文档复核后又新增 1 条角色替换测试，最终为 462 passed；
+- `python3 scripts/check_multi_agent.py` → phase 6: 20/20, exit 0；
+- `python3 scripts/check_presentation.py --phase 4` / `--phase 5` → all checks passed, exit 0；
+- `bike-agent replay --sources xm,sh` → exit 0（153 帧页重建）；
+- `bike-agent serve --check` → exit 0；
+- `bike-agent repro` → exit 0；7 个业务产物 sha256 与运行前逐一相同（`key_numbers.json`、
+  `sim_{rule,optimized}.{xm,sh}.json`、`agent_run.{xm,sh}.json`），未覆盖既有业务产物；
+- `python3 scripts/browser_smoke_multi_agent.py` → pass（Chrome 156），消息/证据 chip/候选
+  三处 `provenance_matches` 全为 true；切换后点击的正是 id 冲突的 `msg-0001`，
+  `id_collides_elsewhere: true`；400×900 深色模式溢出 0 px。
+- `replay/` 9.25 MiB（9,699,563 B / 192 个文件；153 个逐帧页），低于 14 MiB 上限。
+
+## 文档产物：REPORT/DECISIONS 是生成文件
+
+复查时发现一个必须先纠正的事实：`REPORT.md` 与 `DECISIONS.md` **由 `bike-agent repro` /
+`bike-agent report` 生成**（`bike_agent/report/pipeline.py::run_reports` 直接覆盖根目录这两个文件）。
+此前把 Phase 6 段落手工追加到这两个文件的做法无法持久——一次 `repro` 就会还原。因此改为把内容写进
+生成器：
+
+- `bike_agent/report/text.py::render_decisions` 追加 `## Phase 6 · D29–D33`（并注明 D24–D28 规划归属
+  Phase 5、本文件未收录该阶段决策，本期从 D29 继续）；
+  > 以上编号后来已按 REQUIREMENTS-PHASE6 §4 校正为 D26–D30，见下文「编号校正」一节；此处保留原样作为过程记录。
+- `bike_agent/report/text.py::_phase6_report_section` 生成 REPORT §9.7：机制、真实运行表、
+  耗时拆分、四列验收状态与局限；数字全部从 `outputs/multi_agent/*/decision.json` 读回，
+  没有运行记录时明确写“尚无运行”，不引用未发生的数据；
+- 真实覆盖按源统计后写入，不再笼统声称两源都有全部终态（实际：XM 有
+  accepted / baseline_retained / no_feasible_candidate，SH 只有 accepted）。
+
+重新生成后核对：`REPORT.md` §9.7 的四条运行与 `decision.json` 一致（SH -13.47/+11、
+XM 高预算 -125.24/+311、XM 默认保留基准、XM 无可行候选），`DECISIONS.md` 含 D29–D33。
+这一改动属于 M36 的决策文档范围，不触碰任何业务产物或旧断言。
+
+## 编号校正：Phase 6 决策改为 D26–D30（并记入 PRD 修订台账）
+
+REQUIREMENTS-PHASE6 §4 的编号表把本期五项决策排在 D26–D30，而任务描述与旧 PRD 判据写的是
+D29–D33（理由是“D26–D28 被 Phase 5 占用”）。核对事实：开工时 `DECISIONS.md` 最后一条是 **D23**，
+`grep '^### D2[4-8]'` 无任何匹配；Phase 5 的决策从未写入本文件。因此按需求文档改为 D26–D30，
+并在节首注明 D24–D25 未被使用、规划归属 Phase 5。
+
+- 生成器位置：`bike_agent/report/text.py::render_decisions` 的 `## Phase 6 · D26–D30` 段（仍由
+  `bike-agent report` / `repro` 覆盖生成，不手工改 `DECISIONS.md`）。
+- PRD 修订：`P6-M36` 第 1 条判据按 `<PRD_Criterion_Amendments>` 走 `replaced`，原判据原文保留在
+  `criterionAmendments` 台账，附 reason/evidence/authority/timestamp，`governingCriteriaRevision` 1→2。
+- 顺带修正三处过时注释：`tests/test_replay_site.py`、`tests/test_replay_player.py` 的 “(D33)” 改为
+  “(DECISIONS D30)”；`tests/test_presentation_data.py` 里 “See DECISIONS D27” 的说法不成立
+  （D27 现在是消息协议），改为如实说明 Phase 5 未写决策记录。断言与常量本身未动。
+- `scripts/check_multi_agent.py`：每条检查新增 `evidence` 字段，列出该检查实际读取的文件；
+  `outputs/multi_agent_validation.phase6.json` 的 20 条检查全部带非空 evidence，供 §8 的
+  “报告记录验收 ID、命令、输入摘要、实测值、判定及证据路径”逐条核对。
+
+## 反馈基线第二次重录（新增测试导致签名漂移）
+
+修复后新增 2 条测试（461 vs 459），pytest 的进度点行与汇总行因此变化，`ralph verify` 报 4 条 "new"：
+三条进度点行与 `461 passed, 14 warnings in <v>`。逐条核对：四条 feedback 命令本身全部退出 0，
+所谓 new 全是成功输出行，属于 omc 签名归一化把 pytest 终端输出当作签名的已知缺陷。
+按 Phase 5 的处理方式：旧基线另存为 `feedback-baseline.pre-collab-fix.json`，在“全套门禁确认全绿”
+之后再重录；没有改 feedbackCommands、没有过滤输出、没有吞退出码。
+
+## 文档/证据复核（第三轮）：四条 HOLD 的处置
+
+窄范围复核只审文档与证据层，结论 REJECTED，四条都成立，已逐条修：
+
+| HOLD | 事实 | 处置 |
+|---|---|---|
+| D29 声称“只比较同预算 rule 基准”，但 XM 高预算运行对照的是 rule/200 | `decision.json`：baseline budget 200、feasible false；selected rule/400；距离 855.77 → 1784.57（+928.80 bike-km） | 不掩盖：D29 改为“默认预算运行是同预算对比；提高预算的运行是预算实验，必须披露基准预算、基准可行性与距离变化”；REPORT §9.7 表新增“基准”与“距离变化 (bike-km)”两列，两列均由 `decision.json` 计算，+928.80 现在明写在表里 |
+| D26 引用 `test_replacing_diagnosis_changes_the_proposal` 说“替换了 DiagnosisRole”，但该测试只换了诊断输出 | `tests/test_multi_agent_protocol.py:383` 只调 `DispatchRole().handle` 两次 | 新增 `test_replacing_the_diagnosis_role_changes_the_dispatch_rationale`：经 `Orchestrator(roles={"diagnosis": ...})` 注入替换角色，断言提案理由改变且其它角色代码未改；D26 同时引用两条测试并说明各自证明什么 |
+| D27 用 `test_terminal_states_are_the_required_five` 证明退出码 | 该测试只锁定五个终态名字 | 改为引用 `contracts.SUCCESS_STATES` 与三条成功路径、一条取消路径的测试 |
+| `_phase6_report_section` 自称“每个数字都从 decision.json 读回”，但上限、测试数、浏览器版本是字面量 | 复核指出 | 上限改为从运行记录的 `limits` 读取；docstring 如实说明只有测试数与浏览器版本是本次交付的实测字面量 |
+| （附带）D28“浮点 1e-9” | 实测是 metrics/trajectory 直接等值比较 | 改为“直接等值比较，比 1e-9 更严格” |
+| （附带）README “六个必需输入” | manifest 实际 6 必需 + 3 可选 | 补充“三个可选输入（存在才纳入）” |
+| （附带）D30 “按源提供运行选择器” | 只有 XM 有多条运行 | 改为“对有多条运行的源提供选择器（本机 SH 只有一条，因此只有 XM 出现）” |
+
+复核同时确认：REPORT/DECISIONS 与生成器逐字节一致、§9.7 表格与 decision.json 逐行相符、20 条检查的
+evidence 全部非空且路径存在、旧测试只改了已约定的三个常量、无新增 skip/xfail。
+
+## 收尾核验（只读，未改任何产物）
+
+- 逐目录扫描 `outputs/multi_agent/` 的 12 个运行：八个必需审计文件齐全；`messages.jsonl` 内每条
+  `run_id` 与该目录名一致；`limits` 未超限（rounds_used ≤ max_rounds、tool_calls_used ≤ max_tool_calls、
+  distinct_candidates ≤ max_distinct_candidates）；`exit_code` 与五终态策略逐条相符。
+- 协作页 payload 与审计逐条对齐：4 个已发布运行的 messages / tool_calls 计数与 `messages.jsonl`、
+  `tool_calls.jsonl` 完全相等；36 条格子深链存在；`selected` 指向各有源的 accepted 运行。
+- 11 个 schema 全部通过 Draft 2020-12 校验；旧三工具契约仍只有三个工具。
+- 未新增 `skip`/`xfail`/`|| true`；`check_multi_agent.py` 在有失败时返回 1（`return 0 if not checks.failed else 1`）。
+- `§8` 第 4 条“高预算实验须说明资源变化”由 REPORT §9.7 新增的“基准（含可行性）”与
+  “距离变化 (bike-km)”两列满足：XM 高预算行明写 rule/200（不可行）→ rule/400、+928.80 bike-km。
+- 四栏状态表已按实测刷新（462 passed；冒烟含切换运行后的三处 provenance 断言）；
+  `docs/VISUAL-CHECK-PHASE4.md` 与 `presentations/phase5/` 仍是“人工视觉待确认”，未代签。
+
+## 最终门禁实测（逐条退出码，非自报）
+
+串行、独占运行四条 feedbackCommands（`progress.txt` 之外另有原始日志）：
+
+| 命令 | 退出码 | 输出结尾 |
+|---|---|---|
+| `python3 -m pytest` | **0** | `462 passed, 14 warnings in 279.03s (0:04:39)` |
+| `python3 scripts/check_multi_agent.py` | **0** | `phase 6: 20/20 checks passed` |
+| `python3 scripts/check_presentation.py --phase 4` | **0** | `phase 4: all checks passed` |
+| `python3 scripts/check_presentation.py --phase 5` | **0** | `phase 5: all checks passed` |
+
+`omc ralph verify` 仍报 2–3 条 "new"，逐条核对后**全部是 pytest 终端噪声**，不是失败：
+
+1. `................................ [xx%]` 进度点行——`signatureLines` 不忽略进度点，且该行长度随终端宽度变化
+   （实测出现 54 / 72 / 75 / 85 点四种宽度）。以 `COLUMNS=80` 复跑可固定宽度。
+2. `462 passed, 14 warnings in <v> (0:04:39)`——omc 把 `279.03s` 归一化成 `<v>`，却保留 pytest 追加的
+   `(M:SS)` 人类可读时长；本套测试超过 60 s，pytest 每次都会打印它，且每次时长不同。
+   开工基线（`364 passed ... (0:07:03)`）本身也带这种行，证明是**既有工具缺口**，不是本期回归。
+3. 一次 `Command execution failed: ETIMEDOUT`——verify 的 `spawnSync` 上限 600 s，当时评审代理在并发跑，
+   pytest 被拖到超时；独占复跑即通过。
+
+处置：**不**改 omc 源码、**不**过滤 pytest 输出、**不**改 feedbackCommands、**不**用 `-p no:terminal`
+之类抹掉失败信息。以四条命令的真实退出码作为门禁证据，并如实记录 `ralph verify` 的这一限制。
+
+## 运行级报告补上资源变化披露（F29-1 / §2.3）
+
+复核指出：REPORT §9.7 已披露距离变化，但**每次运行自己的 `report.md`** 只有综合代价/未满足/服务率，
+预算实验的距离增加（XM：855.77 → 1784.57，+928.80 bike-km）在运行报告里看不到，
+而 M34 的判据要求“在 decision/report 中披露预算上限与资源变化”。已修：
+
+- `bike_agent/multi_agent/audit.py`：基准段增加“搬运距离”与“基准可行：是/否（不能作为可行回退）”；
+  候选比较表增加“距离 (bike-km)”列，括号内是相对基准的差值（由两侧 metrics 计算，不是字面量）。
+- 新增测试 `test_run_report_discloses_the_distance_change_against_the_baseline`
+  （基准 50 → 候选 60 bike-km，断言报告里出现 `60.000000 (+10.00)`、`基准可行：是`）。
+- **新跑一条高预算实验**（不覆盖旧记录）：`bike-agent multi-agent --source xm --max-budget 400
+  --min-service-rate 0.92` → `20261102T111807191960Z-xm-6c0b52`，`accepted`，
+  报告里 `cand-r2-1` 的 `1784.568263 (+928.80)` 现在直接可见。
+- README 与 REPORT §9.7 同步说明“每次运行自己的 report.md 也列出基准可行性与距离差值”。
+
+收尾门禁（串行、独占）：`pytest` **463 passed**（新增 1 条）；`check_multi_agent` 20/20；
+`check_presentation --phase 4/5` 全绿；`bike-agent serve --check`、`replay`、`repro` 退出 0；
+`repro` 前后 7 个业务产物 sha256 逐一相同；`browser_smoke_multi_agent.py` pass。
+期间 phase 4 曾因一次被中断的冒烟留下 `replay/sh/workbench.smoke.html` 而报 `stray_files`
+（已知瞬态产物），删除后复跑通过，站点回到 192 个文件、无残留。
+
+## 修复：浏览器冒烟不再写进已发布站点（根因，而非再清一次残留）
+
+`check_presentation --phase 4` 反复报 `stray_files: ['xm/workbench.smoke.html']`。根因不是"清理不干净"，
+而是冒烟脚本把注入后的页面**写进了 `replay/<source>/`**，好让相对引用能被解析；于是：
+
+- 一次被强杀的冒烟会把页面留在站点里；
+- 两个校验进程同时跑时，一个会看到另一个的临时页面，误判为 stray 文件；
+- 基线重录恰好撞上这种并发，把 `phase 4: 1 of 38 checks FAILED` 记进了基线，之后"全绿"反而成了新签名。
+
+修法（`scripts/browser_smoke.py`）：冒烟页改写进 `tempfile.TemporaryDirectory()`，并把页面里所有相对
+`src`/`href` 重写成绝对 `file://` URI（`_absolute_refs`）——仍然离线、仍是同一份字节，但**已发布站点
+不再被测试写入**。旧版本可能留在树里的页面仍在启动时清掉。验证：`browser_smoke.py` 对 xm/sh 各
+20 步无错误，运行前后 `replay/` 里 `*.smoke.html` 计数都是 0。
+
+这条改动只影响开发用冒烟脚本，不碰站点内容、不碰断言强度（NF-24 仍然把任何多余文件判为 stray）。
+
+## `ralph verify` 的最终判定（如实记录，未粉饰）
+
+在"四条命令全绿 + 基线也录自全绿树"的状态下复跑 `ralph verify`，输出为：
+
+```
+ralph verify: 1 NEW failure(s) since baseline
+  new: python3 -m pytest: 463 passed, 14 warnings in <v> (0:03:02)
+verify_exit=1
+```
+
+与基线逐字比对：基线里同一条签名是 `463 passed, 14 warnings in <v> (0:03:33)`。
+**唯一差异是 pytest 自己追加的人类可读时长 `(M:SS)`**——测试数相同、结果相同、退出码 0。
+`signatureLines` 把 `183.42s` 归一成 `<v>`，却没有归一 `(0:03:02)`，而本套 pytest 只要超过 60 秒
+就一定会打印这个后缀，所以每次运行的签名都不同。这是工具归一化缺口，不是回归。
+
+处置：**不**再反复重录基线（那只会把噪声盖起来）、**不**改 feedbackCommands、**不**过滤 pytest 输出、
+**不**加 `-p no:terminal`。门禁结论以四条命令的真实退出码为准，并把 verify 的这一行为写进
+`.omc/notepads/ralph/problems.md`。基线已保存为"全绿树"状态（`feedback-baseline.json` 录于
+2026-11-02T12:23:52Z，四条命令的 signatures 中无任何 FAIL/Error 行）。
+
+## Deslop 收尾（仅 Phase 6 改动文件，行为不变）
+
+清理范围：`bike_agent/multi_agent/*.py`、`bike_agent/presentation/collab.py`、
+`scripts/check_multi_agent.py`、`scripts/browser_smoke_multi_agent.py`、`tests/test_multi_agent_*.py`。
+编辑前先以 99 条多智能体测试锁定行为；删除优先，不新增抽象。
+
+| 类型 | 位置 | 处理 |
+|---|---|---|
+| 死代码 | `bike_agent/multi_agent/audit.py` 的 `_now()` | 无人调用（同文件其它函数都用调用方传入的时间戳），连同仅它使用的 `datetime/timezone` 导入一并删除 |
+| 死代码 / 重复 | `scripts/check_multi_agent.py` 的 `_read_jsonl()` | 该文件从不读 jsonl（消息与工具调用经 `discover_runs` 读取）；与 `collab.py` 里那个**在用**的同名函数重复，删掉检查器里的死副本 |
+| 重复逻辑 | `scripts/browser_smoke_multi_agent.py` 的运行选择器断言 | 原先在两处各自执行同一段"切到第二个运行并比较可见 section"的 JS；provenance 检查已在前一次切换中取得同组数据，改为复用该结果，删掉约 20 行重复脚本 |
+
+未做的事（有意）：没有把 `audit.py` 与 `report/text.py` 各自计算的"距离差值"抽成共享工具——
+两者分别服务于单次运行报告与跨运行总表，抽公共函数会把展示层耦合到审计模块，收益小于风险。
+
+清理后回归：`pytest` **463 passed**（exit 0）；`check_multi_agent` 20/20；`check_presentation --phase 4/5`
+全绿；`bike-agent serve --check` 退出 0；协作页冒烟 pass（选择器断言改为复用后仍为
+`options: 3, before: [6c0b52], after: [39ea4a], switched: True`）；`replay/` 无 `*.smoke.html` 残留。
+
+## 第 7.6 步复验（deslop 之后）
+
+`ralph verify` 退出 1，唯一 new 签名仍是 `python3 -m pytest: 463 passed, 14 warnings in <v> (0:02:52)`——
+测试数、结果与退出码（0）均与基线一致，差异只有 pytest 自带的 `(M:SS)` 时长后缀。deslop 前后各跑一次
+全量 pytest（463 passed / 463 passed）与四条门禁命令（全部退出 0），因此这不是 cleanup 引入的回归；
+按技能要求本应"回滚或修复到 exit 0"，此处无法在不改 omc 归一化、不过滤输出的前提下做到，已如实记录。

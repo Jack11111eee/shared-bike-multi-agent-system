@@ -292,6 +292,7 @@ def build_site(config: dict[str, Any], layout: Layout, sources: list[str] | None
     # Imported here, not at module scope: player.py reuses this module's
     # formatting helpers, and a top-level mutual import would be circular.
     from bike_agent.presentation.analysis import build_all_presentations
+    from bike_agent.presentation.collab import build_collab
     from bike_agent.presentation.render import build_workbench
     from bike_agent.replay.player import (
         PLAYER_CSS,
@@ -388,11 +389,14 @@ def build_site(config: dict[str, Any], layout: Layout, sources: list[str] | None
         built[source]["workbench"] = info
 
     build_dashboard(config, layout)
-    (site_dir / "index.html").write_text(_render_index(built), encoding="utf-8")
-    return {"site": str(site_dir), "sources": built}
+    # Phase 6 F28: the collaboration page reads the real audit runs and is
+    # linked from the home page.  It never triggers an agent at page-open time.
+    collab = build_collab(config, layout)
+    (site_dir / "index.html").write_text(_render_index(built, collab), encoding="utf-8")
+    return {"site": str(site_dir), "sources": built, "collab": collab}
 
 
-def _render_index(built: dict[str, Any]) -> str:
+def _render_index(built: dict[str, Any], collab: dict[str, Any] | None = None) -> str:
     cards, timeline = [], []
     # The guide is per source; link the first one actually built so a
     # single-source site never points at a page that does not exist.
@@ -444,6 +448,8 @@ def _render_index(built: dict[str, Any]) -> str:
 单格账本 → 参数实验），退出后可自由探索；{_guide_scope_text(built)}</p>
 <p class="notice">播放器会自动逐帧播放，可暂停、拖动与跳帧；全部图表与关键数字见
 <a href="dashboard.html">总览页</a>。逐帧页仍然保留，供深链与无脚本回退使用。</p>
+<p class="notice"><strong>多智能体协作</strong>：<a href="collab.html">协作过程</a>
+展示真实运行记录（规则驱动，LLM 未接入）中的角色、消息、候选、评估与终态；{_collab_scope_text(collab)}</p>
 </header>
 <main>
 {''.join(cards)}
@@ -452,6 +458,14 @@ def _render_index(built: dict[str, Any]) -> str:
 </body>
 </html>
 """
+
+
+def _collab_scope_text(collab: dict[str, Any] | None) -> str:
+    """Say what the collaboration page actually has, including the empty state."""
+    if not collab or not collab.get("n_runs"):
+        return "当前没有可展示的运行记录，页面会显示明确空态，不会填入假记录。"
+    sources = " / ".join(source.upper() for source in collab.get("sources", []))
+    return f"当前展示 {sources} 各一份真实运行；页面打开时不会重新运行智能体。"
 
 
 def _guide_scope_text(built: dict[str, Any]) -> str:

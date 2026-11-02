@@ -816,23 +816,23 @@
       "note": "每源一页、各自加载自己的数据包，切换即导航（同时加载两包会超出站点体积上限）"
     },
     {
-      "id": "NF-24",
-      "requirement": "replay/ < 8 MiB；presentation ≤ 2 MiB/源；workbench ≤ 256 KiB；旧单文件上限不变",
+      "id": "NF-24 / NF-30",
+      "requirement": "replay/ < 12 MiB（Phase 5 §1.3）；presentation ≤ 2 MiB/源；workbench ≤ 256 KiB；旧单文件上限不变",
       "result": "pass",
       "expected": {
-        "total_lt": 8388608,
+        "total_lt": 12582912,
         "presentation_le": 2097152
       },
       "actual": {
-        "total_bytes": 7387653,
-        "cap_bytes": 8388608,
+        "total_bytes": 9699564,
+        "cap_bytes": 12582912,
         "presentation": {
           "xm": 90747,
           "sh": 1405651
         },
         "workbench": {
-          "xm": 167130,
-          "sh": 225968
+          "xm": 173103,
+          "sh": 231943
         },
         "replay_data": {
           "xm": 18752,
@@ -862,7 +862,7 @@
         "scripts/phase1-snapshot.json",
         "outputs/key_numbers.json"
       ],
-      "note": "run.sh.md\n   + outputs/agent_run.xm.json\n   + outputs/agent_run.xm.md\n   + outputs/presentation_validation.phase4.json\n   + outputs/replay.optimized.sh.parquet\n   + outputs/replay.optimized.xm.parquet\n   + outputs/replay.rule.sh.parquet\n   + outputs/replay.rule.xm.parquet\n\nOK: every pre-existing value is preserved; changes are purely additive.\n    (narrative files updated: DECISIONS.md, REPORT.md)"
+      "note": "lidation.phase6.json\n   + outputs/presentation_validation.phase4.json\n   + outputs/presentation_validation.phase5.json\n   + outputs/replay.optimized.sh.parquet\n   + outputs/replay.optimized.xm.parquet\n   + outputs/replay.rule.sh.parquet\n   + outputs/replay.rule.xm.parquet\n\nOK: every pre-existing value is preserved; changes are purely additive.\n    (narrative files updated: DECISIONS.md, REPORT.md)"
     },
     {
       "id": "NF-23",
@@ -883,13 +883,13 @@
       "actual": {
         "xm": {
           "ok": true,
-          "steps": 14,
+          "steps": 20,
           "errors": [],
           "reason": null
         },
         "sh": {
           "ok": true,
-          "steps": 14,
+          "steps": 20,
           "errors": [],
           "reason": null
         }

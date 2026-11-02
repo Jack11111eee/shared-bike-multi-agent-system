@@ -1,0 +1,242 @@
+{
+  "phase": 5,
+  "requirement": "REQUIREMENTS-PHASE5.md F21",
+  "generated_by": "bike_agent.basemap.build",
+  "note": "底图只提供位置语境，不携带任何业务数值；所有数字仍来自 outputs/ 的静态产物。来源 URL 以普通文本记录，页面不引用外部资源。",
+  "datasets": {
+    "gshhg": {
+      "name": "GSHHG — Global Self-consistent Hierarchical High-resolution Geography",
+      "provider": "NOAA National Centers for Environmental Information / University of Hawaii SOEST",
+      "version": "2.3.7 (2017-06-15)",
+      "source_page": "https://www.ngdc.noaa.gov/mgg/shorelines/gshhg.html",
+      "download_url": "https://github.com/GenericMappingTools/gshhg-gmt/releases/download/2.3.7/gshhg-shp-2.3.7.zip",
+      "archive_sha256": "8dbbe7e071e77e9e75f2d639239099ebca8d5c16d6a07df8169729d49f15cf41",
+      "fetched": "2026-11-01",
+      "license_id": "LGPL-3.0-or-later",
+      "license_file": "licenses/GSHHG-LICENSE.txt",
+      "license_texts": [
+        "licenses/GSHHG-LICENSE.txt",
+        "licenses/LGPL-3.0.txt",
+        "licenses/GPL-3.0.txt"
+      ],
+      "license_summary": "GSHHG is distributed under the GNU Lesser General Public License v3 or later; the bundled permission notice additionally allows use, copying and distribution provided the copyright and permission notices travel with the data.",
+      "attribution": "GSHHG 2.3.7 © NOAA / University of Hawaii",
+      "original_crs": "EPSG:4326 (WGS84 geographic, per the shipped .prj)",
+      "role": "land polygons (coastline, islands, estuary shoreline)"
+    },
+    "osm-geofabrik": {
+      "name": "OpenStreetMap extracts (Geofabrik free shapefiles)",
+      "provider": "OpenStreetMap contributors, extracted by Geofabrik GmbH",
+      "version": "2026-10-31 extract (shanghai / fujian free .shp.zip)",
+      "source_page": "https://download.geofabrik.de/asia/china.html",
+      "download_url": "https://download.geofabrik.de/asia/china/shanghai-261031-free.shp.zip ; https://download.geofabrik.de/asia/china/fujian-261031-free.shp.zip",
+      "archive_sha256": "shanghai 3027496ec551fd45e39f9040e2d21624d67c235b008f708ec4e6bcc38163d008 ; fujian 4d8774eaff1fa7319814b3276a0ca76b7a10047fab5415b8cc2b1f5d6071c1f6",
+      "fetched": "2026-11-01",
+      "license_id": "ODbL-1.0",
+      "license_file": "licenses/ODbL-1.0.txt",
+      "license_texts": [
+        "licenses/ODbL-1.0.txt"
+      ],
+      "license_summary": "OpenStreetMap data is made available under the Open Database License; any public use must credit OpenStreetMap contributors. A produced map carries attribution; the underlying database keeps the ODbL terms.",
+      "attribution": "© OpenStreetMap contributors (ODbL 1.0)",
+      "original_crs": "EPSG:4326 (WGS84 geographic, per the shipped .prj)",
+      "role": "inland water lines (rivers, canals) and administrative outlines"
+    }
+  },
+  "sources": {
+    "xm": {
+      "published": "replay/xm/basemap.js",
+      "published_sha256": "a6040d9ba7bba8773fa66fee23ff7f39b032027b1978e22611e2735acfbc98c6",
+      "published_bytes": 35112,
+      "raw_extract": "data/basemap/raw/xm.json",
+      "raw_extract_sha256": "4cd702ac5cf8922cbb6871035f63266d4c61e2bb708408cee4713c167fed5c42",
+      "raw_extract_bytes": 61886,
+      "coverage": {
+        "grid_bbox": [
+          118.068263,
+          24.435954,
+          118.196591,
+          24.553558
+        ],
+        "display_bbox": [
+          118.05543,
+          24.424194,
+          118.209423,
+          24.565319
+        ]
+      },
+      "display_crs": "EPSG:4326 (WGS84 geographic), equirectangular projection",
+      "clipping": {
+        "method": "Sutherland-Hodgman polygon clipping and Liang-Barsky line clipping to the window below; lines shorter than the thresholds are dropped",
+        "window": [
+          118.02,
+          24.39,
+          118.24,
+          24.6
+        ],
+        "province": "fujian",
+        "detail": "data/basemap/raw/manifest.json",
+        "selection": {
+          "water_classes": [
+            "canal",
+            "river"
+          ],
+          "admin_classes": [
+            "admin_level8"
+          ],
+          "min_water_line_m": 1500.0,
+          "min_admin_line_m": 2000.0,
+          "dropped_water_lines": 19,
+          "dropped_admin_lines": 5,
+          "note": "按可见长度筛选线要素；多边形只做裁剪，不做简化（简化在构建期完成）"
+        }
+      },
+      "projection": {
+        "kind": "equirectangular",
+        "standard_parallel": 24.494756,
+        "bbox": [
+          118.05543,
+          24.424194,
+          118.209423,
+          24.565319
+        ],
+        "width": 760,
+        "height": 765,
+        "px_per_degree_lon": 4935.288793958903,
+        "px_per_degree_lat": 5420.711538461666,
+        "metres_per_pixel": 20.5259,
+        "north_up": true
+      },
+      "simplification": {
+        "method": "Douglas-Peucker in projected pixels",
+        "tolerance_px": 0.35,
+        "raw_points": {
+          "land": 253,
+          "water": 28,
+          "admin": 2693
+        },
+        "published_points": {
+          "land": 252,
+          "water": 26,
+          "admin": 1987
+        }
+      },
+      "layers": {
+        "land": {
+          "dataset": "gshhg",
+          "paths": 26,
+          "points": 252
+        },
+        "water": {
+          "dataset": "osm-geofabrik",
+          "paths": 3,
+          "points": 26
+        },
+        "admin": {
+          "dataset": "osm-geofabrik",
+          "paths": 33,
+          "points": 1987
+        }
+      }
+    },
+    "sh": {
+      "published": "replay/sh/basemap.js",
+      "published_sha256": "d677741ba0a9db40b83e7c0a92af0a4125c4e9925385353cd06e507ddacb572a",
+      "published_bytes": 99305,
+      "raw_extract": "data/basemap/raw/sh.json",
+      "raw_extract_sha256": "62bcc13bcf3bb2c41225ae551fb78b2fad31e3291eb7ea350b71bf64ee3bbc3f",
+      "raw_extract_bytes": 482346,
+      "coverage": {
+        "grid_bbox": [
+          121.297,
+          31.098,
+          121.612208,
+          31.405581
+        ],
+        "display_bbox": [
+          121.265479,
+          31.067242,
+          121.643728,
+          31.436339
+        ]
+      },
+      "display_crs": "EPSG:4326 (WGS84 geographic), equirectangular projection",
+      "clipping": {
+        "method": "Sutherland-Hodgman polygon clipping and Liang-Barsky line clipping to the window below; lines shorter than the thresholds are dropped",
+        "window": [
+          121.24,
+          31.04,
+          121.66,
+          31.46
+        ],
+        "province": "shanghai",
+        "detail": "data/basemap/raw/manifest.json",
+        "selection": {
+          "water_classes": [
+            "canal",
+            "river"
+          ],
+          "admin_classes": [
+            "admin_level6"
+          ],
+          "min_water_line_m": 1500.0,
+          "min_admin_line_m": 2000.0,
+          "dropped_water_lines": 2178,
+          "dropped_admin_lines": 6,
+          "note": "按可见长度筛选线要素；多边形只做裁剪，不做简化（简化在构建期完成）"
+        }
+      },
+      "projection": {
+        "kind": "equirectangular",
+        "standard_parallel": 31.25179,
+        "bbox": [
+          121.265479,
+          31.067242,
+          121.643728,
+          31.436339
+        ],
+        "width": 760,
+        "height": 867,
+        "px_per_degree_lon": 2009.2571850042386,
+        "px_per_degree_lat": 2348.975000000017,
+        "metres_per_pixel": 47.3643,
+        "north_up": true
+      },
+      "simplification": {
+        "method": "Douglas-Peucker in projected pixels",
+        "tolerance_px": 0.35,
+        "raw_points": {
+          "land": 39,
+          "water": 17017,
+          "admin": 6119
+        },
+        "published_points": {
+          "land": 39,
+          "water": 4605,
+          "admin": 2718
+        }
+      },
+      "layers": {
+        "land": {
+          "dataset": "gshhg",
+          "paths": 2,
+          "points": 39
+        },
+        "water": {
+          "dataset": "osm-geofabrik",
+          "paths": 535,
+          "points": 4605
+        },
+        "admin": {
+          "dataset": "osm-geofabrik",
+          "paths": 15,
+          "points": 2718
+        }
+      }
+    }
+  },
+  "budget": {
+    "published_total_bytes": 134417,
+    "cap_bytes": 2097152
+  }
+}

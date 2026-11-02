@@ -17,6 +17,8 @@
 单格账本 → 参数实验），退出后可自由探索；每个数据源各有独立的工作台页，页首的 XM / SH 链接直接跳到另一源的工作台。</p>
 <p class="notice">播放器会自动逐帧播放，可暂停、拖动与跳帧；全部图表与关键数字见
 <a href="dashboard.html">总览页</a>。逐帧页仍然保留，供深链与无脚本回退使用。</p>
+<p class="notice"><strong>多智能体协作</strong>：<a href="collab.html">协作过程</a>
+展示真实运行记录（规则驱动，LLM 未接入）中的角色、消息、候选、评估与终态；当前展示 SH / XM 各一份真实运行；页面打开时不会重新运行智能体。</p>
 </header>
 <main>
 <section class="card"><h2>XM</h2><p>网格 <b>169</b> 格 · 帧数 <b class="metric" data-source="outputs/sim_rule.xm.csv" data-metric="n_frames" data-value="4">4</b> · <span>2020-12-25 06:00:00 → 2020-12-25 09:00:00</span></p><ul><li>S-RULE（规则调度）：服务率 <b class="metric" data-source="outputs/sim_rule.xm.json" data-metric="service_rate" data-value="0.9135846712538226">91.36%</b>，搬运记录 17 条</li><li>S-OPT（约束优化）：服务率 <b class="metric" data-source="outputs/sim_optimized.xm.json" data-metric="service_rate" data-value="0.9123423165137615">91.23%</b>，搬运记录 13 条</li></ul><p><a class="start" href="xm/workbench.html">演示导览 →</a> <a href="xm/player.html">播放 →</a> <a href="xm/frame-0000.html">逐帧查看 →</a></p></section><section class="card"><h2>SH</h2><p>网格 <b>255</b> 格 · 帧数 <b class="metric" data-source="outputs/sim_rule.sh.csv" data-metric="n_frames" data-value="149">149</b> · <span>2016-08-25 20:00:00 → 2016-09-01 01:00:00</span></p><ul><li>S-RULE（规则调度）：服务率 <b class="metric" data-source="outputs/sim_rule.sh.json" data-metric="service_rate" data-value="0.9937363740180641">99.37%</b>，搬运记录 1404 条</li><li>S-OPT（约束优化）：服务率 <b class="metric" data-source="outputs/sim_optimized.sh.json" data-metric="service_rate" data-value="0.9941170363705575">99.41%</b>，搬运记录 1409 条</li></ul><p><a class="start" href="sh/workbench.html">演示导览 →</a> <a href="sh/player.html">播放 →</a> <a href="sh/frame-0000.html">逐帧查看 →</a></p></section>

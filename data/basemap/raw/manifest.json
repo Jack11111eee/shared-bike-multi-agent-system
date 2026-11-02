@@ -1,0 +1,95 @@
+{
+  "generated_by": "bike_agent.basemap.prepare",
+  "sources": {
+    "xm": {
+      "extract": "data/basemap/raw/xm.json",
+      "extract_sha256": "4cd702ac5cf8922cbb6871035f63266d4c61e2bb708408cee4713c167fed5c42",
+      "extract_bytes": 61886,
+      "bbox": [
+        118.02,
+        24.39,
+        118.24,
+        24.6
+      ],
+      "province": "fujian",
+      "points": {
+        "land": 253,
+        "water": 28,
+        "admin": 2693
+      },
+      "parts": {
+        "land": 26,
+        "water": 3,
+        "admin": 33
+      },
+      "selection": {
+        "water_classes": [
+          "canal",
+          "river"
+        ],
+        "admin_classes": [
+          "admin_level8"
+        ],
+        "min_water_line_m": 1500.0,
+        "min_admin_line_m": 2000.0,
+        "dropped_water_lines": 19,
+        "dropped_admin_lines": 5,
+        "note": "按可见长度筛选线要素；多边形只做裁剪，不做简化（简化在构建期完成）"
+      }
+    },
+    "sh": {
+      "extract": "data/basemap/raw/sh.json",
+      "extract_sha256": "62bcc13bcf3bb2c41225ae551fb78b2fad31e3291eb7ea350b71bf64ee3bbc3f",
+      "extract_bytes": 482346,
+      "bbox": [
+        121.24,
+        31.04,
+        121.66,
+        31.46
+      ],
+      "province": "shanghai",
+      "points": {
+        "land": 39,
+        "water": 17017,
+        "admin": 6119
+      },
+      "parts": {
+        "land": 2,
+        "water": 535,
+        "admin": 15
+      },
+      "selection": {
+        "water_classes": [
+          "canal",
+          "river"
+        ],
+        "admin_classes": [
+          "admin_level6"
+        ],
+        "min_water_line_m": 1500.0,
+        "min_admin_line_m": 2000.0,
+        "dropped_water_lines": 2178,
+        "dropped_admin_lines": 6,
+        "note": "按可见长度筛选线要素；多边形只做裁剪，不做简化（简化在构建期完成）"
+      }
+    }
+  },
+  "archives": {
+    "gshhg": {
+      "file": "gshhg.zip",
+      "sha256": "8dbbe7e071e77e9e75f2d639239099ebca8d5c16d6a07df8169729d49f15cf41",
+      "bytes": 149157845,
+      "layer": "GSHHS_shp/h/GSHHS_h_L1.shp"
+    },
+    "osm-shanghai": {
+      "file": "shanghai.shp.zip",
+      "sha256": "3027496ec551fd45e39f9040e2d21624d67c235b008f708ec4e6bcc38163d008",
+      "bytes": 47509398
+    },
+    "osm-fujian": {
+      "file": "fujian.shp.zip",
+      "sha256": "4d8774eaff1fa7319814b3276a0ca76b7a10047fab5415b8cc2b1f5d6071c1f6",
+      "bytes": 93535421
+    }
+  }
+}

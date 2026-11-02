@@ -1,0 +1,555 @@
+{
+  "phase": 5,
+  "requirement": "REQUIREMENTS-PHASE5.md",
+  "generated_by": "scripts/check_presentation.py --phase 5",
+  "note": "本报告是确定性验收证据，不替代 `python3 -m pytest`、浏览器实测与人工视觉检查（§6.2）。",
+  "ok": true,
+  "n_checks": 22,
+  "n_failed": 0,
+  "inputs": {
+    "outputs/forecast.xm.parquet": {
+      "bytes": 35487,
+      "sha256_16": "200eb7519603764b"
+    },
+    "outputs/forecast.sh.parquet": {
+      "bytes": 919593,
+      "sha256_16": "af98dae59d3a5ae5"
+    },
+    "data/basemap/raw/xm.json": {
+      "bytes": 61886,
+      "sha256_16": "4cd702ac5cf8922c"
+    },
+    "data/basemap/raw/sh.json": {
+      "bytes": 482346,
+      "sha256_16": "62bcc13bcf3bb2c4"
+    },
+    "replay/basemap/manifest.json": {
+      "bytes": 8288,
+      "sha256_16": "d732f8e4eae4c5ac"
+    },
+    "presentations/phase5/manifest.json": {
+      "bytes": 30788,
+      "sha256_16": "f86445374ac13e79"
+    }
+  },
+  "checks": [
+    {
+      "id": "F21-1[xm]",
+      "requirement": "底图资源/manifest 可解析、摘要一致、几何非空有限、覆盖网格且不丢格不重复",
+      "result": "pass",
+      "expected": "169 个格全部落在发布画布内，sha256 与 manifest 一致",
+      "actual": {
+        "problems": [],
+        "rects": 169,
+        "points": 2265,
+        "finite": true
+      },
+      "inputs": [
+        "replay/xm/basemap.js",
+        "replay/basemap/manifest.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F21-1[sh]",
+      "requirement": "底图资源/manifest 可解析、摘要一致、几何非空有限、覆盖网格且不丢格不重复",
+      "result": "pass",
+      "expected": "255 个格全部落在发布画布内，sha256 与 manifest 一致",
+      "actual": {
+        "problems": [],
+        "rects": 255,
+        "points": 7362,
+        "finite": true
+      },
+      "inputs": [
+        "replay/sh/basemap.js",
+        "replay/basemap/manifest.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F21-2[xm]",
+      "requirement": "独立几何核对：全部格中心与角点、经纬未互换、北向正确、逆变换、≥3 个分散控制点",
+      "result": "pass",
+      "expected": "全部格中心/角点误差 ≤ 0.5px；ix↑→x↑；lat↑→y↓；逆变换一致",
+      "actual": {
+        "cells": 169,
+        "worst_centre_error_px": 0.1066,
+        "ix_increases_x": true,
+        "north_up": true,
+        "controls": [
+          {
+            "cell_id": "C0003_0003",
+            "lon": 118.102813,
+            "lat": 24.467617,
+            "px": 233.85,
+            "py": 529.62,
+            "round_trip_lon": 118.102813,
+            "round_trip_lat": 24.46762
+          },
+          {
+            "cell_id": "C0003_0010",
+            "lon": 118.102813,
+            "lat": 24.530942,
+            "px": 233.85,
+            "py": 186.35,
+            "round_trip_lon": 118.102813,
+            "round_trip_lat": 24.530951
+          },
+          {
+            "cell_id": "C0010_0000",
+            "lon": 118.171912,
+            "lat": 24.440477,
+            "px": 574.87,
+            "py": 676.73,
+            "round_trip_lon": 118.171907,
+            "round_trip_lat": 24.440483
+          },
+          {
+            "cell_id": "C0010_0007",
+            "lon": 118.171912,
+            "lat": 24.503803,
+            "px": 574.87,
+            "py": 333.46,
+            "round_trip_lon": 118.171907,
+            "round_trip_lat": 24.503814
+          }
+        ],
+        "problems": []
+      },
+      "inputs": [
+        "data/processed/cells.xm.1000m.parquet",
+        "replay/xm/basemap.js"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F21-2[xm] 搬运端点",
+      "requirement": "搬运连线端点取自对应格中心：端点格存在、脚本按矩形中心取点（画面量测见浏览器冒烟）",
+      "result": "pass",
+      "expected": "每条线的 from/to 格都在发布几何中，且脚本用 rect.x+width/2、rect.y+height/2 作端点",
+      "actual": {
+        "moves": 17,
+        "checked": 17,
+        "construction": true,
+        "drawn_geometry_checked_by": "scripts/browser_smoke.py (0.5 px, real DOM)",
+        "problems": []
+      },
+      "inputs": [
+        "outputs/sim_moves.rule.xm.json",
+        "replay/xm/basemap.js",
+        "replay/workbench-geo.js"
+      ],
+      "note": "实际画出的 x1/y1/x2/y2 与格心比对由 scripts/browser_smoke.py 在真实 DOM 上完成（0.5 px）"
+    },
+    {
+      "id": "F21-2[sh]",
+      "requirement": "独立几何核对：全部格中心与角点、经纬未互换、北向正确、逆变换、≥3 个分散控制点",
+      "result": "pass",
+      "expected": "全部格中心/角点误差 ≤ 0.5px；ix↑→x↑；lat↑→y↓；逆变换一致",
+      "actual": {
+        "cells": 255,
+        "worst_centre_error_px": 0.0841,
+        "ix_increases_x": true,
+        "north_up": true,
+        "controls": [
+          {
+            "cell_id": "C0004_0000",
+            "lon": 121.391562,
+            "lat": 31.107046,
+            "px": 253.33,
+            "py": 773.5,
+            "round_trip_lon": 121.391545,
+            "round_trip_lat": 31.107025
+          },
+          {
+            "cell_id": "C0004_0009",
+            "lon": 121.391562,
+            "lat": 31.269883,
+            "px": 253.33,
+            "py": 391.0,
+            "round_trip_lon": 121.391545,
+            "round_trip_lat": 31.269905
+          },
+          {
+            "cell_id": "C0011_0004",
+            "lon": 121.538659,
+            "lat": 31.179418,
+            "px": 548.89,
+            "py": 603.5,
+            "round_trip_lon": 121.538664,
+            "round_trip_lat": 31.179397
+          },
+          {
+            "cell_id": "C0011_0013",
+            "lon": 121.538659,
+            "lat": 31.342255,
+            "px": 548.89,
+            "py": 221.0,
+            "round_trip_lon": 121.538664,
+            "round_trip_lat": 31.342277
+          }
+        ],
+        "problems": []
+      },
+      "inputs": [
+        "data/processed/cells.sh.2000m.parquet",
+        "replay/sh/basemap.js"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F21-2[sh] 搬运端点",
+      "requirement": "搬运连线端点取自对应格中心：端点格存在、脚本按矩形中心取点（画面量测见浏览器冒烟）",
+      "result": "pass",
+      "expected": "每条线的 from/to 格都在发布几何中，且脚本用 rect.x+width/2、rect.y+height/2 作端点",
+      "actual": {
+        "moves": 1404,
+        "checked": 1404,
+        "construction": true,
+        "drawn_geometry_checked_by": "scripts/browser_smoke.py (0.5 px, real DOM)",
+        "problems": []
+      },
+      "inputs": [
+        "outputs/sim_moves.rule.sh.json",
+        "replay/sh/basemap.js",
+        "replay/workbench-geo.js"
+      ],
+      "note": "实际画出的 x1/y1/x2/y2 与格心比对由 scripts/browser_smoke.py 在真实 DOM 上完成（0.5 px）"
+    },
+    {
+      "id": "F21-3[offline]",
+      "requirement": "离线资源扫描：站点没有任何外部 href/src/@import/url(http)",
+      "result": "pass",
+      "expected": "0 处外部引用",
+      "actual": [],
+      "inputs": [
+        "replay/"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F21-4[attribution]",
+      "requirement": "可见出处/图例/坐标口径与 manifest 一致；许可全文随包且内容可核对",
+      "result": "pass",
+      "expected": "页面指向底图与 manifest；manifest 记录来源/许可/CRS/获取日期；每份许可全文存在且含标识行",
+      "actual": [],
+      "inputs": [
+        "replay/xm/workbench.html",
+        "replay/sh/workbench.html",
+        "replay/basemap/manifest.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F22-1[xm]",
+      "requirement": "两源全格全测试点三指标三系列逐项等于 forecast parquet；net = out − in",
+      "result": "pass",
+      "expected": "676 行 × 3 指标 × 3 系列全部相等；parquet 的 *_net_flow == out − in",
+      "actual": {
+        "problems": [],
+        "rows": 676,
+        "cells": 169,
+        "buckets": 4
+      },
+      "inputs": [
+        "outputs/forecast.xm.parquet",
+        "replay/xm/forecast.js"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F22-2[xm]",
+      "requirement": "全源汇总、局部 MAE/样本数独立复算一致（含 net）；缺失点不被静默变成 0",
+      "result": "pass",
+      "expected": "out/in/net × 三系列每时段求和、每格 MAE 与 n 全部可复算；误差公式为 pred − actual",
+      "actual": {
+        "problems": []
+      },
+      "inputs": [
+        "replay/xm/forecast.js"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F22-4[xm]",
+      "requirement": "不伪造训练期预测或预测区间；局部与全源指标标签与范围不同",
+      "result": "pass",
+      "expected": "页面声明测试段范围、MAE≠区间、预测不随策略变化；无 95% 预测带",
+      "actual": [],
+      "inputs": [
+        "replay/xm/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F22-1[sh]",
+      "requirement": "两源全格全测试点三指标三系列逐项等于 forecast parquet；net = out − in",
+      "result": "pass",
+      "expected": "37995 行 × 3 指标 × 3 系列全部相等；parquet 的 *_net_flow == out − in",
+      "actual": {
+        "problems": [],
+        "rows": 37995,
+        "cells": 255,
+        "buckets": 149
+      },
+      "inputs": [
+        "outputs/forecast.sh.parquet",
+        "replay/sh/forecast.js"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F22-2[sh]",
+      "requirement": "全源汇总、局部 MAE/样本数独立复算一致（含 net）；缺失点不被静默变成 0",
+      "result": "pass",
+      "expected": "out/in/net × 三系列每时段求和、每格 MAE 与 n 全部可复算；误差公式为 pred − actual",
+      "actual": {
+        "problems": []
+      },
+      "inputs": [
+        "replay/sh/forecast.js"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F22-4[sh]",
+      "requirement": "不伪造训练期预测或预测区间；局部与全源指标标签与范围不同",
+      "result": "pass",
+      "expected": "页面声明测试段范围、MAE≠区间、预测不随策略变化；无 95% 预测带",
+      "actual": [],
+      "inputs": [
+        "replay/sh/workbench.html"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F22-3[hooks]",
+      "requirement": "选格/切指标/切范围/点时段/事件跳转/换源的联动钩子存在",
+      "result": "pass",
+      "expected": "页面与脚本暴露指标、范围、时段点与联动函数",
+      "actual": [],
+      "inputs": [
+        "replay/workbench.js",
+        "replay/xm/workbench.html"
+      ],
+      "note": "实际点击行为由 scripts/browser_smoke.py 与 tests/test_presentation_forecast.py 覆盖"
+    },
+    {
+      "id": "F23-1[screenshots]",
+      "requirement": "至少六张 PNG 存在、非空、可解码，尺寸 ≥1600×900 且 16:9",
+      "result": "pass",
+      "expected": "≥6 张，≥1600×900，16:9",
+      "actual": {
+        "count": 6,
+        "decoded": [
+          {
+            "path": "presentations/phase5/guide-overview.png",
+            "width": 1600,
+            "height": 900,
+            "ratio": 1.7778,
+            "ok": true
+          },
+          {
+            "path": "presentations/phase5/xm-geo-delta.png",
+            "width": 1600,
+            "height": 900,
+            "ratio": 1.7778,
+            "ok": true
+          },
+          {
+            "path": "presentations/phase5/xm-ledger.png",
+            "width": 1600,
+            "height": 900,
+            "ratio": 1.7778,
+            "ok": true
+          },
+          {
+            "path": "presentations/phase5/sh-forecast.png",
+            "width": 1600,
+            "height": 900,
+            "ratio": 1.7778,
+            "ok": true
+          },
+          {
+            "path": "presentations/phase5/scenario.png",
+            "width": 1600,
+            "height": 900,
+            "ratio": 1.7778,
+            "ok": true
+          },
+          {
+            "path": "presentations/phase5/sh-geo.png",
+            "width": 1600,
+            "height": 900,
+            "ratio": 1.7778,
+            "ok": true
+          }
+        ],
+        "problems": []
+      },
+      "inputs": [
+        "presentations/phase5/manifest.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F23-1[video]",
+      "requirement": "至少一段 WebM/MP4 可播放：真实解码、帧轨、≥1280×720、16:9、90–180 秒",
+      "result": "pass",
+      "expected": "≥1 段，≥1280×720，90–180s，可完整解码",
+      "actual": {
+        "count": 1,
+        "probes": [
+          {
+            "path": "presentations/phase5/demo.webm",
+            "ok": true,
+            "codec": "vp9",
+            "width": 1280,
+            "height": 720,
+            "duration_s": 116.0,
+            "frames": 464,
+            "decode_exit": 0,
+            "decode_errors": "",
+            "format": "matroska,webm"
+          }
+        ],
+        "problems": []
+      },
+      "inputs": [
+        "presentations/phase5/manifest.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F23-2[manifest]",
+      "requirement": "manifest 的摘要、状态键、输入摘要与章节范围有效；状态键经重放复核可重新定位",
+      "result": "pass",
+      "expected": "截图覆盖 ['guide-overview', 'scenario', 'sh-forecast', 'sh-geo', 'xm-geo-delta', 'xm-ledger']；每项含状态键/捕获命令/工具版本/输入摘要；replay_check 通过",
+      "actual": {
+        "keys": [
+          "guide-overview",
+          "scenario",
+          "sh-forecast",
+          "sh-geo",
+          "xm-geo-delta",
+          "xm-ledger"
+        ],
+        "replay_ok": true,
+        "problems": []
+      },
+      "inputs": [
+        "presentations/phase5/manifest.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F23-3[export]",
+      "requirement": "从当前工作区实际执行导出命令成功，记录退出码与文件清单",
+      "result": "pass",
+      "expected": "退出码 0，记录命令/时间/文件清单，清单覆盖全部媒体",
+      "actual": {
+        "run": {
+          "mode": "all",
+          "command": "python3 scripts/capture_presentation.py --all",
+          "exit_code": 0,
+          "started_at": "2026-11-02T03:21:20+00:00",
+          "finished_at": "2026-11-02T03:28:31+00:00",
+          "files": [
+            {
+              "path": "presentations/phase5/guide-overview.png",
+              "bytes": 165361,
+              "sha256": "d28fe2a5270525b88e68a1d31223bb312e9cb2cac7a57f3159f78eeac6c22357",
+              "written": true
+            },
+            {
+              "path": "presentations/phase5/xm-geo-delta.png",
+              "bytes": 222286,
+              "sha256": "256499cc2c4ec661d3a15d1df7edba44980e9b2a68c402ca2c30d232c863f03c",
+              "written": true
+            },
+            {
+              "path": "presentations/phase5/xm-ledger.png",
+              "bytes": 191216,
+              "sha256": "1f88c5342828217745c2e4bec1427de2304eed6fa4012aaad4fb6127d9a8a1d2",
+              "written": true
+            },
+            {
+              "path": "presentations/phase5/sh-forecast.png",
+              "bytes": 233796,
+              "sha256": "0280d1a4c9a9e384af25220c2c75b3b76f478982df1889d944cb613f4ef13d52",
+              "written": true
+            },
+            {
+              "path": "presentations/phase5/scenario.png",
+              "bytes": 236118,
+              "sha256": "c5883d781a4b8d275dc8afe26d53fce94d7bf0df8b350ed05c6b9607e4556bdf",
+              "written": true
+            },
+            {
+              "path": "presentations/phase5/sh-geo.png",
+              "bytes": 279762,
+              "sha256": "6d164bf17048b5042c17cdf3f804513e56f00c26623c8f77a1b861aae74e1068",
+              "written": true
+            },
+            {
+              "path": "presentations/phase5/demo.webm",
+              "bytes": 503332,
+              "sha256": "575babe8c91d6585ed0c4b5b72bf6f9425e309e7edf65ba9d0d75c213f4477f5",
+              "written": true
+            }
+          ]
+        },
+        "problems": []
+      },
+      "inputs": [
+        "presentations/phase5/manifest.json"
+      ],
+      "note": ""
+    },
+    {
+      "id": "F23-4[layout]",
+      "requirement": "媒体位于仓库根 presentations/phase5/，不复制进 replay/，不扩大静态根；合计 ≤100 MiB",
+      "result": "pass",
+      "expected": "媒体目录在站点之外，且合计 ≤ 100 MiB",
+      "actual": {
+        "bytes": 1868174,
+        "problems": []
+      },
+      "inputs": [
+        "presentations/phase5/"
+      ],
+      "note": ""
+    },
+    {
+      "id": "NF-30",
+      "requirement": "全站 < 12 MiB；底图发布资源合计 ≤ 2 MiB；预测展示数据两源合计 ≤ 2 MiB",
+      "result": "pass",
+      "expected": {
+        "site_lt": 12582912,
+        "basemap_le": 2097152,
+        "forecast_le": 2097152
+      },
+      "actual": {
+        "site_bytes": 9699564,
+        "basemap_bytes": 213204,
+        "forecast_bytes": 1892696
+      },
+      "inputs": [
+        "replay/"
+      ],
+      "note": ""
+    },
+    {
+      "id": "NF-28",
+      "requirement": "Phase 4 验证命令仍通过（原数值/全部帧/事件/账本/场景/契约保持）",
+      "result": "pass",
+      "expected": "check_presentation.py --phase 4 退出码 0",
+      "actual": 0,
+      "inputs": [
+        "outputs/presentation_validation.phase4.json"
+      ],
+      "note": "phase 4: all checks passed -> outputs/presentation_validation.phase4.json"
+    }
+  ]
+}
